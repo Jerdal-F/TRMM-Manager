@@ -36,4 +36,4 @@ The app uses `KeychainHelper` to securely store and retrieve the API key.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the **Business Source License 1.1**. See the [LICENSE](LICENSE) file for details.

@@ -19,7 +19,6 @@ class DiagnosticLogger {
     }
     
     func append(_ message: String) {
-        // Log messages as provided without sanitization.
         guard let url = logFileURL else { return }
         let logEntry = "\(Date()): \(message)\n"
         do {
@@ -38,7 +37,6 @@ class DiagnosticLogger {
         }
     }
     
-    /// Masks an API key so that only the first 4 and last 4 characters are visible.
     func maskAPIKey(_ key: String) -> String {
         let length = key.count
         if length <= 8 {
@@ -49,7 +47,6 @@ class DiagnosticLogger {
         return "\(first)XXXXXXXXXXXXXX\(last)"
     }
     
-    /// Logs the HTTP response including a truncated response body.
     func logHTTPResponse(method: String, url: String, status: Int, data: Data?) {
         let responseBody: String
         if let data = data, let responseString = String(data: data, encoding: .utf8) {
@@ -60,12 +57,10 @@ class DiagnosticLogger {
         append("HTTP Response: \(status) for \(method) \(url). Response Body: \(responseBody)")
     }
     
-    /// Logs warnings with a "WARNING:" prefix.
     func appendWarning(_ message: String) {
         append("WARNING: \(message)")
     }
     
-    /// Logs errors with an "ERROR:" prefix.
     func appendError(_ message: String) {
         append("ERROR: \(message)")
     }
@@ -74,9 +69,6 @@ class DiagnosticLogger {
         return logFileURL
     }
     
-    // MARK: - New Helper Methods to Sanitize HTTP Logging
-    
-    /// Returns a sanitized copy of the headers where the "X-API-KEY" is replaced.
     private func sanitizeHeaders(_ headers: [String: String]) -> [String: String] {
         var sanitized = headers
         if sanitized["X-API-KEY"] != nil {
@@ -85,7 +77,6 @@ class DiagnosticLogger {
         return sanitized
     }
     
-    /// Logs an HTTP request after sanitizing its headers.
     func logHTTPRequest(method: String, url: String, headers: [String: String]) {
         let sanitized = sanitizeHeaders(headers)
         append("HTTP Request: \(method) \(url) Headers: \(sanitized)")
@@ -96,8 +87,8 @@ class DiagnosticLogger {
 
 struct KeychainHelper {
     static let shared = KeychainHelper()
-    private let service = "jerdal.TacticalRMM-Manager"  // Use your bundle ID here
-
+    private let service = "jerdal.TacticalRMM-Manager"
+    
     func save(_ data: Data, for account: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -236,8 +227,6 @@ struct MeshCentralResponse: Decodable {
     let site: String
 }
 
-
-
 struct ScriptResults: Codable {
     let id: Int?
     let stderr: String?
@@ -253,8 +242,6 @@ struct ScriptResults: Codable {
     }
 }
 
-
-
 struct ProcessRecord: Identifiable, Decodable {
     let id: Int
     let name: String
@@ -264,18 +251,16 @@ struct ProcessRecord: Identifiable, Decodable {
     let cpu_percent: String
 }
 
-// New Model for Notes
 struct Note: Identifiable, Decodable {
     let pk: Int
     let entry_time: String
     let note: String
     let username: String
     let agent_id: String
-    
+
     var id: Int { pk }
 }
 
-// New Models for Tasks
 struct AgentTask: Identifiable, Decodable {
     let id: Int
     let schedule: String
@@ -313,12 +298,25 @@ struct TaskAction: Decodable {
     let script_args: [String]
 }
 
+// New Models for Installer
+
+struct Site: Identifiable, Decodable {
+    let id: Int
+    let name: String
+}
+
+struct ClientModel: Identifiable, Decodable {
+    let id: Int
+    let name: String
+    let sites: [Site]
+}
+
 // MARK: - ContentView
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var settingsList: [RMMSettings]
-    
+
     @State private var baseURLText: String = ""
     @State private var apiKeyText: String = ""
     @State private var showSavedAlert: Bool = false
@@ -329,14 +327,12 @@ struct ContentView: View {
     @State private var showDiagnosticAlert: Bool = false
     @State private var showLogShareSheet: Bool = false
     @FocusState private var isInputActive: Bool
-    
-    // Search-related states
+
     @State private var searchText: String = ""
     @State private var appliedSearchText: String = ""
     @State private var showSearch: Bool = false
-    @FocusState private var searchFieldIsFocused: Bool  // Focus state for the search field
-    
-    // Filter agents based on applied search text.
+    @FocusState private var searchFieldIsFocused: Bool
+
     var filteredAgents: [Agent] {
         if appliedSearchText.isEmpty {
             return agents
@@ -347,7 +343,7 @@ struct ContentView: View {
             }
         }
     }
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -361,6 +357,7 @@ struct ContentView: View {
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
                         .focused($isInputActive)
+
                     if baseURLText.isEmpty || apiKeyText.isEmpty {
                         Text("Please enter both Base URL and API Key")
                             .foregroundColor(.red)
@@ -376,14 +373,23 @@ struct ContentView: View {
                     } else if let savedSettings = settingsList.first,
                               savedSettings.baseURL == baseURLText,
                               KeychainHelper.shared.getAPIKey() == apiKeyText {
-                        Button("Login") {
-                            DiagnosticLogger.shared.append("User tapped login (existing settings).")
-                            isInputActive = false
-                            Task {
-                                await fetchAgents(using: savedSettings)
+                        HStack(spacing: 12) {
+                            Button("Login") {
+                                DiagnosticLogger.shared.append("User tapped login (existing settings).")
+                                isInputActive = false
+                                Task {
+                                    await fetchAgents(using: savedSettings)
+                                }
                             }
+                            .buttonStyle(.borderedProminent)
+
+                            NavigationLink(destination: InstallAgentView(baseURL: baseURLText, apiKey: apiKeyText)) {
+                                Text("Install New Agent")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .buttonStyle(.borderedProminent)
+
                         }
-                        .buttonStyle(.borderedProminent)
                         .padding(.vertical, 8)
                     } else {
                         Button("Save & Login") {
@@ -397,7 +403,7 @@ struct ContentView: View {
                         .padding(.vertical, 8)
                     }
                 }
-                // Custom header for the Agents section.
+
                 Section(header: HStack {
                     Text("Agents")
                         .font(.headline)
@@ -406,7 +412,7 @@ struct ContentView: View {
                         TextField("Search agents", text: $searchText)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .frame(width: 200)
-                            .disableAutocorrection(true)  // Disabled autocorrect for agent search
+                            .disableAutocorrection(true)
                             .focused($searchFieldIsFocused)
                             .submitLabel(.search)
                             .onSubmit {
@@ -540,7 +546,6 @@ struct ContentView: View {
     private func updateSettingsAndFetch() async {
         DiagnosticLogger.shared.append("updateSettingsAndFetch started")
         baseURLText = baseURLText.removingTrailingSlash()
-        // Ensure the URL includes the scheme unless in demo mode.
         if baseURLText.lowercased() != "demo" && !baseURLText.lowercased().hasPrefix("http://") && !baseURLText.lowercased().hasPrefix("https://") {
             baseURLText = "https://" + baseURLText
         }
@@ -647,6 +652,204 @@ struct ContentView: View {
         agents = demoAgents
     }
 }
+
+// MARK: - InstallAgentView
+
+struct InstallAgentView: View {
+    let baseURL: String
+    let apiKey: String
+
+    @State private var clients: [ClientModel] = []
+    @State private var selectedClientId: Int?
+    @State private var sites: [Site] = []
+    @State private var selectedSiteId: Int?
+    @State private var agentType: String = "server" {
+        didSet {
+            // Reset power toggle whenever switching back to Server
+            if agentType == "server" {
+                power = false
+            }
+        }
+    }
+    @State private var power: Bool = false
+    @State private var rdp: Bool = false
+    @State private var ping: Bool = false
+    @State private var arch: String = "amd64"
+    @State private var expires: String = "24"
+    @State private var fileName: String = "trmm-installer.exe"
+    @State private var isLoadingClients = false
+    @State private var errorMessage: String?
+    @State private var isGenerating = false
+    @State private var installerURL: URL?
+    @State private var showShareSheet = false
+
+    var body: some View {
+        ZStack {
+            Form {
+                if isLoadingClients {
+                    ProgressView("Loading clients...")
+                } else if let errorMessage = errorMessage {
+                    Text("Error: \(errorMessage)")
+                        .foregroundColor(.red)
+                } else {
+                    Section(header: Text("Client & Site")) {
+                        Picker("Client", selection: $selectedClientId) {
+                            Text("Select...").tag(Int?.none)
+                            ForEach(clients) { client in
+                                Text(client.name).tag(Int?(client.id))
+                            }
+                        }
+                        .onChange(of: selectedClientId) { old, new in
+                            if let id = new, let client = clients.first(where: { $0.id == id }) {
+                                sites = client.sites
+                                selectedSiteId = nil
+                            }
+                        }
+
+                        Picker("Site", selection: $selectedSiteId) {
+                            Text("Select...").tag(Int?.none)
+                            ForEach(sites) { site in
+                                Text(site.name).tag(Int?(site.id))
+                            }
+                        }
+                    }
+
+                    Section(header: Text("Settings")) {
+                        Picker("Agent Type", selection: $agentType) {
+                            Text("Server").tag("server")
+                            Text("Workstation").tag("workstation")
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        
+                        Picker("Architecture", selection: $arch) {
+                            Text("64 bit").tag("amd64")
+                            Text("32 bit").tag("386")
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+
+                        Toggle("Disable sleep/hibernate", isOn: $power)
+                            .disabled(agentType == "server")
+                            .opacity(agentType == "server" ? 0.5 : 1.0)
+
+                        Toggle("Enable RDP", isOn: $rdp)
+                        Toggle("Enable Ping", isOn: $ping)
+
+                        
+
+                        HStack {
+                            Text("Expires (hrs)")
+                            TextField("Hours", text: $expires)
+                                .keyboardType(.numberPad)
+                                .frame(width: 60)
+                        }
+                    }
+
+                    Section {
+                        Button("Download Installer") {
+                            Task { await generateInstaller() }
+                        }
+                        .disabled(isGenerating || selectedClientId == nil || selectedSiteId == nil)
+                    }
+                }
+            }
+            .navigationTitle("Install Agent")
+            .task { await fetchClients() }
+            .sheet(isPresented: $showShareSheet) {
+                if let url = installerURL {
+                    ActivityView(activityItems: [url])
+                }
+            }
+
+            if isGenerating {
+                Color.black.opacity(0.3).ignoresSafeArea()
+                ProgressView("Generating installer…")
+                    .padding()
+                    .background(.regularMaterial)
+                    .cornerRadius(8)
+            }
+        }
+    }
+
+    func fetchClients() async {
+        isLoadingClients = true
+        errorMessage = nil
+        let sanitized = baseURL.removingTrailingSlash()
+        guard let url = URL(string: "\(sanitized)/clients/") else {
+            errorMessage = "Invalid URL"
+            isLoadingClients = false
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.addDefaultHeaders(apiKey: KeychainHelper.shared.getAPIKey() ?? apiKey)
+        DiagnosticLogger.shared.logHTTPRequest(method: "GET", url: url.absoluteString, headers: request.allHTTPHeaderFields ?? [:])
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let resp = response as? HTTPURLResponse {
+                DiagnosticLogger.shared.logHTTPResponse(method: "GET", url: url.absoluteString, status: resp.statusCode, data: data)
+                guard resp.statusCode == 200 else {
+                    errorMessage = "HTTP Error: \(resp.statusCode)"
+                    isLoadingClients = false
+                    return
+                }
+            }
+            clients = try JSONDecoder().decode([ClientModel].self, from: data)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoadingClients = false
+    }
+
+    func generateInstaller() async {
+        guard let client = selectedClientId,
+              let site = selectedSiteId,
+              let expiresInt = Int(expires) else { return }
+        isGenerating = true
+        let sanitized = baseURL.removingTrailingSlash()
+        guard let url = URL(string: "\(sanitized)/agents/installer/") else {
+            isGenerating = false
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addDefaultHeaders(apiKey: KeychainHelper.shared.getAPIKey() ?? apiKey)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = [
+            "installMethod": "exe",
+            "client": client,
+            "site": site,
+            "expires": expiresInt,
+            "agenttype": agentType,
+            "power": power ? 1 : 0,
+            "rdp": rdp ? 1 : 0,
+            "ping": ping ? 1 : 0,
+            "goarch": arch,
+            "api": "\(sanitized)",
+            "fileName": fileName,
+            "plat": "windows"
+        ]
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+            DiagnosticLogger.shared.logHTTPRequest(method: "POST", url: url.absoluteString, headers: request.allHTTPHeaderFields ?? [:])
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let resp = response as? HTTPURLResponse {
+                DiagnosticLogger.shared.logHTTPResponse(method: "POST", url: url.absoluteString, status: resp.statusCode, data: data)
+                guard resp.statusCode == 200 else {
+                    isGenerating = false
+                    return
+                }
+            }
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+            try data.write(to: tempURL)
+            installerURL = tempURL
+            showShareSheet = true
+        } catch {
+            DiagnosticLogger.shared.appendError("Error generating installer: \(error.localizedDescription)")
+        }
+        isGenerating = false
+    }
+}
+
 
 // MARK: - AgentDetailView
 
@@ -945,7 +1148,6 @@ struct AgentDetailView: View {
                         .foregroundColor(.red)
                         .multilineTextAlignment(.center)
                 }
-                // Grid layout for action buttons.
                 let columns = [
                     GridItem(.flexible()),
                     GridItem(.flexible())
@@ -1034,7 +1236,7 @@ struct AgentDetailView: View {
     }
 }
 
-
+// MARK: - SendCommandView
 
 struct SendCommandView: View {
     let agentId: String
@@ -1042,7 +1244,7 @@ struct SendCommandView: View {
     let apiKey: String
     
     @State private var command: String = ""
-    @State private var selectedShell: String = "cmd" // "cmd" or "powershell"
+    @State private var selectedShell: String = "cmd"
     @State private var runAsUser: Bool = false
     @State private var timeout: String = "30"
     @State private var outputText: String = ""
@@ -1115,16 +1317,15 @@ struct SendCommandView: View {
                 }
             }
             
-            // Loading indicator overlay
             if isProcessing {
                 ZStack {
                     Color.black.opacity(0.3)
                         .ignoresSafeArea()
                     ProgressView("Sending Command...")
                         .progressViewStyle(CircularProgressViewStyle())
-                        .tint(.white) // Makes the spinner and text black, added in build 3
+                        .tint(.white)
                         .padding()
-                        .background(Color.gray) // Changed from white to gray in build 5
+                        .background(Color.gray)
                         .cornerRadius(10)
                 }
             }
@@ -1191,8 +1392,6 @@ struct SendCommandView: View {
     }
 }
 
-
-
 // MARK: - AgentProcessesView
 
 struct AgentProcessesView: View {
@@ -1200,7 +1399,6 @@ struct AgentProcessesView: View {
     let baseURL: String
     let apiKey: String
 
-    // Define a uniform width for all buttons (adjust this value as needed)
     private let uniformButtonWidth: CGFloat = 150
 
     @State private var processRecords: [ProcessRecord] = []
@@ -1214,7 +1412,6 @@ struct AgentProcessesView: View {
     @State private var searchQuery: String = ""
     @State private var appliedSearchQuery: String = ""
 
-    // New state for the selected process.
     @State private var selectedProcess: ProcessRecord? = nil
 
     var effectiveAPIKey: String {
@@ -1231,7 +1428,6 @@ struct AgentProcessesView: View {
 
     var body: some View {
         VStack {
-            // Search field comes first with autocorrection disabled.
             HStack {
                 TextField("Search process name", text: $searchQuery)
                     .textFieldStyle(.roundedBorder)
@@ -1286,7 +1482,6 @@ struct AgentProcessesView: View {
                     .multilineTextAlignment(.center)
                     .padding()
             }
-            // "Kill PID processes" button with uniform width.
             Button("Kill PID processes") {
                 Task {
                     if let process = selectedProcess {
@@ -1408,6 +1603,8 @@ struct AgentProcessesView: View {
     }
 }
 
+// MARK: - AgentNotesView
+
 struct AgentNotesView: View {
     let agentId: String
     let baseURL: String
@@ -1499,6 +1696,8 @@ struct AgentNotesView: View {
     }
 }
 
+// MARK: - AgentTasksView
+
 struct AgentTasksView: View {
     let agentId: String
     let baseURL: String
@@ -1511,8 +1710,7 @@ struct AgentTasksView: View {
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
     }
-    
-    // Helper function to truncate a result string if it contains more than 800 words.
+
     private func truncatedResult(_ result: String) -> String {
         let words = result.split(separator: " ")
         if words.count > 800 {
@@ -1616,4 +1814,3 @@ struct AgentTasksView: View {
         isLoading = false
     }
 }
-

@@ -719,7 +719,15 @@ struct InstallAgentView: View {
                             Text("Server").tag("server")
                             Text("Workstation").tag("workstation")
                         }
-                        .pickerStyle(SegmentedPickerStyle())
+                        .pickerStyle(.segmented)
+                        .onChange(of: agentType) {
+                            if agentType == "server" {
+                                power = false
+                                print("Switched to Server → power reset")
+                            }
+                        }
+
+
                         
                         Picker("Architecture", selection: $arch) {
                             Text("64 bit").tag("amd64")

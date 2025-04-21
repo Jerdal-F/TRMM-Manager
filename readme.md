@@ -1,6 +1,6 @@
-# TRMM Manager ISO App
+# TRMM Manager IOS App
 
-TRMM Manager ISO is a Swift-based application designed to manage Tactical RMM agents. This app provides functionalities such as viewing agent details, sending commands, and managing agent processes.
+TRMM Manager IOS is a Swift-based application designed to manage Tactical RMM agents. This app provides functionalities such as viewing agent details, sending commands, and managing agent processes.
 
 ## Features
 

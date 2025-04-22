@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import Security
+import LocalAuthentication
 
 // MARK: - Diagnostic Logger
 
@@ -315,31 +316,37 @@ struct ClientModel: Identifiable, Decodable {
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase)   private var scenePhase
     @Query private var settingsList: [RMMSettings]
 
-    @State private var baseURLText: String = ""
-    @State private var apiKeyText: String = ""
-    @State private var showSavedAlert: Bool = false
-    @State private var showGuideAlert: Bool = false
-    @State private var agents: [Agent] = []
-    @State private var isLoading: Bool = false
-    @State private var errorMessage: String? = nil
-    @State private var showDiagnosticAlert: Bool = false
-    @State private var showLogShareSheet: Bool = false
-    @FocusState private var isInputActive: Bool
+    @AppStorage("hideInstall") private var hideInstall: Bool = false
+    @AppStorage("useFaceID")    private var useFaceID:    Bool = false
 
-    @State private var searchText: String = ""
-    @State private var appliedSearchText: String = ""
-    @State private var showSearch: Bool = false
+    @State private var didAuthenticate:      Bool    = false
+    @State private var baseURLText:         String  = ""
+    @State private var apiKeyText:          String  = ""
+    @State private var showSavedAlert:      Bool    = false
+    @State private var showGuideAlert:      Bool    = false
+    @State private var showSettings:        Bool    = false
+    @State private var agents:              [Agent] = []
+    @State private var isLoading:           Bool    = false
+    @State private var errorMessage:        String? = nil
+    @State private var showDiagnosticAlert: Bool    = false
+    @State private var showLogShareSheet:   Bool    = false
+    @FocusState private var isInputActive:  Bool
+
+    @State private var searchText:          String = ""
+    @State private var appliedSearchText:   String = ""
+    @State private var showSearch:          Bool   = false
     @FocusState private var searchFieldIsFocused: Bool
 
     var filteredAgents: [Agent] {
         if appliedSearchText.isEmpty {
             return agents
         } else {
-            return agents.filter { agent in
-                agent.hostname.localizedCaseInsensitiveContains(appliedSearchText) ||
-                agent.operating_system.localizedCaseInsensitiveContains(appliedSearchText)
+            return agents.filter {
+                $0.hostname.localizedCaseInsensitiveContains(appliedSearchText) ||
+                $0.operating_system.localizedCaseInsensitiveContains(appliedSearchText)
             }
         }
     }
@@ -347,12 +354,14 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             Form {
+                // MARK: API Settings
                 Section(header: Text("API Settings"),
                         footer: Text("Note: You might experience issues if you have a large number of agents due to hardware limitations.")) {
                     TextField("API URL", text: $baseURLText)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
                         .focused($isInputActive)
+
                     SecureField("API Key", text: $apiKeyText)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
@@ -361,8 +370,8 @@ struct ContentView: View {
                     if baseURLText.isEmpty || apiKeyText.isEmpty {
                         Text("Please enter both Base URL and API Key")
                             .foregroundColor(.red)
-                    } else if baseURLText.removingTrailingSlash().lowercased() == "demo" &&
-                                apiKeyText.lowercased() == "demo" {
+                    } else if baseURLText.removingTrailingSlash().lowercased() == "demo"
+                              && apiKeyText.lowercased() == "demo" {
                         Button("Demo Mode") {
                             DiagnosticLogger.shared.append("Demo mode login triggered.")
                             isInputActive = false
@@ -370,54 +379,48 @@ struct ContentView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .padding(.vertical, 8)
-                    } else if let savedSettings = settingsList.first,
-                              savedSettings.baseURL == baseURLText,
+                    } else if let saved = settingsList.first,
+                              saved.baseURL == baseURLText,
                               KeychainHelper.shared.getAPIKey() == apiKeyText {
                         HStack(spacing: 12) {
                             Button("Login") {
-                                DiagnosticLogger.shared.append("User tapped login (existing settings).")
+                                DiagnosticLogger.shared.append("Login tapped.")
                                 isInputActive = false
-                                Task {
-                                    await fetchAgents(using: savedSettings)
-                                }
+                                Task { await fetchAgents(using: saved) }
                             }
                             .buttonStyle(.borderedProminent)
-
-                            NavigationLink(destination: InstallAgentView(baseURL: baseURLText, apiKey: apiKeyText)) {
-                                Text("Install New Agent")
+                            
+                            if !hideInstall {
+                                NavigationLink("Install New Agent",
+                                               destination: InstallAgentView(baseURL: baseURLText,
+                                                                            apiKey: apiKeyText))
+                                    .buttonStyle(.borderedProminent)
                             }
-                            .frame(maxWidth: .infinity)
-                            .buttonStyle(.borderedProminent)
-
                         }
                         .padding(.vertical, 8)
                     } else {
                         Button("Save & Login") {
-                            DiagnosticLogger.shared.append("User tapped save & login (new settings).")
+                            DiagnosticLogger.shared.append("Save & Login tapped.")
                             isInputActive = false
-                            Task {
-                                await updateSettingsAndFetch()
-                            }
+                            Task { await updateSettingsAndFetch() }
                         }
                         .buttonStyle(.borderedProminent)
                         .padding(.vertical, 8)
                     }
                 }
 
+                // MARK: Agents List
                 Section(header: HStack {
-                    Text("Agents")
-                        .font(.headline)
+                    Text("Agents").font(.headline)
                     Spacer()
                     if showSearch {
                         TextField("Search agents", text: $searchText)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .textFieldStyle(.roundedBorder)
                             .frame(width: 200)
                             .disableAutocorrection(true)
                             .focused($searchFieldIsFocused)
                             .submitLabel(.search)
-                            .onSubmit {
-                                appliedSearchText = searchText
-                            }
+                            .onSubmit { appliedSearchText = searchText }
                     } else {
                         Button {
                             withAnimation {
@@ -427,30 +430,23 @@ struct ContentView: View {
                         } label: {
                             Image(systemName: "magnifyingglass")
                         }
-                        .buttonStyle(BorderlessButtonStyle())
+                        .buttonStyle(.borderless)
                     }
                 }
-                .transaction { transaction in
-                    transaction.animation = nil
-                }) {
+                .transaction { $0.animation = nil }) {
                     if isLoading {
                         ProgressView("Loading agents...")
                     }
-                    if let errorMessage = errorMessage {
-                        Text("Error: \(errorMessage)")
-                            .foregroundColor(.red)
+                    if let error = errorMessage {
+                        Text("Error: \(error)").foregroundColor(.red)
                     }
                     ForEach(filteredAgents) { agent in
-                        NavigationLink(destination: AgentDetailView(
-                            agent: agent,
-                            baseURL: baseURLText,
-                            apiKey: apiKeyText
-                        )) {
+                        NavigationLink(destination: AgentDetailView(agent: agent,
+                                                                   baseURL: baseURLText,
+                                                                   apiKey: apiKeyText)) {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(agent.hostname)
-                                    .font(.headline)
-                                Text(agent.operating_system)
-                                    .font(.subheadline)
+                                Text(agent.hostname).font(.headline)
+                                Text(agent.operating_system).font(.subheadline)
                                 if let desc = agent.description, !desc.isEmpty {
                                     Text(desc)
                                         .font(.caption)
@@ -463,9 +459,8 @@ struct ContentView: View {
                                     Text("CPU: \(agent.cpu_model.joined(separator: ", "))")
                                         .font(.caption)
                                 }
-                                if let publicIP = agent.public_ip {
-                                    Text("Public IP: \(publicIP)")
-                                        .font(.caption)
+                                if let ip = agent.public_ip {
+                                    Text("Public IP: \(ip)").font(.caption)
                                 }
                             }
                         }
@@ -476,83 +471,130 @@ struct ContentView: View {
             .alert(isPresented: $showGuideAlert) {
                 Alert(
                     title: Text("Welcome"),
-                    message: Text("Seems like you're new here, we recommend reading the guide."),
-                    primaryButton: .default(Text("Read Guide"), action: {
+                    message: Text("Seems like you're new here. We recommend reading the guide."),
+                    primaryButton: .default(Text("Read Guide")) {
                         if let url = URL(string: "https://github.com/Jerdal-F/TacticalRMM-Manager/blob/main/README.md") {
                             UIApplication.shared.open(url)
                         }
-                    }),
-                    secondaryButton: .cancel(Text("Disregard"))
+                    },
+                    secondaryButton: .cancel()
                 )
             }
             .alert("Diagnostics", isPresented: $showDiagnosticAlert) {
-                Button("Save", role: .destructive) {
-                    showLogShareSheet = true
-                }
-                Button("Cancel", role: .cancel) { }
+                Button("Save", role: .destructive) { showLogShareSheet = true }
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Would you like to export your diagnostics log file?\nPlease note that it may include tokens, URLs, and other sensitive information")
+                Text("Export diagnostics log? It may include sensitive information.")
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     VStack {
-                        Text("Tactical RMM")
-                            .font(.headline)
-                        Text("Agent Manager")
-                            .font(.subheadline)
+                        Text("Tactical RMM").font(.headline)
+                        Text("Agent Manager").font(.subheadline)
                     }
                     .contentShape(Rectangle())
-                    .onLongPressGesture(
-                        minimumDuration: 2,
-                        maximumDistance: 50,
-                        pressing: { isPressing in
-                            DiagnosticLogger.shared.append("Tactical RMM label pressing: \(isPressing)")
-                        },
-                        perform: {
-                            DiagnosticLogger.shared.append("Tactical RMM label long-pressed for diagnostics export.")
-                            showDiagnosticAlert = true
-                        }
-                    )
+                    .onLongPressGesture(minimumDuration: 2, maximumDistance: 50) { pressing in
+                        DiagnosticLogger.shared.append("Long press: \(pressing)")
+                    } perform: {
+                        DiagnosticLogger.shared.append("Long‑pressed for diagnostics.")
+                        showDiagnosticAlert = true
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { showSettings = true }
+                label: { Image(systemName: "gearshape") }
                 }
             }
             .onAppear {
                 DiagnosticLogger.shared.append("ContentView onAppear")
-                if let savedSettings = settingsList.first {
-                    baseURLText = savedSettings.baseURL
-                    apiKeyText = KeychainHelper.shared.getAPIKey() ?? ""
+                if !useFaceID {
+                    loadInitialSettings()
                 }
-                if !UserDefaults.standard.bool(forKey: "hasLaunchedBefore") {
-                    showGuideAlert = true
-                    UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
+            }
+            // Use the two‑argument onChange to replace the deprecated API
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                switch newPhase {
+                case .background, .inactive:
+                    didAuthenticate = false
+                case .active:
+                    guard useFaceID, !didAuthenticate else { return }
+                    authenticateBiometrics { success in
+                        if success {
+                            didAuthenticate = true
+                            loadInitialSettings()
+                        } else {
+                            UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
+                        }
+                    }
+                @unknown default:
+                    break
+                }
+            }
+            .onChange(of: useFaceID) { oldValue, newValue in
+                if newValue {
+                    authenticateBiometrics { success in
+                        if !success {
+                            useFaceID = false
+                        }
+                    }
                 }
             }
             .alert("Settings Saved", isPresented: $showSavedAlert) {
-                Button("OK", role: .cancel) { }
+                Button("OK", role: .cancel) {}
             }
         }
-        .navigationViewStyle(StackNavigationViewStyle())
+        .navigationViewStyle(.stack)
         .sheet(isPresented: $showLogShareSheet) {
             if let url = DiagnosticLogger.shared.getLogFileURL() {
                 ActivityView(activityItems: [url])
             } else {
-                Text("No diagnostics log file available.")
+                Text("No diagnostics log available.")
             }
         }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
     }
-    
-    // MARK: - Helper Functions
-    
+
+    // MARK: - Helper Methods
+
+    private func loadInitialSettings() {
+        if let saved = settingsList.first {
+            baseURLText = saved.baseURL
+            apiKeyText   = KeychainHelper.shared.getAPIKey() ?? ""
+        }
+        if !UserDefaults.standard.bool(forKey: "hasLaunchedBefore") {
+            showGuideAlert = true
+            UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
+        }
+    }
+
+    private func authenticateBiometrics(completion: @escaping (Bool) -> Void) {
+        let context = LAContext()
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            completion(true)
+            return
+        }
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics,
+                               localizedReason: "Unlock Tactical RMM") { success, _ in
+            DispatchQueue.main.async { completion(success) }
+        }
+    }
+
     @MainActor
     private func updateSettingsAndFetch() async {
         DiagnosticLogger.shared.append("updateSettingsAndFetch started")
         baseURLText = baseURLText.removingTrailingSlash()
-        if baseURLText.lowercased() != "demo" && !baseURLText.lowercased().hasPrefix("http://") && !baseURLText.lowercased().hasPrefix("https://") {
+        if baseURLText.lowercased() != "demo"
+           && !baseURLText.lowercased().hasPrefix("http://")
+           && !baseURLText.lowercased().hasPrefix("https://") {
             baseURLText = "https://" + baseURLText
         }
-        if let savedSettings = settingsList.first {
-            savedSettings.baseURL = baseURLText
+        if let saved = settingsList.first {
+            saved.baseURL = baseURLText
             KeychainHelper.shared.saveAPIKey(apiKeyText)
-            await saveSettingsAndFetch(settings: savedSettings)
+            await saveSettingsAndFetch(settings: saved)
         } else {
             DiagnosticLogger.shared.append("Creating new settings.")
             let newSettings = RMMSettings(baseURL: baseURLText)
@@ -561,7 +603,7 @@ struct ContentView: View {
             await saveSettingsAndFetch(settings: newSettings)
         }
     }
-    
+
     @MainActor
     private func saveSettingsAndFetch(settings: RMMSettings) async {
         do {
@@ -574,7 +616,7 @@ struct ContentView: View {
             DiagnosticLogger.shared.appendError("Error saving settings: \(error.localizedDescription)")
         }
     }
-    
+
     @MainActor
     private func fetchAgents(using settings: RMMSettings) async {
         DiagnosticLogger.shared.append("fetchAgents started")
@@ -588,68 +630,78 @@ struct ContentView: View {
         errorMessage = nil
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        let apiKey = KeychainHelper.shared.getAPIKey() ?? ""
-        request.addDefaultHeaders(apiKey: apiKey)
-        DiagnosticLogger.shared.logHTTPRequest(method: "GET", url: url.absoluteString, headers: request.allHTTPHeaderFields ?? [:])
+        request.addDefaultHeaders(apiKey: KeychainHelper.shared.getAPIKey() ?? "")
+        DiagnosticLogger.shared.logHTTPRequest(method: "GET",
+                                              url: url.absoluteString,
+                                              headers: request.allHTTPHeaderFields ?? [:])
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            if let httpResponse = response as? HTTPURLResponse {
-                DiagnosticLogger.shared.logHTTPResponse(method: "GET", url: url.absoluteString, status: httpResponse.statusCode, data: data)
-                if httpResponse.statusCode == 401 {
+            if let http = response as? HTTPURLResponse {
+                DiagnosticLogger.shared.logHTTPResponse(method: "GET",
+                                                       url: url.absoluteString,
+                                                       status: http.statusCode,
+                                                       data: data)
+                switch http.statusCode {
+                case 200:
+                    agents = try JSONDecoder().decode([Agent].self, from: data)
+                    DiagnosticLogger.shared.append("Fetched agents: \(agents.count)")
+                case 401:
                     errorMessage = "Invalid API Key."
-                    DiagnosticLogger.shared.appendError("HTTP 401: Invalid API Key during agents fetch.")
-                    return
-                } else if httpResponse.statusCode != 200 {
-                    errorMessage = "HTTP Error: \(httpResponse.statusCode)"
-                    DiagnosticLogger.shared.appendError("HTTP Error \(httpResponse.statusCode) during agents fetch.")
-                    return
+                    DiagnosticLogger.shared.appendError("HTTP 401 during fetch.")
+                default:
+                    errorMessage = "HTTP \(http.statusCode)"
+                    DiagnosticLogger.shared.appendError("HTTP \(http.statusCode) during fetch.")
                 }
             }
-            let decodedAgents = try JSONDecoder().decode([Agent].self, from: data)
-            agents = decodedAgents
-            DiagnosticLogger.shared.append("Fetched agents successfully. Count: \(decodedAgents.count)")
         } catch {
             errorMessage = error.localizedDescription
             DiagnosticLogger.shared.appendError("Error fetching agents: \(error.localizedDescription)")
         }
         isLoading = false
     }
-    
+
     private func loadDemoAgents() {
         DiagnosticLogger.shared.append("Loading demo agents.")
-        let demoAgents = [
-            Agent(
-                agent_id: "demo1",
-                hostname: "Demo Agent 1",
-                operating_system: "iOS Demo OS",
-                description: "This is a demo agent.",
-                cpu_model: ["Demo CPU"],
-                public_ip: "192.0.2.1",
-                local_ips: "10.0.0.1",
-                graphics: "Demo GPU",
-                make_model: "Demo Model",
-                status: "online",
-                site_name: "Demo Site",
-                last_seen: ISO8601DateFormatter().string(from: Date()),
-                physical_disks: ["Demo Disk 1"]
-            ),
-            Agent(
-                agent_id: "demo2",
-                hostname: "Demo Agent 2",
-                operating_system: "iOS Demo OS",
-                description: "Another demo agent.",
-                cpu_model: ["Demo CPU"],
-                public_ip: "192.0.2.2",
-                local_ips: "10.0.0.2",
-                graphics: "Demo GPU",
-                make_model: "Demo Model",
-                status: "offline",
-                site_name: "Demo Site",
-                last_seen: ISO8601DateFormatter().string(from: Date()),
-                physical_disks: ["Demo Disk 2"]
-            )
-        ]
-        agents = demoAgents
+        agents = [
+            Agent(agent_id: "demo1", hostname: "Demo1", operating_system: "iOS Demo OS",
+                  description: "Demo agent.", cpu_model: ["Demo CPU"],
+                  public_ip: "192.0.2.1", local_ips: "10.0.0.1", graphics: "Demo GPU",
+                  make_model: "Demo Model", status: "online", site_name: "Demo Site",
+                  last_seen: ISO8601DateFormatter().string(from: Date()),
+                  physical_disks: ["Demo Disk1"]),
+            Agent(agent_id: "demo2", hostname: "Demo2", operating_system: "iOS Demo OS",
+                  description: "Demo agent 2.", cpu_model: ["Demo CPU"],
+                  public_ip: "192.0.2.2", local_ips: "10.0.0.2", graphics: "Demo GPU",
+                  make_model: "Demo Model", status: "offline", site_name: "Demo Site",
+                  last_seen: ISO8601DateFormatter().string(from: Date()),
+                  physical_disks: ["Demo Disk2"])
+            ]
+        }
+    }
+
+// MARK: - SettingsView
+
+struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("hideInstall") var hideInstall: Bool = false
+    @AppStorage("useFaceID")  var useFaceID:  Bool = false
+
+    var body: some View {
+        NavigationView {
+            Form {
+                //Toggle("Enable Diagnostics Logging", isOn: $enableDiagnosticsLogging)
+                Toggle("Hide install agent button", isOn: $hideInstall)
+                Toggle("FaceID", isOn: $useFaceID)
+            }
+            .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -760,7 +812,7 @@ struct InstallAgentView: View {
                     }
                 }
             }
-            .navigationTitle("Install Agent")
+            .navigationTitle("Install Windows Agent")
             .task { await fetchClients() }
             .sheet(isPresented: $showShareSheet) {
                 if let url = installerURL {

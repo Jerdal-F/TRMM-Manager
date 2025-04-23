@@ -340,6 +340,7 @@ struct ContentView: View {
     @State private var appliedSearchText:    String = ""
     @State private var showSearch:           Bool   = false
     @FocusState private var searchFieldIsFocused: Bool
+    @State private var showRecoveryAlert = false
 
     var filteredAgents: [Agent] {
         if appliedSearchText.isEmpty {
@@ -522,12 +523,21 @@ struct ContentView: View {
                         loadInitialSettings()
                     }
                 }
-                .onChange(of: scenePhase) { oldPhase, newPhase in
+                .onChange(of: scenePhase) { _, newPhase in
                     switch newPhase {
                     case .background, .inactive:
                         didAuthenticate = false
+
                     case .active:
                         guard useFaceID, !didAuthenticate else { return }
+
+                        // If neither FaceID nor passcode is available, show reset UI instead of trying to auth
+                        if !authAvailable {
+                            showRecoveryAlert = true
+                            return
+                        }
+
+                        // Otherwise do the normal authenticate → load or suspend
                         isAuthenticating = true
                         authenticateBiometrics { success in
                             isAuthenticating = false
@@ -538,10 +548,12 @@ struct ContentView: View {
                                 UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
                             }
                         }
+
                     @unknown default:
                         break
                     }
                 }
+
                 .onChange(of: useFaceID) { oldValue, newValue in
                     if newValue {
                         isAuthenticating = true
@@ -559,15 +571,50 @@ struct ContentView: View {
             }
             .navigationViewStyle(.stack)
 
-            // Block interaction until FaceID completes
+            // Block interaction until FaceID completes with recovery alert
             if useFaceID && !didAuthenticate {
-                Color.black.opacity(0.4)
-                    .ignoresSafeArea()
-                ProgressView(isAuthenticating ? "Authenticating with FaceID…" : "Please wait…")
-                    .padding()
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(10)
+                ZStack {
+                    // Full-screen blur material
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .ignoresSafeArea()
+
+                    // Semi-transparent black overlay on top of the blur
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                    
+                    ProgressView(isAuthenticating ? "Authenticating with FaceID…" : "Please wait…")
+                        .padding()
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(10)
+                }
+                // When this view appears, if auth is impossible, force recovery
+                .onAppear {
+                    if !authAvailable {
+                        showRecoveryAlert = true
+                    }
+                }
+                // Recovery alert
+                .alert(isPresented: $showRecoveryAlert) {
+                    Alert(
+                        title: Text("Security Reset Required"),
+                        message: Text("""
+                            You’ve disabled both Face ID and device passcode while having the FaceID app lock enabled. \
+                            For security, you must clear all saved settings and API keys. \
+                            Tap “Clear App Data” to reset.
+                            """),
+                        // This is a single destructive “dismiss” button—no Cancel is injected
+                        dismissButton: .destructive(
+                            Text("Clear App Data"),
+                            action: clearAppData
+                        )
+                    )
+                }
+
+
             }
+
+
         }
         // Share & settings sheets
         .sheet(isPresented: $showLogShareSheet) {
@@ -598,15 +645,84 @@ struct ContentView: View {
     private func authenticateBiometrics(completion: @escaping (Bool) -> Void) {
         let context = LAContext()
         var error: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
-            completion(true)
+
+        // Now require deviceOwnerAuthentication (biometrics + passcode)
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            // Neither biometrics nor passcode available → block access
+            completion(false)
             return
         }
-        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics,
-                               localizedReason: "Unlock Tactical RMM") { success, _ in
-            DispatchQueue.main.async { completion(success) }
+
+        context.evaluatePolicy(
+            .deviceOwnerAuthentication,
+            localizedReason: "Unlock Tactical RMM Agent Manager"
+        ) { success, _ in
+            DispatchQueue.main.async {
+                completion(success)
+            }
         }
     }
+    
+    private var authAvailable: Bool {
+        LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
+    }
+// Fredrik Jerdal 2025
+    @MainActor
+    private func clearAppData() {
+        // 1) Remove API key from Keychain
+        KeychainHelper.shared.deleteAPIKey()
+        let apiKeyStillThere = KeychainHelper.shared.getAPIKey() != nil
+
+        // 2) Delete persisted SwiftData settings
+        for setting in settingsList {
+            modelContext.delete(setting)
+        }
+        var coreDataError: Error?
+        do {
+            try modelContext.save()
+        } catch {
+            coreDataError = error
+            DiagnosticLogger.shared.appendError("Error clearing settings: \(error)")
+        }
+
+        // 3) Reset any @AppStorage flags
+        UserDefaults.standard.removeObject(forKey: "hasLaunchedBefore")
+        UserDefaults.standard.removeObject(forKey: "hideInstall")
+
+        // 4) Verify everything is gone
+        //    • Keychain: apiKeyStillThere == false
+        //    • SwiftData: settingsList should now be empty
+        //    • UserDefaults: both keys unset
+        let userDefaultsCleared =
+            UserDefaults.standard.object(forKey: "hasLaunchedBefore") == nil &&
+            UserDefaults.standard.object(forKey: "hideInstall") == nil
+
+        let coreDataCleared = settingsList.isEmpty && coreDataError == nil
+
+        // 5) Only if all three areas are clean, disable the FaceID lock
+        if !apiKeyStillThere && coreDataCleared && userDefaultsCleared {
+            useFaceID = false
+        } else {
+            if apiKeyStillThere {
+                DiagnosticLogger.shared.appendWarning("API Key still present after deletion.")
+            }
+            if !coreDataCleared {
+                DiagnosticLogger.shared.appendWarning("SwiftData settings still exist after deletion.")
+            }
+            if !userDefaultsCleared {
+                DiagnosticLogger.shared.appendWarning("AppStorage flags not fully cleared.")
+            }
+        }
+
+        // 6) Clear UI state and force a fresh launch
+        baseURLText = ""
+        apiKeyText = ""
+        UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
+    }
+
+
+
+
 
     @MainActor
     private func updateSettingsAndFetch() async {
@@ -733,26 +849,68 @@ struct ContentView: View {
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("hideInstall") var hideInstall: Bool = false
-    @AppStorage("useFaceID")  var useFaceID:  Bool = false
+    @AppStorage("useFaceID") var useFaceID: Bool = false
+
+    private var authAvailable: Bool {
+        LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
+    }
 
     var body: some View {
         NavigationView {
-            Form {
-                //Toggle("Enable Diagnostics Logging", isOn: $enableDiagnosticsLogging)
-                Toggle("Hide install agent button", isOn: $hideInstall)
-                Toggle("FaceID", isOn: $useFaceID)
+            VStack(spacing: 0) {
+                Form {
+                    Toggle("Hide install agent button", isOn: $hideInstall)
+
+                    Toggle("Face ID App Lock", isOn: $useFaceID)
+                        .disabled(!authAvailable)
+                        .overlay(
+                            Group {
+                                if !authAvailable {
+                                    Text("Requires at least a device passcode or biometric setup")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                        .padding(.top, 4)
+                                }
+                            },
+                            alignment: .bottomLeading
+                        )
+                }
+
+                Spacer()
+
+                // Guide button at bottom
+                Button(action: {
+                    guard let url = URL(string: "https://github.com/Jerdal-F/TacticalRMM-Manager")
+                    else { return }
+                    UIApplication.shared.open(url)
+                }) {
+                    Label("Guide", systemImage: "globe")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
+                .buttonStyle(.bordered)
+                .tint(.blue)
+                .padding(.horizontal)
+                .padding(.bottom, 20)
+                
+                // Footer
+                Text("This app is an independent project and is not made by or affiliated with Tactical RMM/AmidaWare.")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .padding(.bottom, 20)
             }
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
+                    Button("Done") { dismiss() }
                 }
             }
         }
     }
 }
+
+
+
 
 // MARK: - InstallAgentView
 

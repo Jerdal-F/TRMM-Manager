@@ -596,6 +596,7 @@ struct ContentView: View {
                 }
                 // Recovery alert
                 .alert(isPresented: $showRecoveryAlert) {
+
                                 Alert(
                                     title: Text("Security Reset Required"),
                                     message: Text("""

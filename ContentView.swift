@@ -596,38 +596,39 @@ struct ContentView: View {
                 }
                 // Recovery alert
                 .alert(isPresented: $showRecoveryAlert) {
-                    Alert(
-                        title: Text("Security Reset Required"),
-                        message: Text("""
-                            You’ve disabled both Face ID and device passcode while having the FaceID app lock enabled. \
-                            For security, you must clear all saved settings and API keys. \
-                            Tap “Clear App Data” to reset.
-                            """),
-                        // This is a single destructive “dismiss” button—no Cancel is injected
-                        dismissButton: .destructive(
-                            Text("Clear App Data"),
-                            action: clearAppData
-                        )
-                    )
+
+                                Alert(
+                                    title: Text("Security Reset Required"),
+                                    message: Text("""
+                                        You’ve disabled both Face ID and device passcode while having the FaceID app lock enabled. \
+                                        For security, you must clear all saved settings and API keys. \
+                                        Tap “Clear App Data” to reset.
+                                        """),
+                                    // This is a single destructive “dismiss” button—no Cancel is injected
+                                    dismissButton: .destructive(
+                                        Text("Clear App Data"),
+                                        action: clearAppData
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    // Only allow the Settings sheet to appear when not locked
+                    .sheet(isPresented: Binding(
+                        get:  { showSettings && !(useFaceID && !didAuthenticate) },
+                        set:  { showSettings = $0 }
+                    )) {
+                        SettingsView()
+                    }
+                    // Share & settings sheets
+                    .sheet(isPresented: $showLogShareSheet) {
+                        if let url = DiagnosticLogger.shared.getLogFileURL() {
+                            ActivityView(activityItems: [url])
+                        } else {
+                            Text("No diagnostics log available.")
+                        }
+                    }
                 }
-
-
-            }
-
-
-        }
-        // Share & settings sheets
-        .sheet(isPresented: $showLogShareSheet) {
-            if let url = DiagnosticLogger.shared.getLogFileURL() {
-                ActivityView(activityItems: [url])
-            } else {
-                Text("No diagnostics log available.")
-            }
-        }
-        .sheet(isPresented: $showSettings) {
-            SettingsView()
-        }
-    }
 
     // MARK: – Helper Methods
 

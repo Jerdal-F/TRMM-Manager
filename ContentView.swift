@@ -216,6 +216,7 @@ struct Agent: Identifiable, Decodable {
     let site_name: String?
     let last_seen: String?
     let physical_disks: [String]?
+    let custom_fields: [CustomField]?
 }
 
 struct MeshCentralResponse: Decodable {
@@ -596,7 +597,6 @@ struct ContentView: View {
                 }
                 // Recovery alert
                 .alert(isPresented: $showRecoveryAlert) {
-
                                 Alert(
                                     title: Text("Security Reset Required"),
                                     message: Text("""
@@ -823,7 +823,8 @@ struct ContentView: View {
                 status: "online",
                 site_name: "Demo Site",
                 last_seen: ISO8601DateFormatter().string(from: Date()),
-                physical_disks: ["Demo Disk1"]
+                physical_disks: ["Demo Disk1"],
+                custom_fields: []
             ),
             Agent(
                 agent_id: "demo2",
@@ -838,7 +839,8 @@ struct ContentView: View {
                 status: "offline",
                 site_name: "Demo Site",
                 last_seen: ISO8601DateFormatter().string(from: Date()),
-                physical_disks: ["Demo Disk2"]
+                physical_disks: ["Demo Disk2"],
+                custom_fields: []
             )
         ]
     }
@@ -886,8 +888,24 @@ struct SettingsView: View {
                     UIApplication.shared.open(url)
                 }) {
                     Label("Guide", systemImage: "globe")
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 10)
                         .padding()
+                }
+                .buttonStyle(.bordered)
+                .tint(.blue)
+                .padding(.horizontal)
+                .padding(.bottom, 20)
+                
+                // Donate button
+                Button(action: {
+                    guard let url = URL(string: "https://buymeacoffee.com/jerdal")
+                    else { return }
+                    UIApplication.shared.open(url)
+                }) {
+                    Label("Donate", systemImage: "dollarsign.circle")
+                        .frame(maxWidth: .infinity, minHeight: 10)
+                        .padding()
+                    
                 }
                 .buttonStyle(.bordered)
                 .tint(.blue)
@@ -1377,8 +1395,10 @@ struct AgentDetailView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Agent: \(displayAgent.hostname)")
                     .font(.title)
+                    .textSelection(.enabled)
                 Text("Operating System: \(displayAgent.operating_system)")
                     .font(.subheadline)
+                    .textSelection(.enabled)
                 if let description = displayAgent.description, !description.isEmpty {
                     Text("Description: \(description)")
                         .font(.subheadline)
@@ -1389,17 +1409,21 @@ struct AgentDetailView: View {
                     Text("Model: \(displayAgent.make_model ?? "Not available")")
                 }
                 .font(.subheadline)
+                .textSelection(.enabled)
                 let lanIPText = displayAgent.local_ips?.ipv4Only().isEmpty == false ?
                     displayAgent.local_ips!.ipv4Only() : "No LAN IP available"
                 Text("LAN IP: \(lanIPText) | Public IP: \(displayAgent.public_ip ?? "No IP available")")
                     .font(.subheadline)
+                    .textSelection(.enabled)
                 if let disks = displayAgent.physical_disks, !disks.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Physical Disks:")
                             .font(.subheadline)
+                            .textSelection(.enabled)
                         ForEach(disks, id: \.self) { disk in
                             Text("- \(disk)")
                                 .font(.subheadline)
+                                .textSelection(.enabled)
                         }
                     }
                 } else {
@@ -1477,6 +1501,22 @@ struct AgentDetailView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .buttonStyle(.borderedProminent)
+                    
+                    let nonEmptyCustomFields = displayAgent.custom_fields?
+                        .filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                        ?? []
+
+                    NavigationLink(
+                        destination: AgentCustomFieldsView(customFields: nonEmptyCustomFields)
+                    ) {
+                        Text("Custom Fields")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(nonEmptyCustomFields.isEmpty)
+                    .opacity(nonEmptyCustomFields.isEmpty ? 0.5 : 1.0)
+
+
                 }
                 .alert("Confirm Shutdown", isPresented: $showShutdownConfirmation) {
                     Button("Shutdown", role: .destructive) {
@@ -2080,5 +2120,50 @@ struct AgentTasksView: View {
             DiagnosticLogger.shared.appendError("Error fetching tasks: \(error.localizedDescription)")
         }
         isLoading = false
+    }
+}
+
+// MARK: – CustomField Model
+struct CustomField: Identifiable, Decodable {
+    let id: Int
+    let field: Int
+    let agent: Int
+    let value: String
+}
+
+// MARK: – AgentCustomFieldsView
+struct AgentCustomFieldsView: View {
+    let customFields: [CustomField]
+
+    var body: some View {
+        VStack {
+            if customFields.isEmpty {
+                Text("No custom fields found.")
+                    .foregroundColor(.secondary)
+                    .padding()
+            } else {
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(customFields) { field in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Record ID: \(field.id)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Text(field.value)
+                                    .font(.body)
+                                    .textSelection(.enabled)
+                            }
+                            .padding()
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding()
+                }
+            }
+            Spacer()
+        }
+        .navigationTitle("Custom Fields")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

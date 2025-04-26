@@ -86,29 +86,38 @@ class DiagnosticLogger {
 
 // MARK: - Keychain Helper
 
-struct KeychainHelper {
+/// Caches the API key in RAM after the first read, to avoid
+/// hitting the Keychain (and repeated logs) every time.
+final class KeychainHelper {
     static let shared = KeychainHelper()
+    private init() {}
+
     private let service = "jerdal.TacticalRMM-Manager"
-    
+
+    /// In-memory cache of the API key
+    private var cachedAPIKey: String?
+
+    // MARK: — Generic Save/Read/Delete
+
     func save(_ data: Data, for account: String) {
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
+            kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecValueData as String: data
+            kSecValueData as String:   data
         ]
         SecItemDelete(query as CFDictionary)
         let status = SecItemAdd(query as CFDictionary, nil)
         DiagnosticLogger.shared.append("Keychain save status for \(account): \(status)")
     }
-    
+
     func read(account: String) -> Data? {
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
+            kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecReturnData as String:  true,
+            kSecMatchLimit as String:  kSecMatchLimitOne
         ]
         var dataTypeRef: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
@@ -117,35 +126,63 @@ struct KeychainHelper {
         }
         return nil
     }
-    
+
+    func delete(account: String) {
+        let query: [String: Any] = [
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+
+    // MARK: — API Key Convenience
+
+    /// Save the API Key both to Keychain *and* to our in-memory cache.
     func saveAPIKey(_ apiKey: String) {
+        // cache in RAM
+        cachedAPIKey = apiKey
+        DiagnosticLogger.shared.append("Saving API Key: \(DiagnosticLogger.shared.maskAPIKey(apiKey))")
+
+        // persist to Keychain
         if let data = apiKey.data(using: .utf8) {
-            DiagnosticLogger.shared.append("Saving API Key: \(DiagnosticLogger.shared.maskAPIKey(apiKey))")
             save(data, for: "apiKey")
         }
     }
-    
+
+    /// Return the API Key, reading from cache if available;
+    /// otherwise, pull once from the Keychain and cache it.
     func getAPIKey() -> String? {
-        if let data = read(account: "apiKey") {
-            let apiKey = String(data: data, encoding: .utf8)
-            if let key = apiKey {
-                DiagnosticLogger.shared.append("Retrieved API Key: \(DiagnosticLogger.shared.maskAPIKey(key))")
-            }
-            return apiKey
+        // 1) If key is cached, no Keychain hit:
+        if let key = cachedAPIKey {
+            DiagnosticLogger.shared.append("Getting cachedAPIKey")
+            return key
         }
+
+        // 2) Otherwise, read from Keychain:
+        if let data = read(account: "apiKey"),
+           let key = String(data: data, encoding: .utf8) {
+            // cache & log only once
+            cachedAPIKey = key
+            DiagnosticLogger.shared.append("Retrieved API Key from Keychain: \(DiagnosticLogger.shared.maskAPIKey(key))")
+            return key
+        }
+
         return nil
     }
-    
+
+    /// Wipe both the in-memory cache *and* the Keychain entry.
     func deleteAPIKey() {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: "apiKey"
-        ]
-        SecItemDelete(query as CFDictionary)
-        DiagnosticLogger.shared.append("Deleted API Key from Keychain")
+        // clear RAM
+        cachedAPIKey = nil
+
+        // clear Keychain
+        delete(account: "apiKey")
+
+        DiagnosticLogger.shared.append("Deleted API Key from Keychain and cleared cache")
     }
 }
+
 
 // MARK: - Activity View for Sharing
 
@@ -670,7 +707,7 @@ struct ContentView: View {
 // Fredrik Jerdal 2025
     @MainActor
     private func clearAppData() {
-        // 1) Remove API key from Keychain
+        // 1) Remove API key from both Keychain and cache
         KeychainHelper.shared.deleteAPIKey()
         let apiKeyStillThere = KeychainHelper.shared.getAPIKey() != nil
 
@@ -691,16 +728,13 @@ struct ContentView: View {
         UserDefaults.standard.removeObject(forKey: "hideInstall")
 
         // 4) Verify everything is gone
-        //    • Keychain: apiKeyStillThere == false
-        //    • SwiftData: settingsList should now be empty
-        //    • UserDefaults: both keys unset
         let userDefaultsCleared =
             UserDefaults.standard.object(forKey: "hasLaunchedBefore") == nil &&
             UserDefaults.standard.object(forKey: "hideInstall") == nil
 
         let coreDataCleared = settingsList.isEmpty && coreDataError == nil
 
-        // 5) Only if all three areas are clean, disable the FaceID lock
+        // 5) Only if all three areas are clean, disable FaceID lock
         if !apiKeyStillThere && coreDataCleared && userDefaultsCleared {
             useFaceID = false
         } else {
@@ -720,10 +754,6 @@ struct ContentView: View {
         apiKeyText = ""
         UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
     }
-
-
-
-
 
     @MainActor
     private func updateSettingsAndFetch() async {
@@ -2146,12 +2176,13 @@ struct AgentCustomFieldsView: View {
                     VStack(spacing: 12) {
                         ForEach(customFields) { field in
                             VStack(alignment: .leading, spacing: 6) {
+                                // you can still show the record‐ID if you want:
                                 Text("Record ID: \(field.id)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                 Text(field.value)
                                     .font(.body)
-                                    .textSelection(.enabled)
+                                    .textSelection(.enabled)  // let the user copy
                             }
                             .padding()
                             .background(Color.gray.opacity(0.2))

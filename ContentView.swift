@@ -942,6 +942,22 @@ struct SettingsView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 20)
                 
+                // Donate button
+                Button(action: {
+                    guard let url = URL(string: "https://buymeacoffee.com/jerdal")
+                    else { return }
+                    UIApplication.shared.open(url)
+                }) {
+                    Label("Donate", systemImage: "dollarsign.circle")
+                        .frame(maxWidth: .infinity, minHeight: 10)
+                        .padding()
+                    
+                }
+                .buttonStyle(.bordered)
+                .tint(.blue)
+                .padding(.horizontal)
+                .padding(.bottom, 20)
+                
                 // Footer
                 Text("This app is an independent project and is not made by or affiliated with Tactical RMM/AmidaWare.")
                     .font(.footnote)
@@ -2176,13 +2192,13 @@ struct AgentCustomFieldsView: View {
                     VStack(spacing: 12) {
                         ForEach(customFields) { field in
                             VStack(alignment: .leading, spacing: 6) {
-                                // you can still show the record‐ID if you want:
                                 Text("Record ID: \(field.id)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                 Text(field.value)
                                     .font(.body)
                                     .textSelection(.enabled)  // let the user copy
+
                             }
                             .padding()
                             .background(Color.gray.opacity(0.2))

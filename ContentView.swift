@@ -1469,11 +1469,11 @@ struct AgentDetailView: View {
                     Text("Physical Disks: N/A")
                         .font(.subheadline)
                 }
-                Text("Site: \(displayAgent.site_name ?? "Not available")")
-                    .font(.subheadline)
                 Text("Serial Number: \(serialToShow.isEmpty ? "N/A" : serialToShow)")
                     .font(.subheadline)
                     .textSelection(.enabled)
+                Text("Site: \(displayAgent.site_name ?? "Not available")")
+                    .font(.subheadline)
                 Text("Last Seen: \(formattedLastSeen(from: displayAgent.last_seen))")
                     .font(.subheadline)
                 if isProcessing { ProgressView() }
@@ -2196,6 +2196,7 @@ struct AgentCustomFieldsView: View {
                     VStack(spacing: 12) {
                         ForEach(customFields) { field in
                             VStack(alignment: .leading, spacing: 6) {
+                                // you can still show the record‐ID if you want:
                                 Text("Record ID: \(field.id)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)

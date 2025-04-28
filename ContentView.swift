@@ -155,7 +155,6 @@ final class KeychainHelper {
     func getAPIKey() -> String? {
         // 1) If key is cached, no Keychain hit:
         if let key = cachedAPIKey {
-            DiagnosticLogger.shared.append("Getting cachedAPIKey")
             return key
         }
 
@@ -1446,6 +1445,9 @@ struct AgentDetailView: View {
                     Text("CPU: \(displayAgent.cpu_model.joined(separator: ", "))")
                     Text("GPU: \(displayAgent.graphics ?? "No GPU available")")
                     Text("Model: \(displayAgent.make_model ?? "Not available")")
+                    Text("Serial Number: \(serialToShow.isEmpty ? "N/A" : serialToShow)")
+                        .font(.subheadline)
+                        .textSelection(.enabled)
                 }
                 .font(.subheadline)
                 .textSelection(.enabled)
@@ -1469,9 +1471,6 @@ struct AgentDetailView: View {
                     Text("Physical Disks: N/A")
                         .font(.subheadline)
                 }
-                Text("Serial Number: \(serialToShow.isEmpty ? "N/A" : serialToShow)")
-                    .font(.subheadline)
-                    .textSelection(.enabled)
                 Text("Site: \(displayAgent.site_name ?? "Not available")")
                     .font(.subheadline)
                 Text("Last Seen: \(formattedLastSeen(from: displayAgent.last_seen))")

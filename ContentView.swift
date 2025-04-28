@@ -254,6 +254,7 @@ struct Agent: Identifiable, Decodable {
     let last_seen: String?
     let physical_disks: [String]?
     let custom_fields: [CustomField]?
+    let serial_number: String?
 }
 
 struct MeshCentralResponse: Decodable {
@@ -854,7 +855,8 @@ struct ContentView: View {
                 site_name: "Demo Site",
                 last_seen: ISO8601DateFormatter().string(from: Date()),
                 physical_disks: ["Demo Disk1"],
-                custom_fields: []
+                custom_fields: [],
+                serial_number: "Demo Serial 1"
             ),
             Agent(
                 agent_id: "demo2",
@@ -870,7 +872,8 @@ struct ContentView: View {
                 site_name: "Demo Site",
                 last_seen: ISO8601DateFormatter().string(from: Date()),
                 physical_disks: ["Demo Disk2"],
-                custom_fields: []
+                custom_fields: [],
+                serial_number: "Demo Serial2"
             )
         ]
     }
@@ -920,22 +923,6 @@ struct SettingsView: View {
                     Label("Guide", systemImage: "globe")
                         .frame(maxWidth: .infinity, minHeight: 10)
                         .padding()
-                }
-                .buttonStyle(.bordered)
-                .tint(.blue)
-                .padding(.horizontal)
-                .padding(.bottom, 20)
-                
-                // Donate button
-                Button(action: {
-                    guard let url = URL(string: "https://buymeacoffee.com/jerdal")
-                    else { return }
-                    UIApplication.shared.open(url)
-                }) {
-                    Label("Donate", systemImage: "dollarsign.circle")
-                        .frame(maxWidth: .infinity, minHeight: 10)
-                        .padding()
-                    
                 }
                 .buttonStyle(.bordered)
                 .tint(.blue)
@@ -1197,6 +1184,7 @@ struct AgentDetailView: View {
     @State private var isLoadingMeshCentral: Bool = false
     @State private var meshCentralError: String? = nil
     @State private var showShutdownConfirmation: Bool = false
+    @State private var showRebootConfirmation: Bool = false
     
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
@@ -1437,6 +1425,11 @@ struct AgentDetailView: View {
     
     var body: some View {
         let displayAgent = updatedAgent ?? agent
+        // Compute the serial to show:
+        let serialToShow =
+            updatedAgent?.serial_number  // freshest value, if present
+            ?? agent.serial_number       // else whatever we got from the list
+            ?? ""                        // else empty
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Agent: \(displayAgent.hostname)")
@@ -1478,6 +1471,9 @@ struct AgentDetailView: View {
                 }
                 Text("Site: \(displayAgent.site_name ?? "Not available")")
                     .font(.subheadline)
+                Text("Serial Number: \(serialToShow.isEmpty ? "N/A" : serialToShow)")
+                    .font(.subheadline)
+                    .textSelection(.enabled)
                 Text("Last Seen: \(formattedLastSeen(from: displayAgent.last_seen))")
                     .font(.subheadline)
                 if isProcessing { ProgressView() }
@@ -1492,10 +1488,7 @@ struct AgentDetailView: View {
                 ]
                 LazyVGrid(columns: columns, spacing: 10) {
                     Button("Reboot") {
-                        Task {
-                            DiagnosticLogger.shared.append("Reboot command initiated.")
-                            await performAction(action: "reboot")
-                        }
+                        showRebootConfirmation = true
                     }
                     .frame(maxWidth: .infinity)
                     .buttonStyle(.borderedProminent)
@@ -1574,6 +1567,17 @@ struct AgentDetailView: View {
                     Button("Cancel", role: .cancel) { }
                 } message: {
                     Text("Are you sure you want to shutdown?")
+                }
+                .alert("Confirm Reboot", isPresented: $showRebootConfirmation) {
+                    Button("Reboot", role: .destructive) {
+                        Task {
+                            DiagnosticLogger.shared.append("Reboot command confirmed by user.")
+                            await performAction(action: "reboot")
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Are you sure you want to reboot?")
                 }
                 Text("If the page does not load when using 'Take Control' or 'Console', tap 'Request Desktop' in Safari.")
                     .font(.footnote)
@@ -2192,13 +2196,13 @@ struct AgentCustomFieldsView: View {
                     VStack(spacing: 12) {
                         ForEach(customFields) { field in
                             VStack(alignment: .leading, spacing: 6) {
+                                // you can still show the record‐ID if you want:
                                 Text("Record ID: \(field.id)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                 Text(field.value)
                                     .font(.body)
                                     .textSelection(.enabled)  // let the user copy
-
                             }
                             .padding()
                             .background(Color.gray.opacity(0.2))

@@ -155,6 +155,7 @@ final class KeychainHelper {
     func getAPIKey() -> String? {
         // 1) If key is cached, no Keychain hit:
         if let key = cachedAPIKey {
+            print("Got cached API key")
             return key
         }
 
@@ -512,9 +513,14 @@ struct ContentView: View {
                                         Text("CPU: \(agent.cpu_model.joined(separator: ", "))")
                                             .font(.caption)
                                     }
-                                    if let ip = agent.public_ip {
-                                        Text("Public IP: \(ip)").font(.caption)
+                                    if hideSensitiveInfo {
+                                        Text("Public IP: ••••••")
+                                            .font(.caption)
+                                    } else if let ip = agent.public_ip {
+                                        Text("Public IP: \(ip)")
+                                            .font(.caption)
                                     }
+
                                 }
                             }
                         }
@@ -736,11 +742,13 @@ struct ContentView: View {
         // 3) Reset any @AppStorage flags
         UserDefaults.standard.removeObject(forKey: "hasLaunchedBefore")
         UserDefaults.standard.removeObject(forKey: "hideInstall")
+        UserDefaults.standard.removeObject(forKey: "hideSensitive")
 
         // 4) Verify everything is gone
         let userDefaultsCleared =
             UserDefaults.standard.object(forKey: "hasLaunchedBefore") == nil &&
-            UserDefaults.standard.object(forKey: "hideInstall") == nil
+            UserDefaults.standard.object(forKey: "hideInstall") == nil &&
+            UserDefaults.standard.object(forKey: "hideSensitive") == nil
 
         let coreDataCleared = settingsList.isEmpty && coreDataError == nil
 
@@ -749,7 +757,14 @@ struct ContentView: View {
             useFaceID = false
         } else {
             if apiKeyStillThere {
-                DiagnosticLogger.shared.appendWarning("API Key still present after deletion.")
+                DiagnosticLogger.shared.appendWarning("API Key still present after deletion, attempting again...")
+                KeychainHelper.shared.deleteAPIKey()
+                let apiKeyStillThere = KeychainHelper.shared.getAPIKey() != nil
+                if apiKeyStillThere {
+                    print("API Key is still present")
+                    // Send notification alert
+                    
+                }
             }
             if !coreDataCleared {
                 DiagnosticLogger.shared.appendWarning("SwiftData settings still exist after deletion.")
@@ -772,6 +787,8 @@ struct ContentView: View {
         // 7) Clear UI state and force a fresh launch
         baseURLText = ""
         apiKeyText = ""
+
+        // 8) Terminate the app
         exit(0)
     }
 
@@ -878,7 +895,6 @@ struct ContentView: View {
                 custom_fields: [],
                 serial_number: "Demo Serial 1",
                 boot_time:     now - 3600
-                serial_number: "Demo Serial 1"
             ),
             Agent(
                 agent_id: "demo2",
@@ -897,7 +913,6 @@ struct ContentView: View {
                 custom_fields: [],
                 serial_number: "Demo Serial2",
                 boot_time: now - 86400
-                serial_number: "Demo Serial2"
             )
         ]
     }
@@ -989,7 +1004,6 @@ struct SettingsView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 20)
 
-                
                 // Footer
                 Text("This app is an independent project and is not made by or affiliated with Tactical RMM/AmidaWare.")
                     .font(.footnote)
@@ -1232,7 +1246,6 @@ struct AgentDetailView: View {
     @State private var showShutdownConfirmation: Bool = false
     @State private var showRebootConfirmation: Bool = false
     @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
-  
     
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
@@ -1537,9 +1550,6 @@ struct AgentDetailView: View {
                     )
                     .font(.subheadline)
                     .textSelection(.enabled)
-                    Text("Serial Number: \(serialToShow.isEmpty ? "N/A" : serialToShow)")
-                        .font(.subheadline)
-                        .textSelection(.enabled)
                 }
                 .font(.subheadline)
                 .textSelection(.enabled)
@@ -2296,7 +2306,6 @@ struct AgentCustomFieldsView: View {
                     VStack(spacing: 12) {
                         ForEach(customFields) { field in
                             VStack(alignment: .leading, spacing: 6) {
-                                // you can still show the record‐ID if you want:
                                 Text("Record ID: \(field.id)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)

@@ -773,7 +773,7 @@ struct ContentView: View {
         // 7) Clear UI state and force a fresh launch
         baseURLText = ""
         apiKeyText = ""
-        UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
+        exit(0)
     }
 
     @MainActor
@@ -920,7 +920,7 @@ struct SettingsView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Form {
-                    Toggle("Hide install agent button", isOn: $hideInstall)
+                    Toggle("Hide Install Agent Button", isOn: $hideInstall)
 
                     Toggle("Face ID App Lock", isOn: $useFaceID)
                         .disabled(!authAvailable)
@@ -2290,7 +2290,6 @@ struct AgentCustomFieldsView: View {
                     VStack(spacing: 12) {
                         ForEach(customFields) { field in
                             VStack(alignment: .leading, spacing: 6) {
-                                // you can still show the record‐ID if you want:
                                 Text("Record ID: \(field.id)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)

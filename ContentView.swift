@@ -155,6 +155,7 @@ final class KeychainHelper {
     func getAPIKey() -> String? {
         // 1) If key is cached, no Keychain hit:
         if let key = cachedAPIKey {
+            print("Got cached API key")
             return key
         }
 
@@ -164,6 +165,7 @@ final class KeychainHelper {
             // cache & log only once
             cachedAPIKey = key
             DiagnosticLogger.shared.append("Retrieved API Key from Keychain: \(DiagnosticLogger.shared.maskAPIKey(key))")
+            print("Retrieved API Key from Keychain")
             return key
         }
 
@@ -254,6 +256,7 @@ struct Agent: Identifiable, Decodable {
     let physical_disks: [String]?
     let custom_fields: [CustomField]?
     let serial_number: String?
+    let boot_time: TimeInterval?
 }
 
 struct MeshCentralResponse: Decodable {
@@ -359,6 +362,7 @@ struct ContentView: View {
 
     @AppStorage("hideInstall") private var hideInstall: Bool = false
     @AppStorage("useFaceID")    private var useFaceID:    Bool = false
+    @AppStorage("hideSensitive")    private var hideSensitiveInfo:    Bool = false
 
     @State private var didAuthenticate:      Bool    = false
     @State private var isAuthenticating:     Bool    = false
@@ -509,9 +513,14 @@ struct ContentView: View {
                                         Text("CPU: \(agent.cpu_model.joined(separator: ", "))")
                                             .font(.caption)
                                     }
-                                    if let ip = agent.public_ip {
-                                        Text("Public IP: \(ip)").font(.caption)
+                                    if hideSensitiveInfo {
+                                        Text("Public IP: ••••••")
+                                            .font(.caption)
+                                    } else if let ip = agent.public_ip {
+                                        Text("Public IP: \(ip)")
+                                            .font(.caption)
                                     }
+
                                 }
                             }
                         }
@@ -665,6 +674,12 @@ struct ContentView: View {
                             Text("No diagnostics log available.")
                         }
                     }
+        
+                    .onReceive(NotificationCenter.default.publisher(for: Notification.Name("clearAppData"))) { _ in
+                        clearAppData()
+                    }
+        
+        
                 }
 
     // MARK: – Helper Methods
@@ -704,6 +719,7 @@ struct ContentView: View {
     private var authAvailable: Bool {
         LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
     }
+    
 // Fredrik Jerdal 2025
     @MainActor
     private func clearAppData() {
@@ -726,11 +742,13 @@ struct ContentView: View {
         // 3) Reset any @AppStorage flags
         UserDefaults.standard.removeObject(forKey: "hasLaunchedBefore")
         UserDefaults.standard.removeObject(forKey: "hideInstall")
+        UserDefaults.standard.removeObject(forKey: "hideSensitive")
 
         // 4) Verify everything is gone
         let userDefaultsCleared =
             UserDefaults.standard.object(forKey: "hasLaunchedBefore") == nil &&
-            UserDefaults.standard.object(forKey: "hideInstall") == nil
+            UserDefaults.standard.object(forKey: "hideInstall") == nil &&
+            UserDefaults.standard.object(forKey: "hideSensitive") == nil
 
         let coreDataCleared = settingsList.isEmpty && coreDataError == nil
 
@@ -739,7 +757,14 @@ struct ContentView: View {
             useFaceID = false
         } else {
             if apiKeyStillThere {
-                DiagnosticLogger.shared.appendWarning("API Key still present after deletion.")
+                DiagnosticLogger.shared.appendWarning("API Key still present after deletion, attempting again...")
+                KeychainHelper.shared.deleteAPIKey()
+                let apiKeyStillThere = KeychainHelper.shared.getAPIKey() != nil
+                if apiKeyStillThere {
+                    print("API Key is still present")
+                    // Send notification alert
+                    
+                }
             }
             if !coreDataCleared {
                 DiagnosticLogger.shared.appendWarning("SwiftData settings still exist after deletion.")
@@ -748,11 +773,23 @@ struct ContentView: View {
                 DiagnosticLogger.shared.appendWarning("AppStorage flags not fully cleared.")
             }
         }
+        
+        // 6) Remove the diagnostics log file
+            if let logURL = DiagnosticLogger.shared.getLogFileURL() {
+                do {
+                    try FileManager.default.removeItem(at: logURL)
+                    DiagnosticLogger.shared.append("Deleted diagnostics log file.")
+                } catch {
+                    print("Failed to delete log file: \(error)")
+                }
+            }
 
-        // 6) Clear UI state and force a fresh launch
+        // 7) Clear UI state and force a fresh launch
         baseURLText = ""
         apiKeyText = ""
-        UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
+
+        // 8) Terminate the app
+        exit(0)
     }
 
     @MainActor
@@ -839,6 +876,7 @@ struct ContentView: View {
 
     private func loadDemoAgents() {
         DiagnosticLogger.shared.append("Loading demo agents.")
+        let now = Date().timeIntervalSince1970
         agents = [
             Agent(
                 agent_id: "demo1",
@@ -855,7 +893,8 @@ struct ContentView: View {
                 last_seen: ISO8601DateFormatter().string(from: Date()),
                 physical_disks: ["Demo Disk1"],
                 custom_fields: [],
-                serial_number: "Demo Serial 1"
+                serial_number: "Demo Serial 1",
+                boot_time:     now - 3600
             ),
             Agent(
                 agent_id: "demo2",
@@ -872,7 +911,8 @@ struct ContentView: View {
                 last_seen: ISO8601DateFormatter().string(from: Date()),
                 physical_disks: ["Demo Disk2"],
                 custom_fields: [],
-                serial_number: "Demo Serial2"
+                serial_number: "Demo Serial2",
+                boot_time: now - 86400
             )
         ]
     }
@@ -885,16 +925,18 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("hideInstall") var hideInstall: Bool = false
     @AppStorage("useFaceID") var useFaceID: Bool = false
+    @AppStorage("hideSensitive") var hideSensitiveInfo: Bool = false
+    @State private var showResetConfirmation = false
 
     private var authAvailable: Bool {
         LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 Form {
-                    Toggle("Hide install agent button", isOn: $hideInstall)
+                    Toggle("Hide Install Agent Button", isOn: $hideInstall)
 
                     Toggle("Face ID App Lock", isOn: $useFaceID)
                         .disabled(!authAvailable)
@@ -909,16 +951,37 @@ struct SettingsView: View {
                             },
                             alignment: .bottomLeading
                         )
+
+                    Toggle("Hide Sensitive Information", isOn: $hideSensitiveInfo)
                 }
 
                 Spacer()
 
+                // Reset App button
+                Button(role: .destructive) {
+                    showResetConfirmation = true
+                } label: {
+                    Label("Delete App Data", systemImage: "exclamationmark.triangle")
+                        .frame(maxWidth: .infinity, minHeight: 10)
+                        .padding()
+                }
+                .buttonStyle(.bordered)
+                .padding(.horizontal)
+                .padding(.bottom, 20)
+                .alert("Delete All App Data?", isPresented: $showResetConfirmation) {
+                    Button("Delete", role: .destructive) {
+                        NotificationCenter.default.post(name: .init("clearAppData"), object: nil)
+                        dismiss()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This will delete all saved settings and API keys and cannot be undone.")
+                }
+
                 // Guide button at bottom
-                Button(action: {
-                    guard let url = URL(string: "https://github.com/Jerdal-F/TacticalRMM-Manager")
-                    else { return }
-                    UIApplication.shared.open(url)
-                }) {
+                Button {
+                    UIApplication.shared.open(URL(string: "https://github.com/Jerdal-F/TacticalRMM-Manager")!)
+                } label: {
                     Label("Guide", systemImage: "globe")
                         .frame(maxWidth: .infinity, minHeight: 10)
                         .padding()
@@ -927,23 +990,20 @@ struct SettingsView: View {
                 .tint(.blue)
                 .padding(.horizontal)
                 .padding(.bottom, 20)
-                
+
                 // Donate button
-                Button(action: {
-                    guard let url = URL(string: "https://buymeacoffee.com/jerdal")
-                    else { return }
-                    UIApplication.shared.open(url)
-                }) {
+                Button {
+                    UIApplication.shared.open(URL(string: "https://buymeacoffee.com/jerdal")!)
+                } label: {
                     Label("Donate", systemImage: "dollarsign.circle")
                         .frame(maxWidth: .infinity, minHeight: 10)
                         .padding()
-                    
                 }
                 .buttonStyle(.bordered)
                 .tint(.blue)
                 .padding(.horizontal)
                 .padding(.bottom, 20)
-                
+
                 // Footer
                 Text("This app is an independent project and is not made by or affiliated with Tactical RMM/AmidaWare.")
                     .font(.footnote)
@@ -959,6 +1019,7 @@ struct SettingsView: View {
         }
     }
 }
+
 
 
 
@@ -1184,6 +1245,7 @@ struct AgentDetailView: View {
     @State private var meshCentralError: String? = nil
     @State private var showShutdownConfirmation: Bool = false
     @State private var showRebootConfirmation: Bool = false
+    @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
     
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
@@ -1421,6 +1483,42 @@ struct AgentDetailView: View {
             message = "Console URL opened successfully."
         }
     }
+    @MainActor
+    /// Returns a human‐readable uptime like "2 days 3 hours 15 minutes"
+    func formattedUptime(from bootInterval: TimeInterval?) -> String {
+        guard let bootInterval else { return "N/A" }
+        let bootDate = Date(timeIntervalSince1970: bootInterval)
+        let totalSeconds = Int(Date().timeIntervalSince(bootDate))
+
+        let minuteSeconds = 60
+        let hourSeconds   = 60 * minuteSeconds
+        let daySeconds    = 24 * hourSeconds
+        let monthSeconds  = 31 * daySeconds  // define a “month” as 31 days
+
+        let months  = totalSeconds / monthSeconds
+        let days    = (totalSeconds % monthSeconds) / daySeconds
+        let hours   = (totalSeconds % daySeconds) / hourSeconds
+        let minutes = (totalSeconds % hourSeconds) / minuteSeconds
+
+        var parts: [String] = []
+        if months > 0 {
+            parts.append("\(months) month" + (months == 1 ? "" : "s"))
+        }
+        if days > 0 {
+            parts.append("\(days) day" + (days == 1 ? "" : "s"))
+        }
+        if hours > 0 {
+            parts.append("\(hours) hour" + (hours == 1 ? "" : "s"))
+        }
+        // always show minutes if nothing else, or if non-zero
+        if minutes > 0 || parts.isEmpty {
+            parts.append("\(minutes) minute" + (minutes == 1 ? "" : "s"))
+        }
+        return parts.joined(separator: " ")
+    }
+
+
+
     
     var body: some View {
         let displayAgent = updatedAgent ?? agent
@@ -1445,17 +1543,24 @@ struct AgentDetailView: View {
                     Text("CPU: \(displayAgent.cpu_model.joined(separator: ", "))")
                     Text("GPU: \(displayAgent.graphics ?? "No GPU available")")
                     Text("Model: \(displayAgent.make_model ?? "Not available")")
-                    Text("Serial Number: \(serialToShow.isEmpty ? "N/A" : serialToShow)")
-                        .font(.subheadline)
-                        .textSelection(.enabled)
+                    Text("Serial Number: " +
+                         (hideSensitiveInfo
+                           ? "••••••"
+                           : (serialToShow.isEmpty ? "N/A" : serialToShow))
+                    )
+                    .font(.subheadline)
+                    .textSelection(.enabled)
                 }
                 .font(.subheadline)
                 .textSelection(.enabled)
                 let lanIPText = displayAgent.local_ips?.ipv4Only().isEmpty == false ?
                     displayAgent.local_ips!.ipv4Only() : "No LAN IP available"
-                Text("LAN IP: \(lanIPText) | Public IP: \(displayAgent.public_ip ?? "No IP available")")
-                    .font(.subheadline)
-                    .textSelection(.enabled)
+                Text(
+                  hideSensitiveInfo
+                    ? "IP Addresses: ••••••"
+                    : "LAN IP: \(lanIPText) | Public IP: \(displayAgent.public_ip ?? "No IP available")"
+                )
+                .font(.subheadline)
                 if let disks = displayAgent.physical_disks, !disks.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Physical Disks:")
@@ -1471,9 +1576,15 @@ struct AgentDetailView: View {
                     Text("Physical Disks: N/A")
                         .font(.subheadline)
                 }
-                Text("Site: \(displayAgent.site_name ?? "Not available")")
-                    .font(.subheadline)
+                Text("Site: " +
+                     (hideSensitiveInfo
+                       ? "••••••"
+                       : (displayAgent.site_name ?? "Not available"))
+                )
+                .font(.subheadline)
                 Text("Last Seen: \(formattedLastSeen(from: displayAgent.last_seen))")
+                    .font(.subheadline)
+                Text("Uptime \(formattedUptime(from: displayAgent.boot_time))")
                     .font(.subheadline)
                 if isProcessing { ProgressView() }
                 if let message = message {
@@ -2195,7 +2306,6 @@ struct AgentCustomFieldsView: View {
                     VStack(spacing: 12) {
                         ForEach(customFields) { field in
                             VStack(alignment: .leading, spacing: 6) {
-                                // you can still show the record‐ID if you want:
                                 Text("Record ID: \(field.id)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)

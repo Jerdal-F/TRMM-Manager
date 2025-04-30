@@ -155,7 +155,6 @@ final class KeychainHelper {
     func getAPIKey() -> String? {
         // 1) If key is cached, no Keychain hit:
         if let key = cachedAPIKey {
-            print("Got cached API key")
             return key
         }
 
@@ -879,6 +878,7 @@ struct ContentView: View {
                 custom_fields: [],
                 serial_number: "Demo Serial 1",
                 boot_time:     now - 3600
+                serial_number: "Demo Serial 1"
             ),
             Agent(
                 agent_id: "demo2",
@@ -897,6 +897,7 @@ struct ContentView: View {
                 custom_fields: [],
                 serial_number: "Demo Serial2",
                 boot_time: now - 86400
+                serial_number: "Demo Serial2"
             )
         ]
     }
@@ -988,6 +989,7 @@ struct SettingsView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 20)
 
+                
                 // Footer
                 Text("This app is an independent project and is not made by or affiliated with Tactical RMM/AmidaWare.")
                     .font(.footnote)
@@ -1230,6 +1232,7 @@ struct AgentDetailView: View {
     @State private var showShutdownConfirmation: Bool = false
     @State private var showRebootConfirmation: Bool = false
     @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
+  
     
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
@@ -1534,6 +1537,9 @@ struct AgentDetailView: View {
                     )
                     .font(.subheadline)
                     .textSelection(.enabled)
+                    Text("Serial Number: \(serialToShow.isEmpty ? "N/A" : serialToShow)")
+                        .font(.subheadline)
+                        .textSelection(.enabled)
                 }
                 .font(.subheadline)
                 .textSelection(.enabled)
@@ -2290,6 +2296,7 @@ struct AgentCustomFieldsView: View {
                     VStack(spacing: 12) {
                         ForEach(customFields) { field in
                             VStack(alignment: .leading, spacing: 6) {
+                                // you can still show the record‐ID if you want:
                                 Text("Record ID: \(field.id)")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)

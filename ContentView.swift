@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import Security
 import LocalAuthentication
+import UIKit
 
 // MARK: - Diagnostic Logger
 
@@ -12,13 +13,33 @@ class DiagnosticLogger {
         guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
         return docs.appendingPathComponent(fileName)
     }
+
     private init() {
         let formatter = DateFormatter()
         formatter.dateFormat = "dd-MM-yyyy HH-mm-ss"
         let dateString = formatter.string(from: Date())
         self.fileName = "\(dateString)-TRMM Manager.log"
+        logDeviceInfo()
     }
-    
+
+    /// Logs basic device information at startup
+    private func logDeviceInfo() {
+        let device = UIDevice.current
+        let processInfo = ProcessInfo.processInfo
+        append("Device Name: \(device.name)")
+        append("System Name: \(device.systemName) \(device.systemVersion)")
+        append("Model: \(device.model)")
+        append("Identifier: \(device.identifierForVendor?.uuidString ?? "N/A")")
+        append("Screen: \(UIScreen.main.bounds.width)x\(UIScreen.main.bounds.height) @\(UIScreen.main.scale)x")
+        append("CPU Cores: \(processInfo.processorCount)")
+        append("Physical Memory: \(processInfo.physicalMemory / 1_048_576) MB")
+        if let info = Bundle.main.infoDictionary {
+                let version = info["CFBundleShortVersionString"] as? String ?? "N/A"
+                let build   = info["CFBundleVersion"]             as? String ?? "N/A"
+                append("App Version: \(version) (build \(build))")
+            }
+    }
+
     func append(_ message: String) {
         guard let url = logFileURL else { return }
         let logEntry = "\(Date()): \(message)\n"
@@ -37,7 +58,7 @@ class DiagnosticLogger {
             print("Error writing log: \(error)")
         }
     }
-    
+
     func maskAPIKey(_ key: String) -> String {
         let length = key.count
         if length <= 8 {
@@ -47,29 +68,31 @@ class DiagnosticLogger {
         let last = key.suffix(4)
         return "\(first)XXXXXXXXXXXXXX\(last)"
     }
-    
+
     func logHTTPResponse(method: String, url: String, status: Int, data: Data?) {
         let responseBody: String
         if let data = data, let responseString = String(data: data, encoding: .utf8) {
-            responseBody = responseString.count > 200 ? String(responseString.prefix(200)) + "..." : responseString
+            responseBody = responseString.count > 200
+                ? String(responseString.prefix(200)) + "..."
+                : responseString
         } else {
             responseBody = "No response body."
         }
         append("HTTP Response: \(status) for \(method) \(url). Response Body: \(responseBody)")
     }
-    
+
     func appendWarning(_ message: String) {
         append("WARNING: \(message)")
     }
-    
+
     func appendError(_ message: String) {
         append("ERROR: \(message)")
     }
-    
+
     func getLogFileURL() -> URL? {
         return logFileURL
     }
-    
+
     private func sanitizeHeaders(_ headers: [String: String]) -> [String: String] {
         var sanitized = headers
         if sanitized["X-API-KEY"] != nil {
@@ -77,12 +100,13 @@ class DiagnosticLogger {
         }
         return sanitized
     }
-    
+
     func logHTTPRequest(method: String, url: String, headers: [String: String]) {
         let sanitized = sanitizeHeaders(headers)
         append("HTTP Request: \(method) \(url) Headers: \(sanitized)")
     }
 }
+
 
 // MARK: - Keychain Helper
 
@@ -97,7 +121,7 @@ final class KeychainHelper {
     /// In-memory cache of the API key
     private var cachedAPIKey: String?
 
-    // MARK: — Generic Save/Read/Delete
+    // MARK: – Generic Save/Read/Delete
 
     func save(_ data: Data, for account: String) {
         let query: [String: Any] = [
@@ -108,7 +132,11 @@ final class KeychainHelper {
         ]
         SecItemDelete(query as CFDictionary)
         let status = SecItemAdd(query as CFDictionary, nil)
-        DiagnosticLogger.shared.append("Keychain save status for \(account): \(status)")
+        if status == errSecSuccess {
+            DiagnosticLogger.shared.append("Keychain: Successfully saved item for account '\(account)'")
+        } else {
+            DiagnosticLogger.shared.appendError("Keychain save failed for account '\(account)' with status: \(status)")
+        }
     }
 
     func read(account: String) -> Data? {
@@ -121,8 +149,18 @@ final class KeychainHelper {
         ]
         var dataTypeRef: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
-        if status == errSecSuccess, let data = dataTypeRef as? Data {
-            return data
+        if status == errSecSuccess {
+            DiagnosticLogger.shared.append("Keychain: Retrieved data for account '\(account)'")
+            if let data = dataTypeRef as? Data {
+                return data
+            } else {
+                DiagnosticLogger.shared.appendWarning("Keychain: Retrieved item for account '\(account)' but data was nil or wrong type")
+                return nil
+            }
+        } else if status == errSecItemNotFound {
+            DiagnosticLogger.shared.appendWarning("Keychain read: no item found for account '\(account)'")
+        } else {
+            DiagnosticLogger.shared.appendError("Keychain read failed for account '\(account)' with status: \(status)")
         }
         return nil
     }
@@ -133,10 +171,17 @@ final class KeychainHelper {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account
         ]
-        SecItemDelete(query as CFDictionary)
+        let status = SecItemDelete(query as CFDictionary)
+        if status == errSecSuccess {
+            DiagnosticLogger.shared.append("Keychain: Deleted item for account '\(account)'")
+        } else if status == errSecItemNotFound {
+            DiagnosticLogger.shared.appendWarning("Keychain delete: no item to delete for account '\(account)'")
+        } else {
+            DiagnosticLogger.shared.appendError("Keychain delete failed for account '\(account)' with status: \(status)")
+        }
     }
 
-    // MARK: — API Key Convenience
+    // MARK: – API Key Convenience
 
     /// Save the API Key both to Keychain *and* to our in-memory cache.
     func saveAPIKey(_ apiKey: String) {
@@ -147,6 +192,8 @@ final class KeychainHelper {
         // persist to Keychain
         if let data = apiKey.data(using: .utf8) {
             save(data, for: "apiKey")
+        } else {
+            DiagnosticLogger.shared.appendError("Failed to encode API key to Data")
         }
     }
 
@@ -167,8 +214,9 @@ final class KeychainHelper {
             DiagnosticLogger.shared.append("Retrieved API Key from Keychain: \(DiagnosticLogger.shared.maskAPIKey(key))")
             print("Retrieved API Key from Keychain")
             return key
+        } else {
+            DiagnosticLogger.shared.appendWarning("No API Key found in Keychain for account 'apiKey'")
         }
-
         return nil
     }
 
@@ -176,13 +224,13 @@ final class KeychainHelper {
     func deleteAPIKey() {
         // clear RAM
         cachedAPIKey = nil
+        DiagnosticLogger.shared.append("Cleared in-memory API key cache")
 
         // clear Keychain
         delete(account: "apiKey")
-
-        DiagnosticLogger.shared.append("Deleted API Key from Keychain and cleared cache")
     }
 }
+
 
 
 // MARK: - Activity View for Sharing
@@ -459,8 +507,13 @@ struct ContentView: View {
                     // MARK: – Agents List
                     Section(header:
                         HStack {
-                            Text("Agents").font(.headline)
-                            Spacer()
+                        Text(
+                                    agents.isEmpty
+                                        ? "Agents"
+                                        : "\(appliedSearchText.isEmpty ? agents.count : filteredAgents.count) Agents"
+                                )
+                                .font(.headline)
+                                Spacer()
                             if showSearch {
                                 TextField("Search agents", text: $searchText)
                                     .textFieldStyle(.roundedBorder)
@@ -1169,6 +1222,7 @@ struct InstallAgentView: View {
                 guard resp.statusCode == 200 else {
                     errorMessage = "HTTP Error: \(resp.statusCode)"
                     isLoadingClients = false
+                    DiagnosticLogger.shared.append("Error in fetchClients: HTTP Error: \(resp.statusCode)")
                     return
                 }
             }

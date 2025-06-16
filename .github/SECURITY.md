@@ -5,6 +5,7 @@
 The **main** branch is actively developed and supported. Security fixes and patches will be applied to the latest commit on `main`. 
 
 ## Reporting a Vulnerability
+**Do not create a public GitHub issue or discussion post. This could put the security of other users at risk.**
 
 If you discover a security vulnerability in TRMM-Manager, please follow our responsible disclosure process:
 

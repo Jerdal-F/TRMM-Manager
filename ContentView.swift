@@ -202,7 +202,6 @@ final class KeychainHelper {
     func getAPIKey() -> String? {
         // 1) If key is cached, no Keychain hit:
         if let key = cachedAPIKey {
-            print("Got cached API key")
             return key
         }
 
@@ -385,6 +384,31 @@ struct TaskAction: Decodable {
     let timeout: Int
     let env_vars: [String]
     let script_args: [String]
+}
+
+// MARK: - Check Models
+
+struct CheckResult: Decodable {
+    let id: Int
+    let status: String
+    let alert_severity: String?
+    let more_info: String?
+    let last_run: String
+    let fail_count: Int?
+    let outage_history: String?
+    let extra_details: String?
+    let stdout: String?
+    let stderr: String?
+    let retcode: Int?
+    let execution_time: String?
+}
+
+struct AgentCheck: Identifiable, Decodable {
+    let id: Int
+    let readable_desc: String
+    let check_result: CheckResult?
+    let created_by: String
+    let created_time: String
 }
 
 // New Models for Installer
@@ -1044,17 +1068,17 @@ struct SettingsView: View {
                 .padding(.bottom, 20)
 
                 // Donate button
-                Button {
-                    UIApplication.shared.open(URL(string: "https://buymeacoffee.com/jerdal")!)
-                } label: {
-                    Label("Donate", systemImage: "dollarsign.circle")
-                        .frame(maxWidth: .infinity, minHeight: 10)
-                        .padding()
-                }
-                .buttonStyle(.bordered)
-                .tint(.blue)
-                .padding(.horizontal)
-                .padding(.bottom, 20)
+                //Button {
+                //    UIApplication.shared.open(URL(string: "https://buymeacoffee.com/jerdal")!)
+                //} label: {
+                //    Label("Donate", systemImage: "dollarsign.circle")
+                //        .frame(maxWidth: .infinity, minHeight: 10)
+                //        .padding()
+                //}
+                //.buttonStyle(.bordered)
+                //.tint(.blue)
+                //.padding(.horizontal)
+                //.padding(.bottom, 20)
 
                 // Footer
                 Text("This app is an independent project and is not made by or affiliated with Tactical RMM/AmidaWare.")
@@ -1484,59 +1508,6 @@ struct AgentDetailView: View {
     }
     
     @MainActor
-    func takeControl() async {
-        if isDemoMode {
-            message = "Demo mode does not support Take Control."
-            DiagnosticLogger.shared.append("Demo mode: skipping Take Control action.")
-            return
-        }
-        guard let meshData = await fetchMeshCentralData() else {
-            message = "Failed to fetch MeshCentral data for Take Control."
-            DiagnosticLogger.shared.appendError("Failed to fetch MeshCentral data for Take Control.")
-            return
-        }
-        guard let url = URL(string: meshData.control) else {
-            message = "Invalid URL for Take Control."
-            DiagnosticLogger.shared.appendError("Invalid URL encountered in Take Control action.")
-            return
-        }
-        DiagnosticLogger.shared.append("Initiating Take Control action.")
-        let success = await UIApplication.shared.open(url)
-        if !success {
-            message = "Failed to open Take Control URL."
-            DiagnosticLogger.shared.appendError("Failed to open URL during Take Control action.")
-        } else {
-            message = "Take Control URL opened successfully."
-        }
-    }
-    
-    @MainActor
-    func openConsole() async {
-        if isDemoMode {
-            message = "Demo mode does not support Console."
-            DiagnosticLogger.shared.append("Demo mode: skipping Console action.")
-            return
-        }
-        guard let meshData = await fetchMeshCentralData() else {
-            message = "Failed to fetch MeshCentral data for Console."
-            DiagnosticLogger.shared.appendError("Failed to fetch MeshCentral data for Console.")
-            return
-        }
-        guard let url = URL(string: meshData.terminal) else {
-            message = "Invalid URL for Console."
-            DiagnosticLogger.shared.appendError("Invalid URL encountered in Console action.")
-            return
-        }
-        DiagnosticLogger.shared.append("Initiating Console action.")
-        let success = await UIApplication.shared.open(url)
-        if !success {
-            message = "Failed to open Console URL."
-            DiagnosticLogger.shared.appendError("Failed to open URL during Console action.")
-        } else {
-            message = "Console URL opened successfully."
-        }
-    }
-    @MainActor
     /// Returns a human‐readable uptime like "2 days 3 hours 15 minutes"
     func formattedUptime(from bootInterval: TimeInterval?) -> String {
         guard let bootInterval else { return "N/A" }
@@ -1645,80 +1616,110 @@ struct AgentDetailView: View {
                         .foregroundColor(.red)
                         .multilineTextAlignment(.center)
                 }
-                let columns = [
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ]
-                LazyVGrid(columns: columns, spacing: 10) {
-                    Button("Reboot") {
-                        showRebootConfirmation = true
-                    }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("Shutdown") {
-                        showShutdownConfirmation = true
-                    }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("Take Control") {
-                        Task { await takeControl() }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("Console") {
-                        Task { await openConsole() }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("Wake‑On‑Lan") {
-                        Task { await performWakeOnLan() }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.borderedProminent)
-                    
-                    NavigationLink(destination: AgentProcessesView(agentId: agent.agent_id, baseURL: baseURL, apiKey: effectiveAPIKey)) {
-                        Text("Processes")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.borderedProminent)
-                    
-                    NavigationLink(destination: SendCommandView(agentId: agent.agent_id, baseURL: baseURL, apiKey: effectiveAPIKey)) {
-                        Text("Send Command")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.borderedProminent)
-                    
-                    NavigationLink(destination: AgentNotesView(agentId: agent.agent_id, baseURL: baseURL, apiKey: effectiveAPIKey)) {
-                        Text("Notes")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.borderedProminent)
-                    
-                    NavigationLink(destination: AgentTasksView(agentId: agent.agent_id, baseURL: baseURL, apiKey: effectiveAPIKey)) {
-                        Text("Tasks")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.borderedProminent)
-                    
-                    let nonEmptyCustomFields = displayAgent.custom_fields?
-                        .filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-                        ?? []
+                // Removed unused columns definition
+                GeometryReader { geo in
+                    // total horizontal spacing = 10 (between columns)
+                    let buttonWidth = (geo.size.width - 10) / 2
 
-                    NavigationLink(
-                        destination: AgentCustomFieldsView(customFields: nonEmptyCustomFields)
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.fixed(buttonWidth)),
+                            GridItem(.fixed(buttonWidth))
+                        ],
+                        spacing: 10
                     ) {
-                        Text("Custom Fields")
+                        Button("Reboot") {
+                            showRebootConfirmation = true
+                        }
+                        .frame(width: buttonWidth)
+                        .buttonStyle(.borderedProminent)
+
+                        Button("Shutdown") {
+                            showShutdownConfirmation = true
+                        }
+                        .frame(width: buttonWidth)
+                        .buttonStyle(.borderedProminent)
+
+                        Button("Wake-On-Lan") {
+                            Task { await performWakeOnLan() }
+                        }
+                        .frame(width: buttonWidth)
+                        .buttonStyle(.borderedProminent)
+
+                        NavigationLink(destination:
+                            AgentProcessesView(
+                                agentId: agent.agent_id,
+                                baseURL: baseURL,
+                                apiKey: effectiveAPIKey
+                            )
+                        ) {
+                            Text("Processes")
+                        }
+                        .frame(width: buttonWidth)
+                        .buttonStyle(.borderedProminent)
+
+                        NavigationLink(destination:
+                            SendCommandView(
+                                agentId: agent.agent_id,
+                                baseURL: baseURL,
+                                apiKey: effectiveAPIKey
+                            )
+                        ) {
+                            Text("Send Command")
+                        }
+                        .frame(width: buttonWidth)
+                        .buttonStyle(.borderedProminent)
+
+                        NavigationLink(destination:
+                            AgentNotesView(
+                                agentId: agent.agent_id,
+                                baseURL: baseURL,
+                                apiKey: effectiveAPIKey
+                            )
+                        ) {
+                            Text("Notes")
+                        }
+                        .frame(width: buttonWidth)
+                        .buttonStyle(.borderedProminent)
+
+                        NavigationLink(destination:
+                            AgentTasksView(
+                                agentId: agent.agent_id,
+                                baseURL: baseURL,
+                                apiKey: effectiveAPIKey
+                            )
+                        ) {
+                            Text("Tasks")
+                        }
+                        .frame(width: buttonWidth)
+                        .buttonStyle(.borderedProminent)
+
+                        NavigationLink(destination:
+                            AgentChecksView(
+                                agentId: agent.agent_id,
+                                baseURL: baseURL,
+                                apiKey: effectiveAPIKey
+                            )
+                        ) {
+                            Text("Checks")
+                        }
+                        .frame(width: buttonWidth)
+                        .buttonStyle(.borderedProminent)
+
+                        let nonEmptyCustomFields = displayAgent.custom_fields?
+                            .filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                            ?? []
+
+                        NavigationLink(
+                            destination: AgentCustomFieldsView(customFields: nonEmptyCustomFields)
+                        ) {
+                            Text("Custom Fields")
+                        }
+                        .frame(width: buttonWidth)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(nonEmptyCustomFields.isEmpty)
+                        .opacity(nonEmptyCustomFields.isEmpty ? 0.5 : 1.0)
                     }
-                    .frame(maxWidth: .infinity)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(nonEmptyCustomFields.isEmpty)
-                    .opacity(nonEmptyCustomFields.isEmpty ? 0.5 : 1.0)
-
-
                 }
                 .alert("Confirm Shutdown", isPresented: $showShutdownConfirmation) {
                     Button("Shutdown", role: .destructive) {
@@ -1742,11 +1743,6 @@ struct AgentDetailView: View {
                 } message: {
                     Text("Are you sure you want to reboot?")
                 }
-                Text("If the page does not load when using 'Take Control' or 'Console', tap 'Request Desktop' in Safari.")
-                    .font(.footnote)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 5)
             }
             .padding()
         }
@@ -2158,7 +2154,7 @@ struct AgentNotesView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Note:")
                                     .font(.headline)
-                                Text(note.note)
+                                                               Text(note.note)
                                 Text("By: \(note.username)")
                                     .font(.caption)
                                 Text("Time: \(note.entry_time)")
@@ -2378,5 +2374,134 @@ struct AgentCustomFieldsView: View {
         }
         .navigationTitle("Custom Fields")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - AgentChecksView
+
+struct AgentChecksView: View {
+    let agentId: String
+    let baseURL: String
+    let apiKey: String
+
+    @State private var checks: [AgentCheck] = []
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+
+    var effectiveAPIKey: String { KeychainHelper.shared.getAPIKey() ?? apiKey }
+
+    private func truncatedOutput(_ output: String) -> String {
+        return output
+    }
+
+    var body: some View {
+        VStack {
+            if isLoading {
+                ProgressView("Loading checks…")
+                    .padding()
+            }
+            else if let errorMessage = errorMessage {
+                Text("Error: \(errorMessage)")
+                    .foregroundColor(.red)
+                    .padding()
+            }
+            else if checks.isEmpty {
+                Text("No checks found.")
+                    .padding()
+            }
+            else {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        ForEach(checks) { check in
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(check.readable_desc)
+                                    .font(.headline)
+
+                                if let result = check.check_result {
+                                    Text("Status: \(result.status.capitalized)")
+                                    Text("Last Run: \(result.last_run)")
+
+                                    // Prefer stdout, then more_info, then stderr
+                                    if let out = result.stdout, !out.isEmpty {
+                                        Text(truncatedOutput(out))
+                                            .font(.caption)
+                                    }
+                                    else if let info = result.more_info, !info.isEmpty {
+                                        Text(truncatedOutput(info))
+                                            .font(.caption)
+                                    }
+                                    if let err = result.stderr, !err.isEmpty {
+                                        Text("Error: \(truncatedOutput(err))")
+                                            .font(.caption)
+                                            .foregroundColor(.red)
+                                    }
+                                }
+                            }
+                            .padding()
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding()
+                }
+            }
+            Spacer()
+        }
+        .navigationTitle("Agent Checks")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            Task { await fetchChecks() }
+        }
+    }
+
+    @MainActor
+    func fetchChecks() async {
+        isLoading = true
+        errorMessage = nil
+
+        let sanitized = baseURL.removingTrailingSlash()
+        guard let url = URL(string: "\(sanitized)/agents/\(agentId)/checks/") else {
+            errorMessage = "Invalid URL"
+            DiagnosticLogger.shared.appendError("Invalid URL in fetching checks.")
+            isLoading = false
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.addDefaultHeaders(apiKey: effectiveAPIKey)
+        DiagnosticLogger.shared.logHTTPRequest(
+            method: "GET",
+            url: url.absoluteString,
+            headers: request.allHTTPHeaderFields ?? [:]
+        )
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                DiagnosticLogger.shared.logHTTPResponse(
+                    method: "GET",
+                    url: url.absoluteString,
+                    status: http.statusCode,
+                    data: data
+                )
+                guard http.statusCode == 200 else {
+                    errorMessage = "HTTP Error: \(http.statusCode)"
+                    DiagnosticLogger.shared.appendError("HTTP Error \(http.statusCode) in fetching checks.")
+                    print("HTTP Error \(http.statusCode) in fetching checks.")
+                    isLoading = false
+                    return
+                }
+            }
+            // Decode the JSON array of checks directly
+            let decoded = try JSONDecoder().decode([AgentCheck].self, from: data)
+            checks = decoded
+        } catch {
+            errorMessage = error.localizedDescription
+            DiagnosticLogger.shared.appendError("Error fetching checks: \(error.localizedDescription)")
+            print("Error fetching checks: \(error.localizedDescription)")
+        }
+
+        isLoading = false
     }
 }

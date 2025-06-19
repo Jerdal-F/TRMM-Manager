@@ -2384,6 +2384,13 @@ struct AgentChecksView: View {
     let baseURL: String
     let apiKey: String
 
+    // shared ISO8601 formatter for parsing last_run
+    private static var iso8601Formatter: ISO8601DateFormatter {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }
+
     @State private var checks: [AgentCheck] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
@@ -2411,38 +2418,31 @@ struct AgentChecksView: View {
             }
             else {
                 ScrollView {
-                    LazyVStack(spacing: 16) {
-                        ForEach(checks) { check in
+                    VStack(spacing: 12) {
+                        ForEach(checks) { result in
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(check.readable_desc)
+                                Text("Status: \(result.check_result?.status.capitalized ?? "Unknown")")
                                     .font(.headline)
 
-                                if let result = check.check_result {
-                                    Text("Status: \(result.status.capitalized)")
-                                    if let date = {
-                                        let isoFormatter = ISO8601DateFormatter()
-                                        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                                        return isoFormatter.date(from: result.last_run)
-                                    }() {
-                                        Text("Last Run: \(DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .medium))")
-                                    } else {
-                                        DiagnosticLogger.shared.appendError("Error in AgentChecksView: Failed to format date from last_run string: \(result.last_run), falling back to original string.")
-                                        Text("Last Run: \(result.last_run)")
-                                    }
+                                if let rawDate = result.check_result?.last_run,
+                                   let date = Self.iso8601Formatter.date(from: rawDate) {
+                                    Text("Last Run: \(DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .medium))")
+                                } else {
+                                    Text("Last Run: \(result.check_result?.last_run ?? "N/A")")
+                                }
 
-                                    if let out = result.stdout, !out.isEmpty {
-                                        Text(truncatedOutput(out))
-                                            .font(.caption)
-                                    }
-                                    else if let info = result.more_info, !info.isEmpty {
-                                        Text(truncatedOutput(info))
-                                            .font(.caption)
-                                    }
-                                    if let err = result.stderr, !err.isEmpty {
-                                        Text("Error: \(truncatedOutput(err))")
-                                            .font(.caption)
-                                            .foregroundColor(.red)
-                                    }
+                                if let out = result.check_result?.stdout, !out.isEmpty {
+                                    Text(truncatedOutput(out))
+                                        .font(.caption)
+                                } else if let info = result.check_result?.more_info, !info.isEmpty {
+                                    Text(truncatedOutput(info))
+                                        .font(.caption)
+                                }
+
+                                if let err = result.check_result?.stderr, !err.isEmpty {
+                                    Text("Error: \(truncatedOutput(err))")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)

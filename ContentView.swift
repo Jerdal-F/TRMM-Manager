@@ -2411,7 +2411,7 @@ struct AgentChecksView: View {
             }
             else {
                 ScrollView {
-                    VStack(spacing: 16) {
+                    LazyVStack(spacing: 16) {
                         ForEach(checks) { check in
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(check.readable_desc)
@@ -2419,9 +2419,17 @@ struct AgentChecksView: View {
 
                                 if let result = check.check_result {
                                     Text("Status: \(result.status.capitalized)")
-                                    Text("Last Run: \(result.last_run)")
+                                    if let date = {
+                                        let isoFormatter = ISO8601DateFormatter()
+                                        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                                        return isoFormatter.date(from: result.last_run)
+                                    }() {
+                                        Text("Last Run: \(DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .medium))")
+                                    } else {
+                                        DiagnosticLogger.shared.appendError("Error in AgentChecksView: Failed to format date from last_run string: \(result.last_run), falling back to original string.")
+                                        Text("Last Run: \(result.last_run)")
+                                    }
 
-                                    // Prefer stdout, then more_info, then stderr
                                     if let out = result.stdout, !out.isEmpty {
                                         Text(truncatedOutput(out))
                                             .font(.caption)
@@ -2437,9 +2445,11 @@ struct AgentChecksView: View {
                                     }
                                 }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .padding()
                             .background(Color.gray.opacity(0.2))
                             .cornerRadius(8)
+                            .textSelection(.enabled)
                         }
                     }
                     .padding()
@@ -2447,6 +2457,7 @@ struct AgentChecksView: View {
             }
             Spacer()
         }
+        .frame(maxWidth: .infinity)
         .navigationTitle("Agent Checks")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {

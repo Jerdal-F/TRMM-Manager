@@ -1541,8 +1541,11 @@ struct AgentDetailView: View {
         return parts.joined(separator: " ")
     }
 
-
-
+    /// Non-empty custom fields to display in AgentDetailView
+    private var nonEmptyCustomFields: [CustomField] {
+        let fields = updatedAgent?.custom_fields ?? agent.custom_fields ?? []
+        return fields.filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
     
     var body: some View {
         let displayAgent = updatedAgent ?? agent
@@ -1616,110 +1619,91 @@ struct AgentDetailView: View {
                         .foregroundColor(.red)
                         .multilineTextAlignment(.center)
                 }
-                // Removed unused columns definition
-                GeometryReader { geo in
-                    // total horizontal spacing = 10 (between columns)
-                    let buttonWidth = (geo.size.width - 10) / 2
 
-                    LazyVGrid(
-                        columns: [
-                            GridItem(.fixed(buttonWidth)),
-                            GridItem(.fixed(buttonWidth))
-                        ],
-                        spacing: 10
-                    ) {
+                GeometryReader { geo in
+                    let columns = [
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ]
+                    
+                    LazyVGrid(columns: columns, spacing: 10) {
                         Button("Reboot") {
                             showRebootConfirmation = true
                         }
-                        .frame(width: buttonWidth)
+                        .frame(maxWidth: .infinity)
                         .buttonStyle(.borderedProminent)
 
                         Button("Shutdown") {
                             showShutdownConfirmation = true
                         }
-                        .frame(width: buttonWidth)
+                        .frame(maxWidth: .infinity)
                         .buttonStyle(.borderedProminent)
 
                         Button("Wake-On-Lan") {
                             Task { await performWakeOnLan() }
                         }
-                        .frame(width: buttonWidth)
+                        .frame(maxWidth: .infinity)
                         .buttonStyle(.borderedProminent)
 
-                        NavigationLink(destination:
+                        NavigationLink("Processes") {
                             AgentProcessesView(
                                 agentId: agent.agent_id,
                                 baseURL: baseURL,
                                 apiKey: effectiveAPIKey
                             )
-                        ) {
-                            Text("Processes")
                         }
-                        .frame(width: buttonWidth)
+                        .frame(maxWidth: .infinity)
                         .buttonStyle(.borderedProminent)
 
-                        NavigationLink(destination:
+                        NavigationLink("Send Command") {
                             SendCommandView(
                                 agentId: agent.agent_id,
                                 baseURL: baseURL,
                                 apiKey: effectiveAPIKey
                             )
-                        ) {
-                            Text("Send Command")
                         }
-                        .frame(width: buttonWidth)
+                        .frame(maxWidth: .infinity)
                         .buttonStyle(.borderedProminent)
 
-                        NavigationLink(destination:
+                        NavigationLink("Notes") {
                             AgentNotesView(
                                 agentId: agent.agent_id,
                                 baseURL: baseURL,
                                 apiKey: effectiveAPIKey
                             )
-                        ) {
-                            Text("Notes")
                         }
-                        .frame(width: buttonWidth)
+                        .frame(maxWidth: .infinity)
                         .buttonStyle(.borderedProminent)
 
-                        NavigationLink(destination:
+                        NavigationLink("Tasks") {
                             AgentTasksView(
                                 agentId: agent.agent_id,
                                 baseURL: baseURL,
                                 apiKey: effectiveAPIKey
                             )
-                        ) {
-                            Text("Tasks")
                         }
-                        .frame(width: buttonWidth)
+                        .frame(maxWidth: .infinity)
                         .buttonStyle(.borderedProminent)
 
-                        NavigationLink(destination:
+                        NavigationLink("Checks") {
                             AgentChecksView(
                                 agentId: agent.agent_id,
                                 baseURL: baseURL,
                                 apiKey: effectiveAPIKey
                             )
-                        ) {
-                            Text("Checks")
                         }
-                        .frame(width: buttonWidth)
+                        .frame(maxWidth: .infinity)
                         .buttonStyle(.borderedProminent)
 
-                        let nonEmptyCustomFields = displayAgent.custom_fields?
-                            .filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-                            ?? []
-
-                        NavigationLink(
-                            destination: AgentCustomFieldsView(customFields: nonEmptyCustomFields)
-                        ) {
-                            Text("Custom Fields")
+                        NavigationLink("Custom Fields") {
+                            AgentCustomFieldsView(customFields: nonEmptyCustomFields)
                         }
-                        .frame(width: buttonWidth)
+                        .frame(maxWidth: .infinity)
                         .buttonStyle(.borderedProminent)
                         .disabled(nonEmptyCustomFields.isEmpty)
                         .opacity(nonEmptyCustomFields.isEmpty ? 0.5 : 1.0)
                     }
+                    .frame(width: geo.size.width)
                 }
                 .alert("Confirm Shutdown", isPresented: $showShutdownConfirmation) {
                     Button("Shutdown", role: .destructive) {
@@ -1859,19 +1843,19 @@ struct SendCommandView: View {
         isProcessing = true
         outputText = ""
         statusMessage = nil
-        
+
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/\(agentId)/cmd/") else {
             statusMessage = "Invalid URL"
             isProcessing = false
             return
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addDefaultHeaders(apiKey: effectiveAPIKey)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
+
         let body: [String: Any?] = [
             "shell": selectedShell,
             "cmd": command,
@@ -1886,20 +1870,42 @@ struct SendCommandView: View {
             isProcessing = false
             return
         }
-        
-        DiagnosticLogger.shared.logHTTPRequest(method: "POST", url: url.absoluteString, headers: request.allHTTPHeaderFields ?? [:])
+
+        DiagnosticLogger.shared.logHTTPRequest(
+            method: "POST",
+            url: url.absoluteString,
+            headers: request.allHTTPHeaderFields ?? [:]
+        )
         DiagnosticLogger.shared.append("Body: \(String(data: request.httpBody ?? Data(), encoding: .utf8) ?? "")")
-        
+
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             if let httpResponse = response as? HTTPURLResponse {
-                DiagnosticLogger.shared.logHTTPResponse(method: "POST", url: url.absoluteString, status: httpResponse.statusCode, data: data)
+                DiagnosticLogger.shared.logHTTPResponse(
+                    method: "POST",
+                    url: url.absoluteString,
+                    status: httpResponse.statusCode,
+                    data: data
+                )
                 if httpResponse.statusCode == 200 || httpResponse.statusCode == 204 {
                     statusMessage = "Command sent successfully!"
                 } else {
                     statusMessage = "HTTP Error: \(httpResponse.statusCode)"
                 }
-                outputText = String(data: data, encoding: .utf8) ?? ""
+
+                // Try to decode a JSON‐encoded string first
+                if let decoded = try? JSONDecoder().decode(String.self, from: data) {
+                    outputText = decoded
+                } else {
+                    // Fallback to raw UTF8
+                    var raw = String(data: data, encoding: .utf8) ?? ""
+                    // Trim surrounding quotes if present
+                    if raw.hasPrefix("\"") && raw.hasSuffix("\""), raw.count >= 2 {
+                        raw.removeFirst()
+                        raw.removeLast()
+                    }
+                    outputText = raw
+                }
             }
         } catch {
             statusMessage = "Error: \(error.localizedDescription)"
@@ -2220,6 +2226,20 @@ struct AgentTasksView: View {
     let baseURL: String
     let apiKey: String
 
+    // ISO8601 parser for task dates
+    private let isoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    // Formatter for display dates
+    private let displayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm dd/MM/yyyy"
+        return formatter
+    }()
+
     @State private var tasks: [AgentTask] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
@@ -2257,8 +2277,8 @@ struct AgentTasksView: View {
                                 Text(task.name)
                                     .font(.headline)
                                 Text("Schedule: \(task.schedule)")
-                                Text("Run Time: \(task.run_time_date)")
-                                Text("Created by: \(task.created_by) at \(task.created_time)")
+                                Text("Run Time: \(displayFormatter.string(from: isoFormatter.date(from: task.run_time_date) ?? Date()))")
+                                Text("Created by: \(task.created_by) at \(displayFormatter.string(from: isoFormatter.date(from: task.created_time) ?? Date()))")
                                     .font(.caption)
                                 if let result = task.task_result {
                                     VStack(alignment: .leading, spacing: 2) {
@@ -2515,4 +2535,6 @@ struct AgentChecksView: View {
 
         isLoading = false
     }
+
+
 }

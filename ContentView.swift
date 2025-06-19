@@ -26,7 +26,7 @@ class DiagnosticLogger {
     private func logDeviceInfo() {
         let device = UIDevice.current
         let processInfo = ProcessInfo.processInfo
-        append("Device Name: \(device.name)")
+        append("Device Version: \(device.name)")
         append("System Name: \(device.systemName) \(device.systemVersion)")
         append("Model: \(device.model)")
         append("Identifier: \(device.identifierForVendor?.uuidString ?? "N/A")")

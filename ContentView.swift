@@ -202,6 +202,7 @@ final class KeychainHelper {
     func getAPIKey() -> String? {
         // 1) If key is cached, no Keychain hit:
         if let key = cachedAPIKey {
+            print("Got cached API key")
             return key
         }
 
@@ -211,6 +212,7 @@ final class KeychainHelper {
             // cache & log only once
             cachedAPIKey = key
             DiagnosticLogger.shared.append("Retrieved API Key from Keychain: \(DiagnosticLogger.shared.maskAPIKey(key))")
+            print("Retrieved API Key from Keychain")
             return key
         } else {
             DiagnosticLogger.shared.appendWarning("No API Key found in Keychain for account 'apiKey'")
@@ -1038,6 +1040,7 @@ struct SettingsView: View {
                     showResetConfirmation = true
                 } label: {
                     Label("Delete App Data", systemImage: "exclamationmark.triangle")
+
                         .frame(maxWidth: .infinity, minHeight: 10)
                         .padding()
                 }
@@ -1063,9 +1066,25 @@ struct SettingsView: View {
                         .padding()
                 }
                 .buttonStyle(.bordered)
-                .tint(.blue)
                 .padding(.horizontal)
                 .padding(.bottom, 20)
+              
+                .alert("Delete All App Data?", isPresented: $showResetConfirmation) {
+                    Button("Delete", role: .destructive) {
+                        NotificationCenter.default.post(name: .init("clearAppData"), object: nil)
+                        dismiss()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This will delete all saved settings and API keys and cannot be undone.")
+                }
+
+                // Guide button at bottom
+                Button {
+                    UIApplication.shared.open(URL(string: "https://github.com/Jerdal-F/TacticalRMM-Manager")!)
+                } label: {
+                    Label("Guide", systemImage: "globe")
+
 
                 // Donate button
                 //Button {
@@ -1079,7 +1098,6 @@ struct SettingsView: View {
                 //.tint(.blue)
                 //.padding(.horizontal)
                 //.padding(.bottom, 20)
-
                 // Footer
                 Text("This app is an independent project and is not made by or affiliated with Tactical RMM/AmidaWare.")
                     .font(.footnote)
@@ -1546,6 +1564,42 @@ struct AgentDetailView: View {
         let fields = updatedAgent?.custom_fields ?? agent.custom_fields ?? []
         return fields.filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
+    @MainActor
+    /// Returns a human‐readable uptime like "2 days 3 hours 15 minutes"
+    func formattedUptime(from bootInterval: TimeInterval?) -> String {
+        guard let bootInterval else { return "N/A" }
+        let bootDate = Date(timeIntervalSince1970: bootInterval)
+        let totalSeconds = Int(Date().timeIntervalSince(bootDate))
+
+        let minuteSeconds = 60
+        let hourSeconds   = 60 * minuteSeconds
+        let daySeconds    = 24 * hourSeconds
+        let monthSeconds  = 31 * daySeconds  // define a “month” as 31 days
+
+        let months  = totalSeconds / monthSeconds
+        let days    = (totalSeconds % monthSeconds) / daySeconds
+        let hours   = (totalSeconds % daySeconds) / hourSeconds
+        let minutes = (totalSeconds % hourSeconds) / minuteSeconds
+
+        var parts: [String] = []
+        if months > 0 {
+            parts.append("\(months) month" + (months == 1 ? "" : "s"))
+        }
+        if days > 0 {
+            parts.append("\(days) day" + (days == 1 ? "" : "s"))
+        }
+        if hours > 0 {
+            parts.append("\(hours) hour" + (hours == 1 ? "" : "s"))
+        }
+        // always show minutes if nothing else, or if non-zero
+        if minutes > 0 || parts.isEmpty {
+            parts.append("\(minutes) minute" + (minutes == 1 ? "" : "s"))
+        }
+        return parts.joined(separator: " ")
+    }
+
+
+
     
     var body: some View {
         let displayAgent = updatedAgent ?? agent

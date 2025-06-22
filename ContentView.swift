@@ -27,7 +27,7 @@ class DiagnosticLogger {
         let device = UIDevice.current
         let processInfo = ProcessInfo.processInfo
         append("Device Version: \(device.name)")
-        append("System Name: \(device.systemName) \(device.systemVersion)")
+        append("OS Version: \(device.systemName) \(device.systemVersion)")
         append("Model: \(device.model)")
         append("Identifier: \(device.identifierForVendor?.uuidString ?? "N/A")")
         append("Screen: \(UIScreen.main.bounds.width)x\(UIScreen.main.bounds.height) @\(UIScreen.main.scale)x")
@@ -202,7 +202,6 @@ final class KeychainHelper {
     func getAPIKey() -> String? {
         // 1) If key is cached, no Keychain hit:
         if let key = cachedAPIKey {
-            print("Got cached API key")
             return key
         }
 
@@ -212,7 +211,6 @@ final class KeychainHelper {
             // cache & log only once
             cachedAPIKey = key
             DiagnosticLogger.shared.append("Retrieved API Key from Keychain: \(DiagnosticLogger.shared.maskAPIKey(key))")
-            print("Retrieved API Key from Keychain")
             return key
         } else {
             DiagnosticLogger.shared.appendWarning("No API Key found in Keychain for account 'apiKey'")
@@ -1040,7 +1038,6 @@ struct SettingsView: View {
                     showResetConfirmation = true
                 } label: {
                     Label("Delete App Data", systemImage: "exclamationmark.triangle")
-
                         .frame(maxWidth: .infinity, minHeight: 10)
                         .padding()
                 }
@@ -1066,25 +1063,9 @@ struct SettingsView: View {
                         .padding()
                 }
                 .buttonStyle(.bordered)
+                .tint(.blue)
                 .padding(.horizontal)
                 .padding(.bottom, 20)
-              
-                .alert("Delete All App Data?", isPresented: $showResetConfirmation) {
-                    Button("Delete", role: .destructive) {
-                        NotificationCenter.default.post(name: .init("clearAppData"), object: nil)
-                        dismiss()
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("This will delete all saved settings and API keys and cannot be undone.")
-                }
-
-                // Guide button at bottom
-                Button {
-                    UIApplication.shared.open(URL(string: "https://github.com/Jerdal-F/TacticalRMM-Manager")!)
-                } label: {
-                    Label("Guide", systemImage: "globe")
-
 
                 // Donate button
                 //Button {
@@ -1098,6 +1079,7 @@ struct SettingsView: View {
                 //.tint(.blue)
                 //.padding(.horizontal)
                 //.padding(.bottom, 20)
+
                 // Footer
                 Text("This app is an independent project and is not made by or affiliated with Tactical RMM/AmidaWare.")
                     .font(.footnote)
@@ -1564,42 +1546,6 @@ struct AgentDetailView: View {
         let fields = updatedAgent?.custom_fields ?? agent.custom_fields ?? []
         return fields.filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
-    @MainActor
-    /// Returns a human‐readable uptime like "2 days 3 hours 15 minutes"
-    func formattedUptime(from bootInterval: TimeInterval?) -> String {
-        guard let bootInterval else { return "N/A" }
-        let bootDate = Date(timeIntervalSince1970: bootInterval)
-        let totalSeconds = Int(Date().timeIntervalSince(bootDate))
-
-        let minuteSeconds = 60
-        let hourSeconds   = 60 * minuteSeconds
-        let daySeconds    = 24 * hourSeconds
-        let monthSeconds  = 31 * daySeconds  // define a “month” as 31 days
-
-        let months  = totalSeconds / monthSeconds
-        let days    = (totalSeconds % monthSeconds) / daySeconds
-        let hours   = (totalSeconds % daySeconds) / hourSeconds
-        let minutes = (totalSeconds % hourSeconds) / minuteSeconds
-
-        var parts: [String] = []
-        if months > 0 {
-            parts.append("\(months) month" + (months == 1 ? "" : "s"))
-        }
-        if days > 0 {
-            parts.append("\(days) day" + (days == 1 ? "" : "s"))
-        }
-        if hours > 0 {
-            parts.append("\(hours) hour" + (hours == 1 ? "" : "s"))
-        }
-        // always show minutes if nothing else, or if non-zero
-        if minutes > 0 || parts.isEmpty {
-            parts.append("\(minutes) minute" + (minutes == 1 ? "" : "s"))
-        }
-        return parts.joined(separator: " ")
-    }
-
-
-
     
     var body: some View {
         let displayAgent = updatedAgent ?? agent
@@ -2286,7 +2232,12 @@ struct AgentTasksView: View {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
-
+    // ISO8601 parser without fractional seconds
+    private let isoNoFractionFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
     // Formatter for display dates
     private let displayFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -2331,9 +2282,20 @@ struct AgentTasksView: View {
                                 Text(task.name)
                                     .font(.headline)
                                 Text("Schedule: \(task.schedule)")
-                                Text("Run Time: \(displayFormatter.string(from: isoFormatter.date(from: task.run_time_date) ?? Date()))")
-                                Text("Created by: \(task.created_by) at \(displayFormatter.string(from: isoFormatter.date(from: task.created_time) ?? Date()))")
-                                    .font(.caption)
+                                if let runDate = isoFormatter.date(from: task.run_time_date)
+                                    ?? isoNoFractionFormatter.date(from: task.run_time_date) {
+                                    Text("Run Time: \(displayFormatter.string(from: runDate))")
+                                } else {
+                                    Text("Run Time: \(task.run_time_date)")
+                                }
+                                if let createdDate = isoFormatter.date(from: task.created_time)
+                                    ?? isoNoFractionFormatter.date(from: task.created_time) {
+                                    Text("Created by: \(task.created_by) at \(displayFormatter.string(from: createdDate))")
+                                        .font(.caption)
+                                } else {
+                                    Text("Created by: \(task.created_by) at \(task.created_time)")
+                                        .font(.caption)
+                                }
                                 if let result = task.task_result {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("Result:")
@@ -2396,6 +2358,8 @@ struct AgentTasksView: View {
                     return
                 }
             }
+            // Print raw data for debugging
+            print("Raw data received: \(String(data: data, encoding: .utf8) ?? "nil")")
             let decodedTasks = try JSONDecoder().decode([AgentTask].self, from: data)
             tasks = decodedTasks
         } catch {
@@ -2464,6 +2428,12 @@ struct AgentChecksView: View {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }
+    // ISO8601 formatter without fractional seconds for dates lacking fractional part
+    private static var iso8601NoFractionFormatter: ISO8601DateFormatter {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }
 
     @State private var checks: [AgentCheck] = []
     @State private var isLoading: Bool = false
@@ -2498,11 +2468,17 @@ struct AgentChecksView: View {
                                 Text("Status: \(result.check_result?.status.capitalized ?? "Unknown")")
                                     .font(.headline)
 
-                                if let rawDate = result.check_result?.last_run,
-                                   let date = Self.iso8601Formatter.date(from: rawDate) {
-                                    Text("Last Run: \(DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .medium))")
+                                if let rawDate = result.check_result?.last_run {
+                                    // try parsing with and without fractional seconds
+                                    let parsedDate = Self.iso8601Formatter.date(from: rawDate)
+                                        ?? Self.iso8601NoFractionFormatter.date(from: rawDate)
+                                    if let date = parsedDate {
+                                        Text("Last Run: \(DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .medium))")
+                                    } else {
+                                        Text("Last Run: \(rawDate)")
+                                    }
                                 } else {
-                                    Text("Last Run: \(result.check_result?.last_run ?? "N/A")")
+                                    Text("Last Run: N/A")
                                 }
 
                                 if let out = result.check_result?.stdout, !out.isEmpty {
@@ -2548,6 +2524,7 @@ struct AgentChecksView: View {
         guard let url = URL(string: "\(sanitized)/agents/\(agentId)/checks/") else {
             errorMessage = "Invalid URL"
             DiagnosticLogger.shared.appendError("Invalid URL in fetching checks.")
+            print("Invalid URL in fetching checks.")
             isLoading = false
             return
         }
@@ -2578,6 +2555,8 @@ struct AgentChecksView: View {
                     return
                 }
             }
+            // Print raw data for debugging
+            print("Raw data received: \(String(data: data, encoding: .utf8) ?? "nil")")
             // Decode the JSON array of checks directly
             let decoded = try JSONDecoder().decode([AgentCheck].self, from: data)
             checks = decoded

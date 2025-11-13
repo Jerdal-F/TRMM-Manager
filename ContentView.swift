@@ -298,6 +298,22 @@ extension String {
         let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
+
+    var strippedScheme: String {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        let lower = trimmed.lowercased()
+        if lower.hasPrefix("https://") {
+            return String(trimmed.dropFirst("https://".count))
+        }
+        if lower.hasPrefix("http://") {
+            return String(trimmed.dropFirst("http://".count))
+        }
+        return trimmed
+    }
+
+    var isDemoEntry: Bool {
+        strippedScheme.lowercased() == "demo"
+    }
 }
 
 // MARK: - Design Helpers
@@ -878,166 +894,49 @@ private extension AgentSortOption {
     func sortKey(for agent: Agent) -> String {
         switch self {
         case .none:
-            return ""
-        case .windows, .linux, .mac, .online:
             return agent.hostname.lowercased()
+        case .windows, .linux, .mac:
+            return agent.operating_system.lowercased()
         case .publicIP:
             return agent.public_ip?.lowercased() ?? ""
+        case .online:
+            return agent.hostname.lowercased()
         }
     }
 }
 
-// MARK: - ContentView
-
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.scenePhase)   private var scenePhase
+    @Environment(\.scenePhase) private var scenePhase
     @Query private var settingsList: [RMMSettings]
 
     @AppStorage("hideInstall") private var hideInstall: Bool = false
-    @AppStorage("useFaceID")    private var useFaceID:    Bool = false
-    @AppStorage("hideSensitive")    private var hideSensitiveInfo:    Bool = false
-
-    @State private var didAuthenticate:      Bool    = false
-    @State private var isAuthenticating:     Bool    = false
-    @State private var baseURLText:          String  = ""
-    @State private var apiKeyText:           String  = ""
-    @State private var showSavedAlert:       Bool    = false
-    @State private var showGuideAlert:       Bool    = false
-    @State private var showSettings:         Bool    = false
-    @State private var agents:               [Agent] = []
-    @State private var isLoading:            Bool    = false
-    @State private var errorMessage:         String? = nil
-    @State private var showDiagnosticAlert:  Bool    = false
-    @State private var showLogShareSheet:    Bool    = false
-    @FocusState private var isInputActive:   Bool
-
-    @State private var searchText:           String = ""
-    @State private var appliedSearchText:    String = ""
-    @State private var showSearch:           Bool   = false
-    @FocusState private var searchFieldIsFocused: Bool
-    @State private var showRecoveryAlert = false
-    @State private var sortOption: AgentSortOption = .none
+    @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
+    @AppStorage("useFaceID") private var useFaceID: Bool = false
     @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
-    @State private var lastAppliedSettingsUUID: String = ""
 
-    private var activeSettings: RMMSettings? {
-        if let match = settingsList.first(where: { $0.uuid.uuidString == activeSettingsUUID }) {
-            return ensureIdentifiers(for: match)
-        }
-        if let first = settingsList.first {
-            return ensureIdentifiers(for: first)
-        }
-        return nil
-    }
+    @State private var showGuideAlert = false
+    @State private var showDiagnosticAlert = false
+    @State private var showLogShareSheet = false
+    @State private var showSettings = false
+    @State private var showRecoveryAlert = false
 
-    private var instanceSubtitle: String {
-        if settingsList.isEmpty {
-            return "No active instance"
-        }
-        if let active = activeSettings {
-            return "Active: \(active.displayName)"
-        }
-        return "Select an instance"
-    }
+    @State private var isAuthenticating = false
+    @State private var didAuthenticate = false
 
-    private var activeKeyIdentifier: String {
-        if let settings = activeSettings {
-            return ensureIdentifiers(for: settings).keychainKey
-        }
-        return "apiKey"
-    }
+    @State private var agents: [Agent] = []
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    @State private var showSearch = false
+    @State private var searchText = ""
+    @State private var appliedSearchText = ""
 
-    private func currentAPIKey() -> String? {
-        KeychainHelper.shared.getAPIKey(identifier: activeKeyIdentifier)
-    }
+    @State private var baseURLText: String = "https://"
+    @State private var apiKeyText: String = ""
 
-    @discardableResult
-    private func ensureIdentifiers(for settings: RMMSettings) -> RMMSettings {
-        if settings.keychainKey.isEmpty {
-            settings.keychainKey = "apiKey_\(settings.uuid.uuidString)"
-        }
-        if settings.displayName.isEmpty {
-            settings.displayName = settings.baseURL
-        }
-        return settings
-    }
+    @State private var sortOption: AgentSortOption = .none
 
-    private func applyActiveSettings() {
-        guard let current = activeSettings else {
-            baseURLText = ""
-            apiKeyText = ""
-            KeychainHelper.shared.setActiveIdentifier("apiKey")
-            lastAppliedSettingsUUID = ""
-            return
-        }
-        KeychainHelper.shared.setActiveIdentifier(current.keychainKey)
-        let previous = lastAppliedSettingsUUID
-        lastAppliedSettingsUUID = current.uuid.uuidString
-        var activeKey = currentAPIKey()
-        if previous != lastAppliedSettingsUUID {
-            agents.removeAll()
-            searchText = ""
-            appliedSearchText = ""
-            errorMessage = nil
-            if (activeKey ?? "").isEmpty,
-               let legacy = KeychainHelper.shared.getAPIKey(identifier: "apiKey"),
-               !legacy.isEmpty {
-                KeychainHelper.shared.saveAPIKey(legacy, identifier: current.keychainKey)
-                KeychainHelper.shared.deleteAPIKey(identifier: "apiKey")
-                activeKey = currentAPIKey()
-            }
-            if let key = activeKey, !key.isEmpty,
-               !(useFaceID && !didAuthenticate) {
-                Task { await fetchAgents(using: current) }
-            }
-        }
-        baseURLText = current.baseURL
-        apiKeyText = activeKey ?? currentAPIKey() ?? ""
-    }
-
-    var filteredAgents: [Agent] {
-        if appliedSearchText.isEmpty {
-            return agents
-        } else {
-            return agents.filter {
-                $0.hostname.localizedCaseInsensitiveContains(appliedSearchText) ||
-                $0.operating_system.localizedCaseInsensitiveContains(appliedSearchText) ||
-                ($0.description?.localizedCaseInsensitiveContains(appliedSearchText) ?? false)
-            }
-        }
-    }
-
-    var sortedAgentsForDisplay: [Agent] {
-        let base = filteredAgents
-        guard sortOption != .none else { return base }
-
-        return base.enumerated()
-            .sorted { lhs, rhs in
-                let lhsMatch = sortOption.matches(lhs.element)
-                let rhsMatch = sortOption.matches(rhs.element)
-
-                if lhsMatch != rhsMatch {
-                    return lhsMatch && !rhsMatch
-                }
-
-                if lhsMatch && rhsMatch {
-                    let lhsKey = sortOption.sortKey(for: lhs.element)
-                    let rhsKey = sortOption.sortKey(for: rhs.element)
-                    if lhsKey != rhsKey {
-                        return lhsKey < rhsKey
-                    }
-                }
-
-                return lhs.offset < rhs.offset
-            }
-            .map { $0.element }
-    }
-
-    private var agentCountText: String {
-        let count = appliedSearchText.isEmpty ? agents.count : filteredAgents.count
-        return count == 1 ? "1 Agent" : "\(count) Agents"
-    }
+    @FocusState private var searchFieldIsFocused: Bool
 
     var body: some View {
         ZStack {
@@ -1086,9 +985,6 @@ struct ContentView: View {
             } message: {
                 Text("Export diagnostics log? It may include sensitive information.")
             }
-            .alert("Settings Saved", isPresented: $showSavedAlert) {
-                Button("OK", role: .cancel) {}
-            }
             .onAppear {
                 DiagnosticLogger.shared.append("ContentView onAppear")
                 if !useFaceID {
@@ -1108,6 +1004,7 @@ struct ContentView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .init("reloadAgents"))) { notification in
                 guard !(useFaceID && !didAuthenticate) else { return }
+                applyActiveSettings()
                 if let settings = notification.object as? RMMSettings {
                     Task { await fetchAgents(using: settings) }
                 } else if let settings = activeSettings {
@@ -1232,11 +1129,11 @@ struct ContentView: View {
                     Divider()
                         .overlay(Color.white.opacity(0.08))
 
-                    HStack(spacing: 16) {
-                        statBadge(title: "Agents", value: String(agents.count), symbol: "desktopcomputer")
-                        statBadge(title: "Online", value: String(onlineCount), symbol: "bolt.horizontal.circle")
-                        statBadge(title: "Offline", value: String(offlineCount), symbol: "moon.zzz")
-                    }
+                    ResponsiveBadgeRow(badges: [
+                        .init(title: "Agents", value: String(agents.count), symbol: "desktopcomputer"),
+                        .init(title: "Online", value: String(onlineCount), symbol: "bolt.horizontal.circle"),
+                        .init(title: "Offline", value: String(offlineCount), symbol: "moon.zzz")
+                    ])
                 }
             }
         }
@@ -1247,79 +1144,128 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 20) {
                 SectionHeader("Connection", subtitle: "Securely connect to Tactical RMM", systemImage: "lock.shield")
 
-                ModernInputField(
-                    title: "Base URL",
-                    placeholder: "https://api.example.com",
-                    text: $baseURLText,
-                    kind: .text,
-                    keyboard: .URL,
-                    focus: $isInputActive
-                )
-
-                ModernInputField(
-                    title: "API Key",
-                    placeholder: "Enter API Key",
-                    text: $apiKeyText,
-                    kind: .secure,
-                    focus: $isInputActive
-                )
-
-                if baseURLText.isEmpty || apiKeyText.isEmpty {
-                    Text("Please enter both Base URL and API Key")
+                if settingsList.isEmpty {
+                    Text("No instances are configured. Open Settings to add your first server.")
                         .font(.footnote)
-                        .foregroundStyle(Color.red)
-                } else if baseURLText.removingTrailingSlash().lowercased() == "demo" && apiKeyText.lowercased() == "demo" {
+                        .foregroundStyle(Color.white.opacity(0.7))
+
                     Button {
-                        DiagnosticLogger.shared.append("Demo mode login triggered.")
-                        isInputActive = false
-                        loadDemoAgents()
+                        showSettings = true
                     } label: {
-                        Label("Enter Demo Mode", systemImage: "play.circle")
+                        Label("Open Settings", systemImage: "gearshape")
+                            .frame(maxWidth: .infinity)
                     }
                     .primaryButton()
-                } else if let saved = activeSettings,
-                          saved.baseURL == baseURLText,
-                          currentAPIKey() == apiKeyText {
-                    HStack(spacing: 12) {
+                } else if let saved = activeSettings {
+                    let key = currentAPIKey()
+                    connectionSummary(for: saved)
+
+                    if let key, !key.isEmpty {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 12) {
+                                refreshButton(for: saved)
+                                if !hideInstall {
+                                    installButton
+                                }
+                            }
+
+                            VStack(spacing: 12) {
+                                refreshButton(for: saved)
+                                if !hideInstall {
+                                    installButton
+                                }
+                            }
+                        }
+                    } else {
+                        Text("API key missing for this instance. Update the credentials in Settings before refreshing.")
+                            .font(.footnote)
+                            .foregroundStyle(Color.red)
+
                         Button {
-                            DiagnosticLogger.shared.append("Login tapped.")
-                            isInputActive = false
-                            Task { await fetchAgents(using: saved) }
+                            showSettings = true
                         } label: {
-                            Label("Refresh", systemImage: "arrow.clockwise")
+                            Label("Update Credentials", systemImage: "key.fill")
                                 .frame(maxWidth: .infinity)
                         }
                         .primaryButton()
-
-                        if !hideInstall {
-                            NavigationLink {
-                                InstallAgentView(
-                                    baseURL: baseURLText,
-                                    apiKey: apiKeyText
-                                )
-                            } label: {
-                                Label("Install Agent", systemImage: "square.and.arrow.down")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .primaryButton()
-                        }
                     }
-                    .frame(maxWidth: .infinity, alignment: .center)
                 } else {
+                    Text("Unable to determine the active instance. Open Settings to select a server.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.red)
+
                     Button {
-                        DiagnosticLogger.shared.append("Save & Login tapped.")
-                        isInputActive = false
-                        Task { await updateSettingsAndFetch() }
+                        showSettings = true
                     } label: {
-                        Label("Save & Connect", systemImage: "link")
+                        Label("Manage Instances", systemImage: "gearshape")
+                            .frame(maxWidth: .infinity)
                     }
                     .primaryButton()
                 }
 
-                Text("Note: Large environments may take longer to load on mobile hardware.")
-                    .font(.caption2)
-                    .foregroundStyle(Color.white.opacity(0.55))
+                if !settingsList.isEmpty {
+                    Text("Note: Large environments may take longer to load on mobile hardware.")
+                        .font(.caption2)
+                        .foregroundStyle(Color.white.opacity(0.55))
+                }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func refreshButton(for settings: RMMSettings) -> some View {
+        let buttonTitle = agents.isEmpty ? "Fetch Agents" : "Refresh Agents"
+        Button {
+            DiagnosticLogger.shared.append("Login tapped.")
+            Task { await fetchAgents(using: settings) }
+        } label: {
+            Label(buttonTitle, systemImage: "arrow.clockwise")
+                .frame(maxWidth: .infinity)
+        }
+        .primaryButton()
+    }
+
+    private var installButton: some View {
+        NavigationLink {
+            InstallAgentView(
+                baseURL: baseURLText,
+                apiKey: apiKeyText
+            )
+        } label: {
+            Label("Install Agent", systemImage: "square.and.arrow.down")
+                .frame(maxWidth: .infinity)
+        }
+        .primaryButton()
+    }
+
+    @ViewBuilder
+    private func connectionSummary(for settings: RMMSettings) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            summaryRow(title: "Instance", value: settings.displayName, systemImage: "server.rack")
+            Text("Manage connection details, including URL and credentials, from Settings.")
+                .font(.caption)
+                .foregroundStyle(Color.white.opacity(0.65))
+        }
+    }
+
+    @ViewBuilder
+    private func summaryRow(title: String, value: String, systemImage: String) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Color.cyan)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title.uppercased())
+                    .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(0.6))
+                Text(value)
+                    .font(.callout)
+                    .foregroundStyle(Color.white)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+            }
+            Spacer(minLength: 0)
         }
     }
 
@@ -1450,32 +1396,186 @@ struct ContentView: View {
         }
     }
 
-    private func statBadge(title: String, value: String, symbol: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.cyan)
-                Text(title.uppercased())
-                    .font(.caption2)
-                    .foregroundStyle(Color.white.opacity(0.6))
+    private struct BadgeInfo: Identifiable {
+        let id = UUID()
+        let title: String
+        let value: String
+        let symbol: String
+    }
+
+    private struct ResponsiveBadgeRow: View {
+        let badges: [BadgeInfo]
+
+        var body: some View {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    ForEach(badges) { badge in
+                        badgeView(for: badge)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 130), spacing: 12)],
+                    alignment: .leading,
+                    spacing: 12
+                ) {
+                    ForEach(badges) { badge in
+                        badgeView(for: badge)
+                    }
+                }
             }
-            Text(value)
-                .font(.title3.weight(.semibold))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.05))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                )
-        )
+
+        @ViewBuilder
+        private func badgeView(for badge: BadgeInfo) -> some View {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: badge.symbol)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.cyan)
+                    Text(badge.title.uppercased())
+                        .font(.caption2)
+                        .foregroundStyle(Color.white.opacity(0.6))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                Text(badge.value)
+                    .font(.title3.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+        }
+    }
+
+    private var agentCountText: String {
+        let total = agents.count
+        guard total > 0 else { return "No agents yet" }
+        let displayed = sortedAgentsForDisplay.count
+        if displayed == total && appliedSearchText.isEmpty && sortOption == .none {
+            return "\(total) \(total == 1 ? "Agent" : "Agents")"
+        }
+        return "\(displayed) of \(total) agents"
+    }
+
+    private var filteredAgents: [Agent] {
+        let base = agents.filter { sortOption.matches($0) }
+        guard !appliedSearchText.isEmpty else { return base }
+        let query = appliedSearchText.lowercased()
+        return base.filter {
+            $0.hostname.lowercased().contains(query) ||
+            $0.operating_system.lowercased().contains(query) ||
+            ($0.description?.lowercased().contains(query) ?? false)
+        }
+    }
+
+    private var sortedAgentsForDisplay: [Agent] {
+        switch sortOption {
+        case .none:
+            return filteredAgents.sorted {
+                $0.hostname.localizedCaseInsensitiveCompare($1.hostname) == .orderedAscending
+            }
+        case .online:
+            return filteredAgents.sorted { lhs, rhs in
+                if lhs.isOnlineStatus == rhs.isOnlineStatus {
+                    return lhs.hostname.localizedCaseInsensitiveCompare(rhs.hostname) == .orderedAscending
+                }
+                return lhs.isOnlineStatus && !rhs.isOnlineStatus
+            }
+        default:
+            return filteredAgents.sorted { lhs, rhs in
+                let left = sortOption.sortKey(for: lhs)
+                let right = sortOption.sortKey(for: rhs)
+                if left == right {
+                    return lhs.hostname.localizedCaseInsensitiveCompare(rhs.hostname) == .orderedAscending
+                }
+                return left.localizedCaseInsensitiveCompare(right) == .orderedAscending
+            }
+        }
+    }
+
+    private var activeSettings: RMMSettings? {
+        if let match = settingsList.first(where: { $0.uuid.uuidString == activeSettingsUUID }) {
+            return ensureIdentifiers(for: match)
+        }
+        if let first = settingsList.first {
+            return ensureIdentifiers(for: first)
+        }
+        return nil
     }
 
     // MARK: – Helper Methods
+
+    private func enforceHTTPSPrefix(_ input: String) -> String {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "https://" }
+        var sanitized = trimmed
+        let lower = sanitized.lowercased()
+        if lower.hasPrefix("https://") {
+            sanitized = String(sanitized.dropFirst("https://".count))
+        } else if lower.hasPrefix("http://") {
+            sanitized = String(sanitized.dropFirst("http://".count))
+        }
+        return "https://" + sanitized
+    }
+
+    @MainActor
+    private func applyActiveSettings() {
+        guard let settings = activeSettings else {
+            baseURLText = "https://"
+            apiKeyText = ""
+            KeychainHelper.shared.setActiveIdentifier("apiKey")
+            return
+        }
+
+        let resolved = ensureIdentifiers(for: settings)
+        KeychainHelper.shared.setActiveIdentifier(resolved.keychainKey)
+
+        if resolved.baseURL.isDemoEntry {
+            baseURLText = resolved.baseURL
+        } else {
+            baseURLText = enforceHTTPSPrefix(resolved.baseURL)
+        }
+
+        if let key = KeychainHelper.shared.getAPIKey(identifier: resolved.keychainKey) {
+            apiKeyText = key
+        } else {
+            apiKeyText = ""
+        }
+    }
+
+    @MainActor
+    private func currentAPIKey() -> String? {
+        guard let settings = activeSettings else { return nil }
+        let resolved = ensureIdentifiers(for: settings)
+        KeychainHelper.shared.setActiveIdentifier(resolved.keychainKey)
+        if let stored = KeychainHelper.shared.getAPIKey(identifier: resolved.keychainKey), !stored.isEmpty {
+            return stored
+        }
+        return apiKeyText.nonEmpty
+    }
+
+    @discardableResult
+    @MainActor
+    private func ensureIdentifiers(for settings: RMMSettings) -> RMMSettings {
+        if settings.keychainKey.isEmpty {
+            settings.keychainKey = "apiKey_\(settings.uuid.uuidString)"
+        }
+        if settings.displayName.isEmpty {
+            settings.displayName = settings.baseURL
+        }
+        return settings
+    }
 
     private func loadInitialSettings() {
         if activeSettingsUUID.isEmpty, let first = settingsList.first {
@@ -1567,7 +1667,7 @@ struct ContentView: View {
             }
 
         // 7) Clear UI state and force a fresh launch
-        baseURLText = ""
+        baseURLText = "https://"
         apiKeyText = ""
         activeSettingsUUID = ""
 
@@ -1576,52 +1676,18 @@ struct ContentView: View {
     }
 
     @MainActor
-    private func updateSettingsAndFetch() async {
-        DiagnosticLogger.shared.append("updateSettingsAndFetch started")
-        baseURLText = baseURLText.removingTrailingSlash()
-        if baseURLText.lowercased() != "demo"
-           && !baseURLText.lowercased().hasPrefix("http://")
-           && !baseURLText.lowercased().hasPrefix("https://") {
-            baseURLText = "https://" + baseURLText
-        }
-        if let current = activeSettings {
-            current.baseURL = baseURLText
-            ensureIdentifiers(for: current)
-            KeychainHelper.shared.setActiveIdentifier(current.keychainKey)
-            KeychainHelper.shared.saveAPIKey(apiKeyText, identifier: current.keychainKey)
-            await saveSettingsAndFetch(settings: current)
-        } else {
-            DiagnosticLogger.shared.append("Creating new settings.")
-            let displayName = URL(string: baseURLText)?.host ?? "Instance \(settingsList.count + 1)"
-            let newSettings = RMMSettings(displayName: displayName, baseURL: baseURLText)
-            modelContext.insert(newSettings)
-            activeSettingsUUID = newSettings.uuid.uuidString
-            KeychainHelper.shared.setActiveIdentifier(newSettings.keychainKey)
-            KeychainHelper.shared.saveAPIKey(apiKeyText, identifier: newSettings.keychainKey)
-            await saveSettingsAndFetch(settings: newSettings)
-        }
-    }
-
-    @MainActor
-    private func saveSettingsAndFetch(settings: RMMSettings) async {
-        do {
-            try modelContext.save()
-            DiagnosticLogger.shared.append("Settings saved successfully.")
-            showSavedAlert = true
-            UIApplication.shared.dismissKeyboard()
-            activeSettingsUUID = settings.uuid.uuidString
-            await fetchAgents(using: settings)
-        } catch {
-            DiagnosticLogger.shared.appendError("Error saving settings: \(error.localizedDescription)")
-        }
-    }
-
-    @MainActor
     private func fetchAgents(using settings: RMMSettings, retryCount: Int = 0) async {
         let attempt = retryCount + 1
         DiagnosticLogger.shared.append("fetchAgents started (attempt \(attempt))")
         let resolved = ensureIdentifiers(for: settings)
         KeychainHelper.shared.setActiveIdentifier(resolved.keychainKey)
+        if settings.baseURL.isDemoEntry {
+            DiagnosticLogger.shared.append("Demo mode detected, loading sample agents instead of performing network call.")
+            isLoading = false
+            errorMessage = nil
+            loadDemoAgents()
+            return
+        }
         let sanitizedURL = settings.baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/") else {
             errorMessage = "Invalid URL."
@@ -1765,8 +1831,15 @@ struct SettingsView: View {
     @State private var newInstanceKey: String = ""
     @State private var addInstanceError: String?
     @FocusState private var addInstanceField: AddInstanceField?
+    @State private var editingInstance: RMMSettings?
+    @State private var editInstanceName: String = ""
+    @State private var editInstanceURL: String = ""
+    @State private var editInstanceKey: String = ""
+    @State private var editInstanceError: String?
+    @FocusState private var editInstanceField: EditInstanceField?
 
     private enum AddInstanceField: Hashable { case name, url, key }
+    private enum EditInstanceField: Hashable { case name, url, key }
 
     private var authAvailable: Bool {
         LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
@@ -1814,6 +1887,14 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showAddInstanceSheet) {
                 addInstanceSheet
+            }
+            .sheet(isPresented: Binding(
+                get: { editingInstance != nil },
+                set: { if !$0 { cancelEditInstance() } }
+            )) {
+                if let instance = editingInstance {
+                    editInstanceSheet(for: instance)
+                }
             }
             .alert("Delete All App Data?", isPresented: $showResetConfirmation) {
                 Button("Delete", role: .destructive) {
@@ -1964,6 +2045,10 @@ struct SettingsView: View {
                     }
                 }
 
+                Button("Edit", systemImage: "pencil") {
+                    beginEditing(resolved)
+                }
+
                 if settingsList.count > 1 {
                     Button("Delete Instance", role: .destructive) {
                         deleteInstance(resolved)
@@ -2031,6 +2116,56 @@ struct SettingsView: View {
             }
             .onAppear {
                 addInstanceField = .name
+            }
+        }
+        .presentationDetents([.fraction(0.55), .large])
+    }
+
+    @ViewBuilder
+    private func editInstanceSheet(for settings: RMMSettings) -> some View {
+        NavigationStack {
+            ZStack {
+                DarkGradientBackground()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        SectionHeader("Edit Instance", subtitle: settings.displayName, systemImage: "pencil" )
+
+                        inputField(title: "Display Name", placeholder: settings.displayName, text: $editInstanceName)
+                            .focused($editInstanceField, equals: .name)
+
+                        inputField(title: "Base URL", placeholder: "https://api.example.com", text: $editInstanceURL)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .focused($editInstanceField, equals: .url)
+
+                        inputField(title: "API Key", placeholder: "Paste API key", text: $editInstanceKey, isSecure: true)
+                            .focused($editInstanceField, equals: .key)
+
+                        if let editInstanceError {
+                            Text(editInstanceError)
+                                .font(.footnote)
+                                .foregroundStyle(Color.red)
+                        }
+                    }
+                    .padding(24)
+                }
+            }
+            .navigationTitle("Edit Instance")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { cancelEditInstance() }
+                        .foregroundStyle(Color.cyan)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { saveEditedInstance() }
+                        .foregroundStyle(Color.cyan)
+                        .disabled(editInstanceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                                  editInstanceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                                  editInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear {
+                editInstanceField = .name
             }
         }
         .presentationDetents([.fraction(0.55), .large])
@@ -2155,11 +2290,74 @@ struct SettingsView: View {
 
     private func normalizeBaseURL(_ raw: String) -> String {
         let lower = raw.lowercased()
-        if lower == "demo" { return "demo" }
+        if raw.isDemoEntry { return "demo" }
         if lower.hasPrefix("http://") || lower.hasPrefix("https://") {
             return raw
         }
         return "https://" + raw
+    }
+
+    private func beginEditing(_ settings: RMMSettings) {
+        let resolved = ensureIdentifiers(for: settings)
+        editingInstance = resolved
+        editInstanceName = resolved.displayName
+        editInstanceURL = resolved.baseURL
+        editInstanceKey = KeychainHelper.shared.getAPIKey(identifier: resolved.keychainKey) ?? ""
+        editInstanceError = nil
+        DispatchQueue.main.async {
+            editInstanceField = .name
+        }
+    }
+
+    private func cancelEditInstance() {
+        editingInstance = nil
+        editInstanceName = ""
+        editInstanceURL = ""
+        editInstanceKey = ""
+        editInstanceError = nil
+        editInstanceField = nil
+    }
+
+    private func saveEditedInstance() {
+        guard let instance = editingInstance else { return }
+
+        let trimmedName = editInstanceName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedURL = editInstanceURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedKey = editInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedName.isEmpty else {
+            editInstanceError = "Provide a display name."
+            editInstanceField = .name
+            return
+        }
+        guard !trimmedURL.isEmpty else {
+            editInstanceError = "Provide the base URL."
+            editInstanceField = .url
+            return
+        }
+        guard !trimmedKey.isEmpty else {
+            editInstanceError = "Provide the API key."
+            editInstanceField = .key
+            return
+        }
+
+        let normalizedURL = normalizeBaseURL(trimmedURL).removingTrailingSlash()
+        let resolved = ensureIdentifiers(for: instance)
+        resolved.displayName = trimmedName
+        resolved.baseURL = normalizedURL
+        KeychainHelper.shared.saveAPIKey(trimmedKey, identifier: resolved.keychainKey)
+
+        do {
+            try modelContext.save()
+            DiagnosticLogger.shared.append("Updated instance \(trimmedName)")
+            if resolved.uuid.uuidString == activeSettingsUUID {
+                activeSettingsUUID = resolved.uuid.uuidString
+            }
+            NotificationCenter.default.post(name: .init("reloadAgents"), object: resolved)
+            cancelEditInstance()
+        } catch {
+            editInstanceError = "Failed to save: \(error.localizedDescription)"
+        }
     }
 }
 
@@ -2585,8 +2783,8 @@ struct AgentDetailView: View {
     }
     
     private var isDemoMode: Bool {
-        return baseURL.removingTrailingSlash().lowercased() == "demo" &&
-               effectiveAPIKey.lowercased() == "demo"
+         return baseURL.isDemoEntry &&
+             effectiveAPIKey.lowercased() == "demo"
     }
     
     func formattedLastSeen(from dateString: String?) -> String {

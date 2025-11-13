@@ -123,8 +123,9 @@ final class KeychainHelper {
 
     private let service = "jerdal.TacticalRMM-Manager"
 
-    /// In-memory cache of the API key
-    private var cachedAPIKey: String?
+    /// In-memory cache of API keys keyed by identifier
+    private var cachedAPIKeys: [String: String] = [:]
+    private var activeIdentifier: String = "apiKey"
 
     // MARK: – Generic Save/Read/Delete
 
@@ -188,15 +189,18 @@ final class KeychainHelper {
 
     // MARK: – API Key Convenience
 
-    /// Save the API Key both to Keychain *and* to our in-memory cache.
-    func saveAPIKey(_ apiKey: String) {
-        // cache in RAM
-        cachedAPIKey = apiKey
-        DiagnosticLogger.shared.append("Saving API Key: \(DiagnosticLogger.shared.maskAPIKey(apiKey))")
+    func setActiveIdentifier(_ identifier: String) {
+        activeIdentifier = identifier
+    }
 
-        // persist to Keychain
+    /// Save the API Key both to Keychain *and* to our in-memory cache.
+    func saveAPIKey(_ apiKey: String, identifier: String? = nil) {
+        let account = identifier ?? activeIdentifier
+        cachedAPIKeys[account] = apiKey
+        DiagnosticLogger.shared.append("Saving API Key for \(account): \(DiagnosticLogger.shared.maskAPIKey(apiKey))")
+
         if let data = apiKey.data(using: .utf8) {
-            save(data, for: "apiKey")
+            save(data, for: account)
         } else {
             DiagnosticLogger.shared.appendError("Failed to encode API key to Data")
         }
@@ -204,33 +208,44 @@ final class KeychainHelper {
 
     /// Return the API Key, reading from cache if available;
     /// otherwise, pull once from the Keychain and cache it.
-    func getAPIKey() -> String? {
-        // 1) If key is cached, no Keychain hit:
-        if let key = cachedAPIKey {
+    func getAPIKey(identifier: String? = nil) -> String? {
+        let account = identifier ?? activeIdentifier
+        if let key = cachedAPIKeys[account] {
             return key
         }
 
-        // 2) Otherwise, read from Keychain:
-        if let data = read(account: "apiKey"),
+        if let data = read(account: account),
            let key = String(data: data, encoding: .utf8) {
-            // cache & log only once
-            cachedAPIKey = key
-            DiagnosticLogger.shared.append("Retrieved API Key from Keychain: \(DiagnosticLogger.shared.maskAPIKey(key))")
+            cachedAPIKeys[account] = key
+            DiagnosticLogger.shared.append("Retrieved API Key from Keychain (\(account)): \(DiagnosticLogger.shared.maskAPIKey(key))")
             return key
         } else {
-            DiagnosticLogger.shared.appendWarning("No API Key found in Keychain for account 'apiKey'")
+            DiagnosticLogger.shared.appendWarning("No API Key found in Keychain for account '\(account)'")
         }
         return nil
     }
 
     /// Wipe both the in-memory cache *and* the Keychain entry.
-    func deleteAPIKey() {
-        // clear RAM
-        cachedAPIKey = nil
-        DiagnosticLogger.shared.append("Cleared in-memory API key cache")
+    func deleteAPIKey(identifier: String? = nil) {
+        let account = identifier ?? activeIdentifier
+        cachedAPIKeys.removeValue(forKey: account)
+        DiagnosticLogger.shared.append("Cleared cached API key for account '\(account)'")
+        delete(account: account)
+    }
 
-        // clear Keychain
-        delete(account: "apiKey")
+    func deleteAllAPIKeys() {
+        let query: [String: Any] = [
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: service
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        if status == errSecSuccess || status == errSecItemNotFound {
+            DiagnosticLogger.shared.append("Keychain: Cleared all stored API keys")
+        } else {
+            DiagnosticLogger.shared.appendError("Keychain bulk delete failed with status: \(status)")
+        }
+        cachedAPIKeys.removeAll()
+        activeIdentifier = "apiKey"
     }
 }
 
@@ -278,15 +293,194 @@ extension String {
         }
         return self
     }
+
+    var nonEmpty: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+// MARK: - Design Helpers
+
+struct DarkGradientBackground: View {
+    var body: some View {
+        LinearGradient(
+            colors: [
+                Color(red: 0.06, green: 0.07, blue: 0.12),
+                Color(red: 0.02, green: 0.03, blue: 0.07)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+        .overlay(
+            AngularGradient(
+                colors: [
+                    Color(red: 0.35, green: 0.55, blue: 0.90).opacity(0.18),
+                    Color.clear,
+                    Color(red: 0.35, green: 0.55, blue: 0.90).opacity(0.12),
+                    Color.clear
+                ],
+                center: .center
+            )
+            .blur(radius: 160)
+        )
+    }
+}
+
+struct GlassCard<Content: View>: View {
+    var cornerRadius: CGFloat = 22
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.white.opacity(0.045))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.55), radius: 24, x: 0, y: 18)
+            )
+    }
+}
+
+struct SectionHeader: View {
+    let title: String
+    let subtitle: String?
+    let systemImage: String
+
+    init(_ title: String, subtitle: String? = nil, systemImage: String) {
+        self.title = title
+        self.subtitle = subtitle
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Color.cyan)
+                .frame(width: 36, height: 36)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.white.opacity(0.05))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                        )
+                )
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                }
+            }
+            Spacer()
+        }
+    }
+}
+
+struct ModernInputField: View {
+    enum FieldKind { case text, secure }
+
+    let title: String
+    let placeholder: String
+    @Binding var text: String
+    var kind: FieldKind = .text
+    var keyboard: UIKeyboardType = .default
+    var focus: FocusState<Bool>.Binding? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title.uppercased())
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.6))
+                .kerning(1.2)
+            Group {
+                switch kind {
+                case .text:
+                    if let focus {
+                        TextField(placeholder, text: $text)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .keyboardType(keyboard)
+                            .focused(focus)
+                    } else {
+                        TextField(placeholder, text: $text)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .keyboardType(keyboard)
+                    }
+                case .secure:
+                    if let focus {
+                        SecureField(placeholder, text: $text)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .focused(focus)
+                    } else {
+                        SecureField(placeholder, text: $text)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                    }
+                }
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+        }
+    }
+}
+
+extension View {
+    func primaryButton() -> some View {
+        self.buttonStyle(.borderedProminent)
+            .tint(Color.cyan)
+            .controlSize(.large)
+    }
+
+    func secondaryButton() -> some View {
+        self.buttonStyle(.bordered)
+            .tint(Color.cyan.opacity(0.7))
+            .controlSize(.large)
+    }
 }
 
 // MARK: - Models
 
 @Model
 final class RMMSettings {
+    var uuid: UUID = UUID()
+    var displayName: String = "Default"
     var baseURL: String
-    init(baseURL: String) {
+    var keychainKey: String = ""
+
+    init(displayName: String, baseURL: String) {
+        let generated = UUID()
+        self.uuid = generated
+        self.displayName = displayName
         self.baseURL = baseURL
+        self.keychainKey = "apiKey_\(generated.uuidString)"
+    }
+
+    init(baseURL: String) {
+        let generated = UUID()
+        self.uuid = generated
+        self.displayName = "Default"
+        self.baseURL = baseURL
+        self.keychainKey = "apiKey_\(generated.uuidString)"
     }
 }
 
@@ -390,6 +584,117 @@ struct Agent: Identifiable, Decodable {
         self.custom_fields = try c.decodeIfPresent([CustomField].self, forKey: .custom_fields)
         self.serial_number = try c.decodeIfPresent(String.self, forKey: .serial_number)
         self.boot_time     = try c.decodeIfPresent(TimeInterval.self, forKey: .boot_time)
+    }
+}
+
+struct AgentListResponse: Decodable {
+    let count: Int?
+    let next: String?
+    let previous: String?
+    let results: [Agent]
+}
+
+struct AgentRow: View {
+    let agent: Agent
+    let hideSensitiveInfo: Bool
+
+    private var statusColor: Color {
+        if agent.isOnlineStatus { return Color.green }
+        if agent.isOfflineStatus { return Color.red }
+        return Color.orange
+    }
+
+    private var statusLabel: String {
+        agent.status.isEmpty ? "Unknown" : agent.status.capitalized
+    }
+
+    private var publicIPText: String {
+        hideSensitiveInfo ? "••••••" : (agent.public_ip ?? "No IP available")
+    }
+
+    private var lanIPText: String {
+        guard !hideSensitiveInfo else { return "••••••" }
+        return agent.local_ips?.ipv4Only().isEmpty == false ? agent.local_ips!.ipv4Only() : "No LAN IP available"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(agent.hostname)
+                        .font(.headline)
+                    Text(agent.operating_system)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                }
+                Spacer()
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 10, height: 10)
+                    Text(statusLabel)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(statusColor)
+                }
+            }
+
+            if let description = agent.description, !description.isEmpty {
+                Text(description)
+                    .font(.footnote)
+                    .foregroundStyle(Color.white.opacity(0.7))
+                    .lineLimit(2)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                if !agent.cpu_model.isEmpty {
+                    Text("CPU: \(agent.cpu_model.joined(separator: ", "))")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.7))
+                }
+
+                Text("Site: \(hideSensitiveInfo ? "••••••" : (agent.site_name ?? "Not available"))")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.7))
+
+                Text("LAN: \(lanIPText)")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.7))
+
+                Text("Public: \(publicIPText)")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.7))
+            }
+
+            if let lastSeen = agent.last_seen, !lastSeen.isEmpty {
+                Text("Last Seen: \(lastSeen)")
+                    .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(0.55))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
+        )
+    }
+}
+
+private extension Agent {
+    var normalizedStatus: String {
+        status.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    var isOnlineStatus: Bool {
+        normalizedStatus == "online"
+    }
+
+    var isOfflineStatus: Bool {
+        ["offline", "overdue", "dormant"].contains(normalizedStatus)
     }
 }
 
@@ -512,6 +817,76 @@ struct ClientModel: Identifiable, Decodable {
     let sites: [Site]
 }
 
+// MARK: - Agent Sorting
+
+enum AgentSortOption: String, CaseIterable, Identifiable {
+    case none
+    case windows
+    case linux
+    case mac
+    case publicIP
+    case online
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .none: return "None"
+        case .windows: return "Windows"
+        case .linux: return "Linux"
+        case .mac: return "Mac"
+        case .publicIP: return "Public IP"
+        case .online: return "Online Agents"
+        }
+    }
+
+    var chipLabel: String {
+        switch self {
+        case .none:
+            return "Sort: None"
+        case .windows, .linux, .mac:
+            return "Sort: \(title)"
+        case .publicIP:
+            return "Sort: Public IP"
+        case .online:
+            return "Sort: Online"
+        }
+    }
+}
+
+private extension AgentSortOption {
+    func matches(_ agent: Agent) -> Bool {
+        switch self {
+        case .none:
+            return true
+        case .windows:
+            let os = agent.operating_system.lowercased()
+            return os.contains("windows")
+        case .linux:
+            let os = agent.operating_system.lowercased()
+            return os.contains("linux") || os.contains("ubuntu") || os.contains("debian") || os.contains("centos") || os.contains("fedora") || os.contains("red hat") || os.contains("suse") || os.contains("arch") || os.contains("rhel")
+        case .mac:
+            let os = agent.operating_system.lowercased()
+            return os.contains("macos") || os.contains("mac os") || os.contains("os x") || os.contains("darwin")
+        case .publicIP:
+            return agent.public_ip?.nonEmpty != nil
+        case .online:
+            return agent.isOnlineStatus
+        }
+    }
+
+    func sortKey(for agent: Agent) -> String {
+        switch self {
+        case .none:
+            return ""
+        case .windows, .linux, .mac, .online:
+            return agent.hostname.lowercased()
+        case .publicIP:
+            return agent.public_ip?.lowercased() ?? ""
+        }
+    }
+}
+
 // MARK: - ContentView
 
 struct ContentView: View {
@@ -542,6 +917,84 @@ struct ContentView: View {
     @State private var showSearch:           Bool   = false
     @FocusState private var searchFieldIsFocused: Bool
     @State private var showRecoveryAlert = false
+    @State private var sortOption: AgentSortOption = .none
+    @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
+    @State private var lastAppliedSettingsUUID: String = ""
+
+    private var activeSettings: RMMSettings? {
+        if let match = settingsList.first(where: { $0.uuid.uuidString == activeSettingsUUID }) {
+            return ensureIdentifiers(for: match)
+        }
+        if let first = settingsList.first {
+            return ensureIdentifiers(for: first)
+        }
+        return nil
+    }
+
+    private var instanceSubtitle: String {
+        if settingsList.isEmpty {
+            return "No active instance"
+        }
+        if let active = activeSettings {
+            return "Active: \(active.displayName)"
+        }
+        return "Select an instance"
+    }
+
+    private var activeKeyIdentifier: String {
+        if let settings = activeSettings {
+            return ensureIdentifiers(for: settings).keychainKey
+        }
+        return "apiKey"
+    }
+
+    private func currentAPIKey() -> String? {
+        KeychainHelper.shared.getAPIKey(identifier: activeKeyIdentifier)
+    }
+
+    @discardableResult
+    private func ensureIdentifiers(for settings: RMMSettings) -> RMMSettings {
+        if settings.keychainKey.isEmpty {
+            settings.keychainKey = "apiKey_\(settings.uuid.uuidString)"
+        }
+        if settings.displayName.isEmpty {
+            settings.displayName = settings.baseURL
+        }
+        return settings
+    }
+
+    private func applyActiveSettings() {
+        guard let current = activeSettings else {
+            baseURLText = ""
+            apiKeyText = ""
+            KeychainHelper.shared.setActiveIdentifier("apiKey")
+            lastAppliedSettingsUUID = ""
+            return
+        }
+        KeychainHelper.shared.setActiveIdentifier(current.keychainKey)
+        let previous = lastAppliedSettingsUUID
+        lastAppliedSettingsUUID = current.uuid.uuidString
+        var activeKey = currentAPIKey()
+        if previous != lastAppliedSettingsUUID {
+            agents.removeAll()
+            searchText = ""
+            appliedSearchText = ""
+            errorMessage = nil
+            if (activeKey ?? "").isEmpty,
+               let legacy = KeychainHelper.shared.getAPIKey(identifier: "apiKey"),
+               !legacy.isEmpty {
+                KeychainHelper.shared.saveAPIKey(legacy, identifier: current.keychainKey)
+                KeychainHelper.shared.deleteAPIKey(identifier: "apiKey")
+                activeKey = currentAPIKey()
+            }
+            if let key = activeKey, !key.isEmpty,
+               !(useFaceID && !didAuthenticate) {
+                Task { await fetchAgents(using: current) }
+            }
+        }
+        baseURLText = current.baseURL
+        apiKeyText = activeKey ?? currentAPIKey() ?? ""
+    }
 
     var filteredAgents: [Agent] {
         if appliedSearchText.isEmpty {
@@ -549,310 +1002,486 @@ struct ContentView: View {
         } else {
             return agents.filter {
                 $0.hostname.localizedCaseInsensitiveContains(appliedSearchText) ||
-                $0.operating_system.localizedCaseInsensitiveContains(appliedSearchText)
+                $0.operating_system.localizedCaseInsensitiveContains(appliedSearchText) ||
+                ($0.description?.localizedCaseInsensitiveContains(appliedSearchText) ?? false)
             }
         }
     }
 
+    var sortedAgentsForDisplay: [Agent] {
+        let base = filteredAgents
+        guard sortOption != .none else { return base }
+
+        return base.enumerated()
+            .sorted { lhs, rhs in
+                let lhsMatch = sortOption.matches(lhs.element)
+                let rhsMatch = sortOption.matches(rhs.element)
+
+                if lhsMatch != rhsMatch {
+                    return lhsMatch && !rhsMatch
+                }
+
+                if lhsMatch && rhsMatch {
+                    let lhsKey = sortOption.sortKey(for: lhs.element)
+                    let rhsKey = sortOption.sortKey(for: rhs.element)
+                    if lhsKey != rhsKey {
+                        return lhsKey < rhsKey
+                    }
+                }
+
+                return lhs.offset < rhs.offset
+            }
+            .map { $0.element }
+    }
+
+    private var agentCountText: String {
+        let count = appliedSearchText.isEmpty ? agents.count : filteredAgents.count
+        return count == 1 ? "1 Agent" : "\(count) Agents"
+    }
+
     var body: some View {
         ZStack {
-            NavigationView {
-                Form {
-                    // MARK: – API Settings
-                    Section(header: Text("API Settings"),
-                            footer: Text("Note: You might experience issues if you have a large number of agents due to hardware limitations")) {
-                        TextField("API URL", text: $baseURLText)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                            .focused($isInputActive)
+            DarkGradientBackground()
 
-                        SecureField("API Key", text: $apiKeyText)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                            .focused($isInputActive)
-
-                        if baseURLText.isEmpty || apiKeyText.isEmpty {
-                            Text("Please enter both Base URL and API Key")
-                                .foregroundColor(.red)
-                        } else if baseURLText.removingTrailingSlash().lowercased() == "demo"
-                                  && apiKeyText.lowercased() == "demo" {
-                            Button("Demo Mode") {
-                                DiagnosticLogger.shared.append("Demo mode login triggered.")
-                                isInputActive = false
-                                loadDemoAgents()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .padding(.vertical, 8)
-                        } else if let saved = settingsList.first,
-                                  saved.baseURL == baseURLText,
-                                  KeychainHelper.shared.getAPIKey() == apiKeyText {
-                            HStack(spacing: 12) {
-                                Button("Login") {
-                                    DiagnosticLogger.shared.append("Login tapped.")
-                                    isInputActive = false
-                                    Task { await fetchAgents(using: saved) }
-                                }
-                                .buttonStyle(.borderedProminent)
-
-                                if !hideInstall {
-                                    NavigationLink("Install New Agent",
-                                                   destination: InstallAgentView(
-                                                       baseURL: baseURLText,
-                                                       apiKey: apiKeyText
-                                                   ))
-                                    .buttonStyle(.borderedProminent)
-                                }
-                            }
-                            .padding(.vertical, 8)
-                        } else {
-                            Button("Save & Login") {
-                                DiagnosticLogger.shared.append("Save & Login tapped.")
-                                isInputActive = false
-                                Task { await updateSettingsAndFetch() }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .padding(.vertical, 8)
-                        }
+            NavigationStack {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        heroCard
+                        connectionCard
+                        agentsCard
                     }
-
-                    // MARK: – Agents List
-                    Section(header:
-                        HStack {
-                        Text(
-                                    agents.isEmpty
-                                        ? "Agents"
-                                        : "\(appliedSearchText.isEmpty ? agents.count : filteredAgents.count) Agents"
-                                )
-                                .font(.headline)
-                                Spacer()
-                            if showSearch {
-                                TextField("Search agents", text: $searchText)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 200)
-                                    .disableAutocorrection(true)
-                                    .focused($searchFieldIsFocused)
-                                    .submitLabel(.search)
-                                    .onSubmit { appliedSearchText = searchText }
-                            } else {
-                                Button {
-                                    withAnimation {
-                                        showSearch = true
-                                        searchFieldIsFocused = true
-                                    }
-                                } label: {
-                                    Image(systemName: "magnifyingglass")
-                                }
-                                .buttonStyle(.borderless)
-                            }
-                        }
-                        .transaction { $0.animation = nil }
-                    ) {
-                        if isLoading {
-                            ProgressView("Loading agents...")
-                        }
-                        if let error = errorMessage {
-                            Text("Error: \(error)")
-                                .foregroundColor(.red)
-                        }
-                        ForEach(filteredAgents) { agent in
-                            NavigationLink(destination:
-                                AgentDetailView(
-                                    agent: agent,
-                                    baseURL: baseURLText,
-                                    apiKey: apiKeyText
-                                )
-                            ) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(agent.hostname).font(.headline)
-                                    Text(agent.operating_system).font(.subheadline)
-                                    if let desc = agent.description, !desc.isEmpty {
-                                        Text(desc)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Text("Status: \(agent.status)")
-                                        .font(.caption)
-                                        .foregroundColor(agent.status.lowercased() == "online" ? .green : .red)
-                                    if !agent.cpu_model.isEmpty {
-                                        Text("CPU: \(agent.cpu_model.joined(separator: ", "))")
-                                            .font(.caption)
-                                    }
-                                    if hideSensitiveInfo {
-                                        Text("Public IP: ••••••")
-                                            .font(.caption)
-                                    } else if let ip = agent.public_ip {
-                                        Text("Public IP: \(ip)")
-                                            .font(.caption)
-                                    }
-
-                                }
-                            }
-                        }
-                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 28)
                 }
-                .scrollDismissesKeyboard(.never)
-                .alert(isPresented: $showGuideAlert) {
-                    Alert(
-                        title: Text("Welcome"),
-                        message: Text("Seems like you're new here. We recommend reading the guide."),
-                        primaryButton: .default(Text("Read Guide")) {
-                            if let url = URL(string: "https://github.com/Jerdal-F/TacticalRMM-Manager/blob/main/README.md") {
-                                UIApplication.shared.open(url)
-                            }
-                        },
-                        secondaryButton: .cancel()
-                    )
-                }
-                .alert("Diagnostics", isPresented: $showDiagnosticAlert) {
-                    Button("Save", role: .destructive) { showLogShareSheet = true }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("Export diagnostics log? It may include sensitive information.")
-                }
+                .scrollDismissesKeyboard(.interactively)
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        VStack {
-                            Text("Tactical RMM").font(.headline)
-                            Text("Agent Manager").font(.subheadline)
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            showSettings = true
+                        } label: {
+                            Image(systemName: "gearshape.fill")
+                                .font(.title3.weight(.semibold))
                         }
-                        .contentShape(Rectangle())
-                        .onLongPressGesture(minimumDuration: 2, maximumDistance: 50) { pressing in
-                            DiagnosticLogger.shared.append("Long press: \(pressing)")
-                        } perform: {
-                            DiagnosticLogger.shared.append("Long‑pressed for diagnostics.")
-                            showDiagnosticAlert = true
-                        }
+                        .foregroundStyle(Color.cyan)
+                        .disabled(useFaceID && !didAuthenticate)
                     }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button { showSettings = true }
-                    label: { Image(systemName: "gearshape") }
-                    }
-                }
-                .onAppear {
-                    DiagnosticLogger.shared.append("ContentView onAppear")
-                    if !useFaceID {
-                        loadInitialSettings()
-                    }
-                }
-                .onChange(of: scenePhase) { _, newPhase in
-                    switch newPhase {
-                    case .background, .inactive:
-                        didAuthenticate = false
-
-                    case .active:
-                        guard useFaceID, !didAuthenticate else { return }
-
-                        // If neither FaceID nor passcode is available, show reset UI instead of trying to auth
-                        if !authAvailable {
-                            showRecoveryAlert = true
-                            return
-                        }
-
-                        // Otherwise do the normal authenticate → load or suspend
-                        isAuthenticating = true
-                        authenticateBiometrics { success in
-                            isAuthenticating = false
-                            if success {
-                                didAuthenticate = true
-                                loadInitialSettings()
-                            } else {
-                                UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
-                            }
-                        }
-
-                    @unknown default:
-                        break
-                    }
-                }
-
-                .onChange(of: useFaceID) { oldValue, newValue in
-                    if newValue {
-                        isAuthenticating = true
-                        authenticateBiometrics { success in
-                            isAuthenticating = false
-                            if !success {
-                                useFaceID = false
-                            }
-                        }
-                    }
-                }
-                .alert("Settings Saved", isPresented: $showSavedAlert) {
-                    Button("OK", role: .cancel) {}
                 }
             }
-            .navigationViewStyle(.stack)
+            .alert(isPresented: $showGuideAlert) {
+                Alert(
+                    title: Text("Welcome"),
+                    message: Text("Seems like you're new here. We recommend reading the guide."),
+                    primaryButton: .default(Text("Read Guide")) {
+                        if let url = URL(string: "https://github.com/Jerdal-F/TacticalRMM-Manager/blob/main/README.md") {
+                            UIApplication.shared.open(url)
+                        }
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert("Diagnostics", isPresented: $showDiagnosticAlert) {
+                Button("Save", role: .destructive) { showLogShareSheet = true }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Export diagnostics log? It may include sensitive information.")
+            }
+            .alert("Settings Saved", isPresented: $showSavedAlert) {
+                Button("OK", role: .cancel) {}
+            }
+            .onAppear {
+                DiagnosticLogger.shared.append("ContentView onAppear")
+                if !useFaceID {
+                    loadInitialSettings()
+                }
+            }
+            .onChange(of: activeSettingsUUID) { _, _ in
+                applyActiveSettings()
+            }
+            .onChange(of: settingsList.map { $0.uuid }) { _, _ in
+                if settingsList.isEmpty {
+                    activeSettingsUUID = ""
+                } else if !settingsList.contains(where: { $0.uuid.uuidString == activeSettingsUUID }) {
+                    activeSettingsUUID = settingsList.first?.uuid.uuidString ?? ""
+                }
+                applyActiveSettings()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .init("reloadAgents"))) { notification in
+                guard !(useFaceID && !didAuthenticate) else { return }
+                if let settings = notification.object as? RMMSettings {
+                    Task { await fetchAgents(using: settings) }
+                } else if let settings = activeSettings {
+                    Task { await fetchAgents(using: settings) }
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                switch newPhase {
+                case .background, .inactive:
+                    didAuthenticate = false
 
-            // Block interaction until FaceID completes with recovery alert
+                case .active:
+                    guard useFaceID, !didAuthenticate else { return }
+
+                    if !authAvailable {
+                        showRecoveryAlert = true
+                        return
+                    }
+
+                    isAuthenticating = true
+                    authenticateBiometrics { success in
+                        isAuthenticating = false
+                        if success {
+                            didAuthenticate = true
+                            loadInitialSettings()
+                        } else {
+                            UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
+                        }
+                    }
+
+                @unknown default:
+                    break
+                }
+            }
+            .onChange(of: useFaceID) { _, newValue in
+                if newValue {
+                    isAuthenticating = true
+                    authenticateBiometrics { success in
+                        isAuthenticating = false
+                        if !success {
+                            useFaceID = false
+                        }
+                    }
+                }
+            }
+
             if useFaceID && !didAuthenticate {
                 ZStack {
-                    // Full-screen blur material
                     Rectangle()
                         .fill(.ultraThinMaterial)
                         .ignoresSafeArea()
 
-                    // Semi-transparent black overlay on top of the blur
                     Color.black.opacity(0.4)
                         .ignoresSafeArea()
-                    
+
                     ProgressView(isAuthenticating ? "Authenticating with FaceID…" : "Please wait…")
                         .padding()
                         .background(.ultraThinMaterial)
                         .cornerRadius(10)
                 }
-                // When this view appears, if auth is impossible, force recovery
                 .onAppear {
                     if !authAvailable {
                         showRecoveryAlert = true
                     }
                 }
-                // Recovery alert
                 .alert(isPresented: $showRecoveryAlert) {
-                                Alert(
-                                    title: Text("Security Reset Required"),
-                                    message: Text("""
-                                        You’ve disabled both Face ID and device passcode while having the FaceID app lock enabled. \
-                                        For security, you must clear all saved settings and API keys. \
-                                        Tap “Clear App Data” to reset.
-                                        """),
-                                    // This is a single destructive “dismiss” button—no Cancel is injected
-                                    dismissButton: .destructive(
-                                        Text("Clear App Data"),
-                                        action: clearAppData
-                                    )
-                                )
-                            }
-                        }
-                    }
-                    // Only allow the Settings sheet to appear when not locked
-                    .sheet(isPresented: Binding(
-                        get:  { showSettings && !(useFaceID && !didAuthenticate) },
-                        set:  { showSettings = $0 }
-                    )) {
-                        SettingsView()
-                    }
-                    // Share & settings sheets
-                    .sheet(isPresented: $showLogShareSheet) {
-                        if let url = DiagnosticLogger.shared.getLogFileURL() {
-                            ActivityView(activityItems: [url])
-                        } else {
-                            Text("No diagnostics log available.")
-                        }
-                    }
-        
-                    .onReceive(NotificationCenter.default.publisher(for: Notification.Name("clearAppData"))) { _ in
-                        clearAppData()
-                    }
-        
-        
+                    Alert(
+                        title: Text("Security Reset Required"),
+                        message: Text("You've disabled both Face ID and device passcode while having the FaceID app lock enabled.\nFor security, you must clear all saved settings and API keys.\nTap \"Clear App Data\" to reset."),
+                        dismissButton: .destructive(
+                            Text("Clear App Data"),
+                            action: clearAppData
+                        )
+                    )
                 }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { showSettings && !(useFaceID && !didAuthenticate) },
+            set: { showSettings = $0 }
+        )) {
+            SettingsView()
+        }
+        .sheet(isPresented: $showLogShareSheet) {
+            if let url = DiagnosticLogger.shared.getLogFileURL() {
+                ActivityView(activityItems: [url])
+            } else {
+                Text("No diagnostics log available.")
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("clearAppData"))) { _ in
+            clearAppData()
+        }
+    }
+
+    private var heroCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Tactical RMM")
+                        .font(.title2.weight(.semibold))
+                    Text("Agent Manager")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                }
+                .contentShape(Rectangle())
+                .onLongPressGesture(minimumDuration: 1.6, maximumDistance: 80) { pressing in
+                    DiagnosticLogger.shared.append("Hero long press state: \(pressing)")
+                } perform: {
+                    DiagnosticLogger.shared.append("Hero long-press triggered diagnostics prompt")
+                    showDiagnosticAlert = true
+                }
+
+                Text("Press and hold the title to export diagnostics or share logs with support.")
+                    .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(0.5))
+
+                if !agents.isEmpty {
+                    let onlineCount = agents.filter { $0.isOnlineStatus }.count
+                    let offlineCount = agents.filter { $0.isOfflineStatus }.count
+
+                    Divider()
+                        .overlay(Color.white.opacity(0.08))
+
+                    HStack(spacing: 16) {
+                        statBadge(title: "Agents", value: String(agents.count), symbol: "desktopcomputer")
+                        statBadge(title: "Online", value: String(onlineCount), symbol: "bolt.horizontal.circle")
+                        statBadge(title: "Offline", value: String(offlineCount), symbol: "moon.zzz")
+                    }
+                }
+            }
+        }
+    }
+
+    private var connectionCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 20) {
+                SectionHeader("Connection", subtitle: "Securely connect to Tactical RMM", systemImage: "lock.shield")
+
+                ModernInputField(
+                    title: "Base URL",
+                    placeholder: "https://api.example.com",
+                    text: $baseURLText,
+                    kind: .text,
+                    keyboard: .URL,
+                    focus: $isInputActive
+                )
+
+                ModernInputField(
+                    title: "API Key",
+                    placeholder: "Enter API Key",
+                    text: $apiKeyText,
+                    kind: .secure,
+                    focus: $isInputActive
+                )
+
+                if baseURLText.isEmpty || apiKeyText.isEmpty {
+                    Text("Please enter both Base URL and API Key")
+                        .font(.footnote)
+                        .foregroundStyle(Color.red)
+                } else if baseURLText.removingTrailingSlash().lowercased() == "demo" && apiKeyText.lowercased() == "demo" {
+                    Button {
+                        DiagnosticLogger.shared.append("Demo mode login triggered.")
+                        isInputActive = false
+                        loadDemoAgents()
+                    } label: {
+                        Label("Enter Demo Mode", systemImage: "play.circle")
+                    }
+                    .primaryButton()
+                } else if let saved = activeSettings,
+                          saved.baseURL == baseURLText,
+                          currentAPIKey() == apiKeyText {
+                    HStack(spacing: 12) {
+                        Button {
+                            DiagnosticLogger.shared.append("Login tapped.")
+                            isInputActive = false
+                            Task { await fetchAgents(using: saved) }
+                        } label: {
+                            Label("Refresh", systemImage: "arrow.clockwise")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .primaryButton()
+
+                        if !hideInstall {
+                            NavigationLink {
+                                InstallAgentView(
+                                    baseURL: baseURLText,
+                                    apiKey: apiKeyText
+                                )
+                            } label: {
+                                Label("Install Agent", systemImage: "square.and.arrow.down")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .primaryButton()
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                } else {
+                    Button {
+                        DiagnosticLogger.shared.append("Save & Login tapped.")
+                        isInputActive = false
+                        Task { await updateSettingsAndFetch() }
+                    } label: {
+                        Label("Save & Connect", systemImage: "link")
+                    }
+                    .primaryButton()
+                }
+
+                Text("Note: Large environments may take longer to load on mobile hardware.")
+                    .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(0.55))
+            }
+        }
+    }
+
+    private var agentsCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 20) {
+                SectionHeader(
+                    "Agents",
+                    subtitle: agents.isEmpty ? "Connect to retrieve your estate" : agentCountText,
+                    systemImage: "list.bullet.rectangle"
+                )
+
+                if !agents.isEmpty || isLoading {
+                    HStack {
+                        Text(agentCountText)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.white.opacity(0.7))
+                        Spacer()
+                        Menu {
+                            Picker("Sort agents", selection: $sortOption) {
+                                ForEach(AgentSortOption.allCases) { option in
+                                    Text(option.title).tag(option)
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.up.arrow.down")
+                                Text(sortOption.chipLabel)
+                            }
+                            .font(.caption.weight(.semibold))
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color.white.opacity(0.08))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                                    )
+                            )
+                        }
+                        .foregroundStyle(Color.cyan)
+                        .menuStyle(.automatic)
+
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                showSearch.toggle()
+                                if showSearch {
+                                    searchFieldIsFocused = true
+                                } else {
+                                    searchText = ""
+                                    appliedSearchText = ""
+                                    searchFieldIsFocused = false
+                                }
+                            }
+                        } label: {
+                            Image(systemName: showSearch ? "magnifyingglass.circle.fill" : "magnifyingglass")
+                                .font(.title3)
+                        }
+                        .foregroundStyle(Color.cyan)
+                    }
+                }
+
+                if showSearch {
+                    HStack {
+                        TextField("Search hostname, OS, or description", text: $searchText)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.white.opacity(0.05))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                    )
+                            )
+                            .focused($searchFieldIsFocused)
+                            .onChange(of: searchText) { _, newValue in
+                                appliedSearchText = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                            }
+
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showSearch = false
+                                searchText = ""
+                                appliedSearchText = ""
+                                searchFieldIsFocused = false
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(Color.white.opacity(0.6))
+                        }
+                    }
+                }
+
+                if isLoading {
+                    ProgressView("Loading agents…")
+                        .progressViewStyle(.circular)
+                        .tint(Color.cyan)
+                } else if let error = errorMessage {
+                    Text("Error: \(error)")
+                        .foregroundStyle(Color.red)
+                        .font(.footnote)
+                } else if filteredAgents.isEmpty {
+                    Text(agents.isEmpty ? "No agents loaded. Save your connection to begin." : "No agents match your search.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else {
+                    LazyVStack(spacing: 16) {
+                        ForEach(sortedAgentsForDisplay) { agent in
+                            NavigationLink {
+                                AgentDetailView(
+                                    agent: agent,
+                                    baseURL: baseURLText,
+                                    apiKey: apiKeyText
+                                )
+                            } label: {
+                                AgentRow(agent: agent, hideSensitiveInfo: hideSensitiveInfo)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func statBadge(title: String, value: String, symbol: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.cyan)
+                Text(title.uppercased())
+                    .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(0.6))
+            }
+            Text(value)
+                .font(.title3.weight(.semibold))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+    }
 
     // MARK: – Helper Methods
 
     private func loadInitialSettings() {
-        if let saved = settingsList.first {
-            baseURLText = saved.baseURL
-            apiKeyText   = KeychainHelper.shared.getAPIKey() ?? ""
+        if activeSettingsUUID.isEmpty, let first = settingsList.first {
+            activeSettingsUUID = first.uuid.uuidString
         }
+        applyActiveSettings()
         if !UserDefaults.standard.bool(forKey: "hasLaunchedBefore") {
             showGuideAlert = true
             UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
@@ -887,9 +1516,8 @@ struct ContentView: View {
 // Fredrik Jerdal 2025
     @MainActor
     private func clearAppData() {
-        // 1) Remove API key from both Keychain and cache
-        KeychainHelper.shared.deleteAPIKey()
-        let apiKeyStillThere = KeychainHelper.shared.getAPIKey() != nil
+        // 1) Remove API keys from both Keychain and cache
+        KeychainHelper.shared.deleteAllAPIKeys()
 
         // 2) Delete persisted SwiftData settings
         for setting in settingsList {
@@ -917,19 +1545,9 @@ struct ContentView: View {
         let coreDataCleared = settingsList.isEmpty && coreDataError == nil
 
         // 5) Only if all three areas are clean, disable FaceID lock
-        if !apiKeyStillThere && coreDataCleared && userDefaultsCleared {
+        if coreDataCleared && userDefaultsCleared {
             useFaceID = false
         } else {
-            if apiKeyStillThere {
-                DiagnosticLogger.shared.appendWarning("API Key still present after deletion, attempting again...")
-                KeychainHelper.shared.deleteAPIKey()
-                let apiKeyStillThere = KeychainHelper.shared.getAPIKey() != nil
-                if apiKeyStillThere {
-                    print("API Key is still present")
-                    // Send notification alert
-                    
-                }
-            }
             if !coreDataCleared {
                 DiagnosticLogger.shared.appendWarning("SwiftData settings still exist after deletion.")
             }
@@ -951,6 +1569,7 @@ struct ContentView: View {
         // 7) Clear UI state and force a fresh launch
         baseURLText = ""
         apiKeyText = ""
+        activeSettingsUUID = ""
 
         // 8) Terminate the app
         exit(0)
@@ -965,15 +1584,20 @@ struct ContentView: View {
            && !baseURLText.lowercased().hasPrefix("https://") {
             baseURLText = "https://" + baseURLText
         }
-        if let saved = settingsList.first {
-            saved.baseURL = baseURLText
-            KeychainHelper.shared.saveAPIKey(apiKeyText)
-            await saveSettingsAndFetch(settings: saved)
+        if let current = activeSettings {
+            current.baseURL = baseURLText
+            ensureIdentifiers(for: current)
+            KeychainHelper.shared.setActiveIdentifier(current.keychainKey)
+            KeychainHelper.shared.saveAPIKey(apiKeyText, identifier: current.keychainKey)
+            await saveSettingsAndFetch(settings: current)
         } else {
             DiagnosticLogger.shared.append("Creating new settings.")
-            let newSettings = RMMSettings(baseURL: baseURLText)
+            let displayName = URL(string: baseURLText)?.host ?? "Instance \(settingsList.count + 1)"
+            let newSettings = RMMSettings(displayName: displayName, baseURL: baseURLText)
             modelContext.insert(newSettings)
-            KeychainHelper.shared.saveAPIKey(apiKeyText)
+            activeSettingsUUID = newSettings.uuid.uuidString
+            KeychainHelper.shared.setActiveIdentifier(newSettings.keychainKey)
+            KeychainHelper.shared.saveAPIKey(apiKeyText, identifier: newSettings.keychainKey)
             await saveSettingsAndFetch(settings: newSettings)
         }
     }
@@ -985,6 +1609,7 @@ struct ContentView: View {
             DiagnosticLogger.shared.append("Settings saved successfully.")
             showSavedAlert = true
             UIApplication.shared.dismissKeyboard()
+            activeSettingsUUID = settings.uuid.uuidString
             await fetchAgents(using: settings)
         } catch {
             DiagnosticLogger.shared.appendError("Error saving settings: \(error.localizedDescription)")
@@ -992,8 +1617,11 @@ struct ContentView: View {
     }
 
     @MainActor
-    private func fetchAgents(using settings: RMMSettings) async {
-        DiagnosticLogger.shared.append("fetchAgents started")
+    private func fetchAgents(using settings: RMMSettings, retryCount: Int = 0) async {
+        let attempt = retryCount + 1
+        DiagnosticLogger.shared.append("fetchAgents started (attempt \(attempt))")
+        let resolved = ensureIdentifiers(for: settings)
+        KeychainHelper.shared.setActiveIdentifier(resolved.keychainKey)
         let sanitizedURL = settings.baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/") else {
             errorMessage = "Invalid URL."
@@ -1004,6 +1632,7 @@ struct ContentView: View {
         errorMessage = nil
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.timeoutInterval = 45
         request.addDefaultHeaders(apiKey: KeychainHelper.shared.getAPIKey() ?? "")
         DiagnosticLogger.shared.logHTTPRequest(
             method: "GET",
@@ -1022,8 +1651,15 @@ struct ContentView: View {
                 switch http.statusCode {
                 case 200:
                     do {
-                        agents = try JSONDecoder().decode([Agent].self, from: data)
-                        DiagnosticLogger.shared.append("Fetched agents: \(agents.count)")
+                        let decoder = JSONDecoder()
+                        if let page = try? decoder.decode(AgentListResponse.self, from: data) {
+                            agents = page.results
+                            let reportedCount = page.count.map { String($0) } ?? "unknown"
+                            DiagnosticLogger.shared.append("Fetched agents via wrapper: \(agents.count) (reported count: \(reportedCount))")
+                        } else {
+                            agents = try decoder.decode([Agent].self, from: data)
+                            DiagnosticLogger.shared.append("Fetched agents via legacy array: \(agents.count)")
+                        }
                     } catch {
                         if let decErr = error as? DecodingError {
                             let message: String
@@ -1052,6 +1688,13 @@ struct ContentView: View {
                 }
             }
         } catch {
+            if let urlError = error as? URLError, urlError.code == .timedOut, retryCount < 1 {
+                DiagnosticLogger.shared.appendWarning("fetchAgents timed out on attempt \(attempt), retrying once.")
+                Task { @MainActor in
+                    await fetchAgents(using: settings, retryCount: retryCount + 1)
+                }
+                return
+            }
             errorMessage = error.localizedDescription
             DiagnosticLogger.shared.appendError("Error fetching agents: \(error.localizedDescription)")
         }
@@ -1107,100 +1750,416 @@ struct ContentView: View {
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Query private var settingsList: [RMMSettings]
+
     @AppStorage("hideInstall") var hideInstall: Bool = false
     @AppStorage("useFaceID") var useFaceID: Bool = false
     @AppStorage("hideSensitive") var hideSensitiveInfo: Bool = false
+    @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
+
     @State private var showResetConfirmation = false
+    @State private var showAddInstanceSheet = false
+    @State private var newInstanceName: String = ""
+    @State private var newInstanceURL: String = ""
+    @State private var newInstanceKey: String = ""
+    @State private var addInstanceError: String?
+    @FocusState private var addInstanceField: AddInstanceField?
+
+    private enum AddInstanceField: Hashable { case name, url, key }
 
     private var authAvailable: Bool {
         LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
     }
 
+    private var activeSettings: RMMSettings? {
+        if let match = settingsList.first(where: { $0.uuid.uuidString == activeSettingsUUID }) {
+            return ensureIdentifiers(for: match)
+        }
+        if let first = settingsList.first {
+            return ensureIdentifiers(for: first)
+        }
+        return nil
+    }
+
+    private var instanceSubtitle: String {
+        if settingsList.isEmpty { return "No active instance" }
+        if let active = activeSettings { return "Active: \(active.displayName)" }
+        return "Select an instance"
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                Form {
-                    Toggle("Hide Install Agent Button", isOn: $hideInstall)
+            ZStack {
+                DarkGradientBackground()
 
-                    Toggle("Face ID App Lock", isOn: $useFaceID)
-                        .disabled(!authAvailable)
-                        .overlay(
-                            Group {
-                                if !authAvailable {
-                                    Text("Requires at least a device passcode or biometric setup")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                        .padding(.top, 4)
-                                }
-                            },
-                            alignment: .bottomLeading
-                        )
-
-                    Toggle("Hide Sensitive Information", isOn: $hideSensitiveInfo)
-                }
-
-                Spacer()
-
-                // Reset App button
-                Button(role: .destructive) {
-                    showResetConfirmation = true
-                } label: {
-                    Label("Delete App Data", systemImage: "exclamationmark.triangle")
-                        .frame(maxWidth: .infinity, minHeight: 10)
-                        .padding()
-                }
-                .buttonStyle(.bordered)
-                .padding(.horizontal)
-                .padding(.bottom, 20)
-                .alert("Delete All App Data?", isPresented: $showResetConfirmation) {
-                    Button("Delete", role: .destructive) {
-                        NotificationCenter.default.post(name: .init("clearAppData"), object: nil)
-                        dismiss()
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        instancesCard
+                        preferencesCard
+                        resourcesCard
+                        dangerCard
+                        footer
                     }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("This will delete all saved settings and API keys and cannot be undone.")
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 28)
                 }
-
-                // Guide button at bottom
-                Button {
-                    UIApplication.shared.open(URL(string: "https://github.com/Jerdal-F/TacticalRMM-Manager")!)
-                } label: {
-                    Label("Guide", systemImage: "globe")
-                        .frame(maxWidth: .infinity, minHeight: 10)
-                        .padding()
-                }
-                .buttonStyle(.bordered)
-                .tint(.blue)
-                .padding(.horizontal)
-                .padding(.bottom, 20)
-
-                // Donate button
-                //Button {
-                //    UIApplication.shared.open(URL(string: "https://buymeacoffee.com/jerdal")!)
-                //} label: {
-                //    Label("Donate", systemImage: "dollarsign.circle")
-                //        .frame(maxWidth: .infinity, minHeight: 10)
-                //        .padding()
-                //}
-                //.buttonStyle(.bordered)
-                //.tint(.blue)
-                //.padding(.horizontal)
-                //.padding(.bottom, 20)
-
-                // Footer
-                Text("This app is an independent project and is not made by or affiliated with Tactical RMM/AmidaWare.")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 20)
             }
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                        .foregroundStyle(Color.cyan)
+                }
+            }
+            .sheet(isPresented: $showAddInstanceSheet) {
+                addInstanceSheet
+            }
+            .alert("Delete All App Data?", isPresented: $showResetConfirmation) {
+                Button("Delete", role: .destructive) {
+                    NotificationCenter.default.post(name: .init("clearAppData"), object: nil)
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will delete all saved settings, API keys, and diagnostics logs. This action cannot be undone.")
+            }
+        }
+    }
+
+    private var instancesCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 18) {
+                SectionHeader("Instances", subtitle: instanceSubtitle, systemImage: "server.rack")
+
+                if settingsList.isEmpty {
+                    Text("No instances configured yet. Add one below to get started.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else {
+                    LazyVStack(spacing: 14) {
+                        ForEach(settingsList) { settings in
+                            instanceRow(for: settings)
+                        }
+                    }
+                }
+
+                Button {
+                    newInstanceName = ""
+                    newInstanceURL = ""
+                    newInstanceKey = ""
+                    addInstanceError = nil
+                    showAddInstanceSheet = true
+                } label: {
+                    Label("Add Instance", systemImage: "plus.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .primaryButton()
+            }
+        }
+    }
+
+    private var preferencesCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 18) {
+                SectionHeader("Preferences", subtitle: "Applies to this device", systemImage: "gearshape")
+
+                settingsToggle(title: "Hide Install Agent Button", isOn: $hideInstall)
+
+                settingsToggle(title: "Hide Sensitive Information", isOn: $hideSensitiveInfo)
+
+                Toggle(isOn: $useFaceID) {
+                    Text("Face ID App Lock")
+                        .font(.callout)
+                        .foregroundStyle(Color.white)
+                }
+                .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+                .disabled(!authAvailable)
+                .opacity(authAvailable ? 1 : 0.4)
+
+                if !authAvailable {
+                    Text("Requires a device passcode or biometrics enabling.")
+                        .font(.caption2)
+                        .foregroundStyle(Color.white.opacity(0.6))
                 }
             }
         }
+    }
+
+    private var resourcesCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Resources", subtitle: "Helpful references", systemImage: "book")
+
+                Button {
+                    if let url = URL(string: "https://github.com/Jerdal-F/TacticalRMM-Manager") {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    Label("Open Project Guide", systemImage: "globe")
+                        .frame(maxWidth: .infinity)
+                }
+                .secondaryButton()
+            }
+        }
+    }
+
+    private var dangerCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Danger Zone", subtitle: "Irreversible actions", systemImage: "exclamationmark.triangle")
+
+                Button(role: .destructive) {
+                    showResetConfirmation = true
+                } label: {
+                    Label("Delete App Data", systemImage: "trash")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+            }
+        }
+    }
+
+    private var footer: some View {
+        Text("This app is an independent project and is not affiliated with Tactical RMM or AmidaWare.")
+            .font(.footnote)
+            .foregroundStyle(Color.white.opacity(0.55))
+            .multilineTextAlignment(.center)
+            .padding(.horizontal)
+    }
+
+    private func instanceRow(for settings: RMMSettings) -> some View {
+        let resolved = ensureIdentifiers(for: settings)
+        let isActive = resolved.uuid.uuidString == activeSettingsUUID
+
+        return HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(resolved.displayName)
+                        .font(.headline)
+                    if isActive {
+                        Text("ACTIVE")
+                            .font(.caption2.weight(.bold))
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(Color.cyan.opacity(0.2))
+                            )
+                    }
+                }
+                Text(resolved.baseURL)
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.7))
+                    .textSelection(.enabled)
+            }
+
+            Spacer(minLength: 0)
+
+            Menu {
+                if !isActive {
+                    Button("Set Active") {
+                        setActiveInstance(resolved, triggerReload: true)
+                    }
+                }
+
+                if settingsList.count > 1 {
+                    Button("Delete Instance", role: .destructive) {
+                        deleteInstance(resolved)
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title3)
+                    .foregroundStyle(Color.white.opacity(0.8))
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(isActive ? 0.12 : 0.05))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(isActive ? Color.cyan.opacity(0.5) : Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+    }
+
+    @ViewBuilder
+    private var addInstanceSheet: some View {
+        NavigationStack {
+            ZStack {
+                DarkGradientBackground()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        SectionHeader("New Instance", subtitle: "Enter connection details", systemImage: "server.rack")
+
+                        inputField(title: "Display Name", placeholder: "Server Name", text: $newInstanceName)
+                            .focused($addInstanceField, equals: .name)
+
+                        inputField(title: "Base URL", placeholder: "https://api.example.com", text: $newInstanceURL)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .focused($addInstanceField, equals: .url)
+
+                        inputField(title: "API Key", placeholder: "Paste API key", text: $newInstanceKey, isSecure: true)
+                            .focused($addInstanceField, equals: .key)
+
+                        if let addInstanceError {
+                            Text(addInstanceError)
+                                .font(.footnote)
+                                .foregroundStyle(Color.red)
+                        }
+                    }
+                    .padding(24)
+                }
+            }
+            .navigationTitle("Add Instance")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showAddInstanceSheet = false }
+                        .foregroundStyle(Color.cyan)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { createInstance() }
+                        .foregroundStyle(Color.cyan)
+                        .disabled(newInstanceName.trimmingCharacters(in: .whitespaces).isEmpty ||
+                                  newInstanceURL.trimmingCharacters(in: .whitespaces).isEmpty ||
+                                  newInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear {
+                addInstanceField = .name
+            }
+        }
+        .presentationDetents([.fraction(0.55), .large])
+    }
+
+    private func settingsToggle(title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .font(.callout)
+                .foregroundStyle(Color.white)
+        }
+        .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+    }
+
+    private func inputField(title: String, placeholder: String, text: Binding<String>, isSecure: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title.uppercased())
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.6))
+                .kerning(1.2)
+            Group {
+                if isSecure {
+                    SecureField(placeholder, text: text)
+                } else {
+                    TextField(placeholder, text: text)
+                        .autocorrectionDisabled(true)
+                }
+            }
+            .textInputAutocapitalization(.never)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+        }
+    }
+
+    @discardableResult
+    private func ensureIdentifiers(for settings: RMMSettings) -> RMMSettings {
+        if settings.keychainKey.isEmpty {
+            settings.keychainKey = "apiKey_\(settings.uuid.uuidString)"
+        }
+        if settings.displayName.isEmpty {
+            settings.displayName = settings.baseURL
+        }
+        return settings
+    }
+
+    private func setActiveInstance(_ settings: RMMSettings, triggerReload: Bool = false) {
+        let resolved = ensureIdentifiers(for: settings)
+        activeSettingsUUID = resolved.uuid.uuidString
+        KeychainHelper.shared.setActiveIdentifier(resolved.keychainKey)
+        if triggerReload {
+            NotificationCenter.default.post(name: .init("reloadAgents"), object: resolved)
+        }
+    }
+
+    private func deleteInstance(_ settings: RMMSettings) {
+        let resolved = ensureIdentifiers(for: settings)
+        KeychainHelper.shared.deleteAPIKey(identifier: resolved.keychainKey)
+        let remaining = settingsList.filter { $0.uuid != resolved.uuid }
+        modelContext.delete(resolved)
+        do {
+            try modelContext.save()
+            DiagnosticLogger.shared.append("Deleted settings instance \(resolved.displayName)")
+        } catch {
+            DiagnosticLogger.shared.appendError("Failed to delete instance: \(error.localizedDescription)")
+        }
+
+        if remaining.isEmpty {
+            activeSettingsUUID = ""
+        } else if resolved.uuid.uuidString == activeSettingsUUID {
+            if let newActive = remaining.first {
+                setActiveInstance(newActive, triggerReload: true)
+            }
+        }
+    }
+
+    private func createInstance() {
+        let trimmedName = newInstanceName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedURL = newInstanceURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedKey = newInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedName.isEmpty else {
+            addInstanceError = "Provide a display name."
+            addInstanceField = .name
+            return
+        }
+        guard !trimmedURL.isEmpty else {
+            addInstanceError = "Provide the base URL."
+            addInstanceField = .url
+            return
+        }
+        guard !trimmedKey.isEmpty else {
+            addInstanceError = "Provide the API key."
+            addInstanceField = .key
+            return
+        }
+
+        let normalizedURL = normalizeBaseURL(trimmedURL)
+        let newSettings = RMMSettings(displayName: trimmedName, baseURL: normalizedURL.removingTrailingSlash())
+        modelContext.insert(newSettings)
+
+        KeychainHelper.shared.saveAPIKey(trimmedKey, identifier: newSettings.keychainKey)
+        activeSettingsUUID = newSettings.uuid.uuidString
+        KeychainHelper.shared.setActiveIdentifier(newSettings.keychainKey)
+
+        do {
+            try modelContext.save()
+            DiagnosticLogger.shared.append("Created new instance \(trimmedName)")
+            showAddInstanceSheet = false
+            NotificationCenter.default.post(name: .init("reloadAgents"), object: newSettings)
+        } catch {
+            addInstanceError = "Failed to save: \(error.localizedDescription)"
+        }
+    }
+
+    private func normalizeBaseURL(_ raw: String) -> String {
+        let lower = raw.lowercased()
+        if lower == "demo" { return "demo" }
+        if lower.hasPrefix("http://") || lower.hasPrefix("https://") {
+            return raw
+        }
+        return "https://" + raw
     }
 }
 
@@ -1240,95 +2199,40 @@ struct InstallAgentView: View {
 
     var body: some View {
         ZStack {
-            Form {
-                if isLoadingClients {
-                    ProgressView("Loading clients...")
-                } else if let errorMessage = errorMessage {
-                    Text("Error: \(errorMessage)")
-                        .foregroundColor(.red)
-                } else {
-                    Section(header: Text("Client & Site")) {
-                        Picker("Client", selection: $selectedClientId) {
-                            Text("Select...").tag(Int?.none)
-                            ForEach(clients) { client in
-                                Text(client.name).tag(Int?(client.id))
-                            }
-                        }
-                        .onChange(of: selectedClientId) { old, new in
-                            if let id = new, let client = clients.first(where: { $0.id == id }) {
-                                sites = client.sites
-                                selectedSiteId = nil
-                            }
-                        }
+            DarkGradientBackground()
 
-                        Picker("Site", selection: $selectedSiteId) {
-                            Text("Select...").tag(Int?.none)
-                            ForEach(sites) { site in
-                                Text(site.name).tag(Int?(site.id))
-                            }
-                        }
-                    }
-
-                    Section(header: Text("Settings")) {
-                        Picker("Agent Type", selection: $agentType) {
-                            Text("Server").tag("server")
-                            Text("Workstation").tag("workstation")
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: agentType) {
-                            if agentType == "server" {
-                                power = false
-                                print("Switched to Server → power reset")
-                            }
-                        }
-
-
-                        
-                        Picker("Architecture", selection: $arch) {
-                            Text("64 bit").tag("amd64")
-                            Text("32 bit").tag("386")
-                        }
-                        .pickerStyle(SegmentedPickerStyle())
-
-                        Toggle("Disable sleep/hibernate", isOn: $power)
-                            .disabled(agentType == "server")
-                            .opacity(agentType == "server" ? 0.5 : 1.0)
-
-                        Toggle("Enable RDP", isOn: $rdp)
-                        Toggle("Enable Ping", isOn: $ping)
-
-                        
-
-                        HStack {
-                            Text("Expires (hrs)")
-                            TextField("Hours", text: $expires)
-                                .keyboardType(.numberPad)
-                                .frame(width: 60)
-                        }
-                    }
-
-                    Section {
-                        Button("Download Installer") {
-                            Task { await generateInstaller() }
-                        }
-                        .disabled(isGenerating || selectedClientId == nil || selectedSiteId == nil)
-                    }
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    destinationCard
+                    settingsCard
+                    downloadCard
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
             }
-            .navigationTitle("Install Windows Agent")
-            .task { await fetchClients() }
-            .sheet(isPresented: $showShareSheet) {
-                if let url = installerURL {
-                    ActivityView(activityItems: [url])
-                }
+
+            if isLoadingClients {
+                loadingOverlay(message: "Loading clients…")
             }
 
             if isGenerating {
-                Color.black.opacity(0.3).ignoresSafeArea()
-                ProgressView("Generating installer…")
-                    .padding()
-                    .background(.regularMaterial)
-                    .cornerRadius(8)
+                loadingOverlay(message: "Generating installer…")
+            }
+        }
+        .navigationTitle("Install Windows Agent")
+        .task { await fetchClients() }
+        .sheet(isPresented: $showShareSheet) {
+            if let url = installerURL {
+                ActivityView(activityItems: [url])
+            }
+        }
+        .onChange(of: selectedClientId) { _, newValue in
+            if let id = newValue, let client = clients.first(where: { $0.id == id }) {
+                sites = client.sites
+                selectedSiteId = nil
+            } else {
+                sites = []
+                selectedSiteId = nil
             }
         }
     }
@@ -1412,6 +2316,250 @@ struct InstallAgentView: View {
         }
         isGenerating = false
     }
+
+    private var destinationCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 18) {
+                SectionHeader("Destination", subtitle: destinationSubtitle, systemImage: "building.2")
+
+                if let errorMessage {
+                    statusBanner(message: errorMessage, isError: true)
+                }
+
+                if clients.isEmpty && !isLoadingClients && errorMessage == nil {
+                    Text("No clients available. Verify your permissions or refresh.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                }
+
+                selectionMenu(title: "Client", value: selectedClientName, placeholder: "Select a client", disabled: clients.isEmpty) {
+                    Button("Clear Selection", role: .destructive) {
+                        selectedClientId = nil
+                    }
+                    ForEach(clients) { client in
+                        Button(client.name) {
+                            selectedClientId = client.id
+                        }
+                    }
+                }
+
+                selectionMenu(title: "Site", value: selectedSiteName, placeholder: "Select a site", disabled: sites.isEmpty) {
+                    Button("Clear Selection", role: .destructive) {
+                        selectedSiteId = nil
+                    }
+                    ForEach(sites) { site in
+                        Button(site.name) {
+                            selectedSiteId = site.id
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var settingsCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 18) {
+                SectionHeader("Installer Settings", subtitle: "Configure agent options", systemImage: "slider.horizontal.3")
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Agent Type")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.6))
+                    Picker("Agent Type", selection: $agentType) {
+                        Text("Server").tag("server")
+                        Text("Workstation").tag("workstation")
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: agentType) { _, newValue in
+                        if newValue == "server" {
+                            power = false
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Architecture")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.6))
+                    Picker("Architecture", selection: $arch) {
+                        Text("64 bit").tag("amd64")
+                        Text("32 bit").tag("386")
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                VStack(spacing: 12) {
+                    toggleRow(title: "Disable sleep/hibernate", isOn: $power, disabled: agentType == "server")
+                    toggleRow(title: "Enable RDP", isOn: $rdp)
+                    toggleRow(title: "Enable Ping", isOn: $ping)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Expires (hours)")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.6))
+                    HStack(spacing: 12) {
+                        Image(systemName: "hourglass")
+                            .foregroundStyle(Color.cyan)
+                        TextField("24", text: $expires)
+                            .keyboardType(.numberPad)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.white.opacity(0.05))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+                }
+            }
+        }
+    }
+
+    private var downloadCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 18) {
+                SectionHeader("Generate Installer", subtitle: "Download and share the agent", systemImage: "square.and.arrow.down")
+
+                if let installerURL {
+                    Text("Installer ready: \(installerURL.lastPathComponent)")
+                        .font(.footnote)
+                        .foregroundStyle(Color.green)
+                        .textSelection(.enabled)
+                }
+
+                if generateDisabled {
+                    Text("Select a client and site to enable the download button.")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.6))
+                }
+
+                Button {
+                    Task { await generateInstaller() }
+                } label: {
+                    Label("Download Installer", systemImage: "icloud.and.arrow.down")
+                        .frame(maxWidth: .infinity)
+                }
+                .primaryButton()
+                .disabled(generateDisabled)
+                .opacity(generateDisabled ? 0.5 : 1)
+
+                Text("Installer expires after the specified duration. Share directly from the completion prompt.")
+                    .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(0.55))
+            }
+        }
+    }
+
+    private var generateDisabled: Bool {
+        isGenerating || selectedClientId == nil || selectedSiteId == nil
+    }
+
+    private var destinationSubtitle: String {
+        if isLoadingClients { return "Loading…" }
+        if let client = selectedClientName.nonEmpty, let site = selectedSiteName.nonEmpty {
+            return "\(client) • \(site)"
+        }
+        return "Choose where to deploy"
+    }
+
+    private var selectedClientName: String {
+        if let id = selectedClientId, let client = clients.first(where: { $0.id == id }) {
+            return client.name
+        }
+        return ""
+    }
+
+    private var selectedSiteName: String {
+        if let id = selectedSiteId, let site = sites.first(where: { $0.id == id }) {
+            return site.name
+        }
+        return ""
+    }
+
+    private func selectionMenu<Content: View>(title: String, value: String, placeholder: String, disabled: Bool, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(.caption2)
+                .foregroundStyle(Color.white.opacity(0.55))
+            Menu {
+                content()
+            } label: {
+                HStack {
+                    Text(value.nonEmpty ?? placeholder)
+                        .font(.callout)
+                        .foregroundStyle(value.nonEmpty == nil ? Color.white.opacity(0.55) : Color.white)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.6))
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.white.opacity(0.05))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                )
+            }
+            .disabled(disabled)
+        }
+    }
+
+    private func toggleRow(title: String, isOn: Binding<Bool>, disabled: Bool = false) -> some View {
+        Toggle(isOn: isOn) {
+            Text(title)
+                .font(.callout)
+                .foregroundStyle(Color.white)
+        }
+        .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+        .disabled(disabled)
+        .opacity(disabled ? 0.4 : 1)
+    }
+
+    private func statusBanner(message: String, isError: Bool) -> some View {
+        let tint: Color = isError ? .red : .green
+        let icon = isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+        return HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+            Text(message)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private func loadingOverlay(message: String) -> some View {
+        ZStack {
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+            ProgressView(message)
+                .padding()
+                .background(.ultraThinMaterial)
+                .cornerRadius(12)
+        }
+    }
 }
 
 
@@ -1428,9 +2576,9 @@ struct AgentDetailView: View {
     @State private var meshCentralResponse: MeshCentralResponse?
     @State private var isLoadingMeshCentral: Bool = false
     @State private var meshCentralError: String? = nil
-    @State private var showShutdownConfirmation: Bool = false
-    @State private var showRebootConfirmation: Bool = false
+    @State private var pendingPowerAction: PowerActionType?
     @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
+    @State private var hasLoadedDetailsOnce: Bool = false
     
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
@@ -1654,192 +2802,490 @@ struct AgentDetailView: View {
         let fields = updatedAgent?.custom_fields ?? agent.custom_fields ?? []
         return fields.filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
-    
-    var body: some View {
-        let displayAgent = updatedAgent ?? agent
-        // Compute the serial to show:
-        let serialToShow =
-            updatedAgent?.serial_number  // freshest value, if present
-            ?? agent.serial_number       // else whatever we got from the list
-            ?? ""                        // else empty
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Agent: \(displayAgent.hostname)")
-                    .font(.title)
-                    .textSelection(.enabled)
-                Text("Operating System: \(displayAgent.operating_system)")
-                    .font(.subheadline)
-                    .textSelection(.enabled)
-                if let description = displayAgent.description, !description.isEmpty {
-                    Text("Description: \(description)")
-                        .font(.subheadline)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("CPU: \(displayAgent.cpu_model.joined(separator: ", "))")
-                    Text("GPU: \(displayAgent.graphics ?? "No GPU available")")
-                    Text("Model: \(displayAgent.make_model ?? "Not available")")
-                    Text("Serial Number: " +
-                         (hideSensitiveInfo
-                           ? "••••••"
-                           : (serialToShow.isEmpty ? "N/A" : serialToShow))
-                    )
-                    .font(.subheadline)
-                    .textSelection(.enabled)
-                }
-                .font(.subheadline)
-                .textSelection(.enabled)
-                let lanIPText = displayAgent.local_ips?.ipv4Only().isEmpty == false ?
-                    displayAgent.local_ips!.ipv4Only() : "No LAN IP available"
-                Text(
-                  hideSensitiveInfo
-                    ? "IP Addresses: ••••••"
-                    : "LAN IP: \(lanIPText) | Public IP: \(displayAgent.public_ip ?? "No IP available")"
-                )
-                .font(.subheadline)
-                if let disks = displayAgent.physical_disks, !disks.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Physical Disks:")
-                            .font(.subheadline)
+
+    private enum PowerActionType: String, Identifiable {
+        case reboot
+        case shutdown
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .reboot: return "Confirm Reboot"
+            case .shutdown: return "Confirm Shutdown"
+            }
+        }
+
+        var message: String {
+            switch self {
+            case .reboot: return "Are you sure you want to reboot this agent?"
+            case .shutdown: return "Are you sure you want to shutdown this agent?"
+            }
+        }
+
+        var confirmLabel: String {
+            switch self {
+            case .reboot: return "Reboot"
+            case .shutdown: return "Shutdown"
+            }
+        }
+    }
+
+    private var currentAgent: Agent { updatedAgent ?? agent }
+
+    private var descriptionText: String? {
+        guard let text = currentAgent.description?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return nil }
+        return text
+    }
+
+    private var serialDisplay: String {
+        let serial = updatedAgent?.serial_number ?? agent.serial_number ?? ""
+        if hideSensitiveInfo { return "••••••" }
+        return serial.isEmpty ? "N/A" : serial
+    }
+
+    private var cpuDisplay: String {
+        let models = currentAgent.cpu_model.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        return models.isEmpty ? "N/A" : models.joined(separator: ", ")
+    }
+
+    private var gpuDisplay: String {
+        currentAgent.graphics?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? "No GPU available"
+    }
+
+    private var modelDisplay: String {
+        currentAgent.make_model?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? "Not available"
+    }
+
+    private var disksDisplayText: String {
+        let disks = currentAgent.physical_disks?.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty } ?? []
+        return disks.isEmpty ? "N/A" : disks.joined(separator: "\n")
+    }
+
+    private var siteDisplay: String {
+        hideSensitiveInfo ? "••••••" : (currentAgent.site_name?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? "Not available")
+    }
+
+    private var lanDisplay: String {
+        guard !hideSensitiveInfo else { return "••••••" }
+        if let lan = currentAgent.local_ips?.ipv4Only().trimmingCharacters(in: .whitespacesAndNewlines), !lan.isEmpty {
+            return lan
+        }
+        return "No LAN IP available"
+    }
+
+    private var publicDisplay: String {
+        guard !hideSensitiveInfo else { return "••••••" }
+        return currentAgent.public_ip?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? "No IP available"
+    }
+
+    private var statusLabel: String {
+        currentAgent.status.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? "Unknown"
+    }
+
+    private var statusColor: Color {
+        if currentAgent.isOnlineStatus { return Color.green }
+        if currentAgent.isOfflineStatus { return Color.red }
+        return Color.orange
+    }
+
+    private var lastSeenDisplay: String {
+        formattedLastSeen(from: currentAgent.last_seen)
+    }
+
+    private var uptimeDisplay: String {
+        formattedUptime(from: currentAgent.boot_time)
+    }
+
+    private var overviewCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(currentAgent.hostname)
+                            .font(.title2.weight(.semibold))
                             .textSelection(.enabled)
-                        ForEach(disks, id: \.self) { disk in
-                            Text("- \(disk)")
-                                .font(.subheadline)
-                                .textSelection(.enabled)
-                        }
+                        Text(currentAgent.operating_system)
+                            .font(.subheadline)
+                            .foregroundStyle(Color.white.opacity(0.7))
+                            .textSelection(.enabled)
                     }
-                } else {
-                    Text("Physical Disks: N/A")
-                        .font(.subheadline)
-                }
-                Text("Site: " +
-                     (hideSensitiveInfo
-                       ? "••••••"
-                       : (displayAgent.site_name ?? "Not available"))
-                )
-                .font(.subheadline)
-                Text("Last Seen: \(formattedLastSeen(from: displayAgent.last_seen))")
-                    .font(.subheadline)
-                Text("Uptime \(formattedUptime(from: displayAgent.boot_time))")
-                    .font(.subheadline)
-                if isProcessing { ProgressView() }
-                if let message = message {
-                    Text(message)
-                        .foregroundColor(.red)
-                        .multilineTextAlignment(.center)
+                    Spacer()
+                    statusPill
                 }
 
-                GeometryReader { geo in
-                    let columns = [
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ]
-                    
-                    LazyVGrid(columns: columns, spacing: 10) {
-                        Button("Reboot") {
-                            showRebootConfirmation = true
-                        }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(.borderedProminent)
-
-                        Button("Shutdown") {
-                            showShutdownConfirmation = true
-                        }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(.borderedProminent)
-
-                        Button("Wake-On-Lan") {
-                            Task { await performWakeOnLan() }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(.borderedProminent)
-
-                        NavigationLink("Processes") {
-                            AgentProcessesView(
-                                agentId: agent.agent_id,
-                                baseURL: baseURL,
-                                apiKey: effectiveAPIKey
-                            )
-                        }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(.borderedProminent)
-
-                        NavigationLink("Send Command") {
-                            SendCommandView(
-                                agentId: agent.agent_id,
-                                baseURL: baseURL,
-                                apiKey: effectiveAPIKey
-                            )
-                        }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(.borderedProminent)
-
-                        NavigationLink("Notes") {
-                            AgentNotesView(
-                                agentId: agent.agent_id,
-                                baseURL: baseURL,
-                                apiKey: effectiveAPIKey
-                            )
-                        }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(.borderedProminent)
-
-                        NavigationLink("Tasks") {
-                            AgentTasksView(
-                                agentId: agent.agent_id,
-                                baseURL: baseURL,
-                                apiKey: effectiveAPIKey
-                            )
-                        }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(.borderedProminent)
-
-                        NavigationLink("Checks") {
-                            AgentChecksView(
-                                agentId: agent.agent_id,
-                                baseURL: baseURL,
-                                apiKey: effectiveAPIKey
-                            )
-                        }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(.borderedProminent)
-
-                        NavigationLink("Custom Fields") {
-                            AgentCustomFieldsView(customFields: nonEmptyCustomFields)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(.borderedProminent)
-                        .disabled(nonEmptyCustomFields.isEmpty)
-                        .opacity(nonEmptyCustomFields.isEmpty ? 0.5 : 1.0)
-                    }
-                    .frame(width: geo.size.width)
+                if let descriptionText {
+                    Text(descriptionText)
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.7))
+                        .textSelection(.enabled)
                 }
-                .alert("Confirm Shutdown", isPresented: $showShutdownConfirmation) {
-                    Button("Shutdown", role: .destructive) {
-                        Task {
-                            DiagnosticLogger.shared.append("Shutdown command confirmed by user.")
-                            await performAction(action: "shutdown")
-                        }
+
+                infoRow("Site", value: siteDisplay, systemImage: "building.2")
+            }
+        }
+    }
+
+    private var hardwareCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Hardware", subtitle: "Key system specs", systemImage: "cpu")
+                infoRow("CPU", value: cpuDisplay, systemImage: "cpu")
+                infoRow("GPU", value: gpuDisplay, systemImage: "display")
+                infoRow("Model", value: modelDisplay, systemImage: "macmini.fill")
+                infoRow("Serial", value: serialDisplay, systemImage: "barcode")
+                infoRow("Physical Disks", value: disksDisplayText, systemImage: "internaldrive")
+            }
+        }
+    }
+
+    private var networkCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Network", subtitle: "Connectivity overview", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                infoRow("LAN IP", value: lanDisplay, systemImage: "network")
+                infoRow("Public IP", value: publicDisplay, systemImage: "globe")
+            }
+        }
+    }
+
+    private var insightCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Insight", subtitle: "Recent activity", systemImage: "clock")
+                infoRow("Status", value: statusLabel, systemImage: "dot.radiowaves.left.and.right", tint: statusColor)
+                infoRow("Last Seen", value: lastSeenDisplay, systemImage: "clock.arrow.circlepath")
+                infoRow("Uptime", value: uptimeDisplay, systemImage: "timer")
+            }
+        }
+    }
+
+    private var powerCard: some View {
+        let columns = [GridItem(.flexible()), GridItem(.flexible())]
+        return GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Power Controls", subtitle: "Send remote power actions", systemImage: "bolt.fill")
+                LazyVGrid(columns: columns, spacing: 16) {
+                    Button {
+                        pendingPowerAction = .reboot
+                    } label: {
+                        AgentActionTile(
+                            title: "Reboot",
+                            subtitle: "Graceful restart",
+                            systemImage: "arrow.clockwise.circle.fill",
+                            tint: Color.orange
+                        )
                     }
-                    Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Are you sure you want to shutdown?")
+                    .buttonStyle(.plain)
+
+                    Button {
+                        pendingPowerAction = .shutdown
+                    } label: {
+                        AgentActionTile(
+                            title: "Shutdown",
+                            subtitle: "Power down agent",
+                            systemImage: "power.circle.fill",
+                            tint: Color.red
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        Task { await performWakeOnLan() }
+                    } label: {
+                        AgentActionTile(
+                            title: "Wake",
+                            subtitle: "Wake-on-LAN",
+                            systemImage: "dot.radiowaves.up.forward",
+                            tint: Color.green
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
-                .alert("Confirm Reboot", isPresented: $showRebootConfirmation) {
-                    Button("Reboot", role: .destructive) {
-                        Task {
-                            DiagnosticLogger.shared.append("Reboot command confirmed by user.")
-                            await performAction(action: "reboot")
-                        }
-                    }
-                    Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Are you sure you want to reboot?")
+
+                if let message, !message.isEmpty {
+                    powerMessageView(message)
                 }
             }
-            .padding()
+        }
+    }
+
+    private var managementCard: some View {
+        let columns = [GridItem(.flexible()), GridItem(.flexible())]
+        return GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Management", subtitle: "Inspect or interact", systemImage: "rectangle.connected.to.line.below")
+                LazyVGrid(columns: columns, spacing: 16) {
+                    NavigationLink {
+                        AgentProcessesView(
+                            agentId: agent.agent_id,
+                            baseURL: baseURL,
+                            apiKey: effectiveAPIKey
+                        )
+                    } label: {
+                        AgentActionTile(
+                            title: "Processes",
+                            subtitle: "Running tasks",
+                            systemImage: "chart.bar.doc.horizontal.fill",
+                            tint: Color.cyan
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
+                        SendCommandView(
+                            agentId: agent.agent_id,
+                            baseURL: baseURL,
+                            apiKey: effectiveAPIKey
+                        )
+                    } label: {
+                        AgentActionTile(
+                            title: "Command",
+                            subtitle: "Run scripts",
+                            systemImage: "terminal.fill",
+                            tint: Color.purple
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
+                        AgentNotesView(
+                            agentId: agent.agent_id,
+                            baseURL: baseURL,
+                            apiKey: effectiveAPIKey
+                        )
+                    } label: {
+                        AgentActionTile(
+                            title: "Notes",
+                            subtitle: "Technician notes",
+                            systemImage: "note.text",
+                            tint: Color.blue
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
+                        AgentTasksView(
+                            agentId: agent.agent_id,
+                            baseURL: baseURL,
+                            apiKey: effectiveAPIKey
+                        )
+                    } label: {
+                        AgentActionTile(
+                            title: "Tasks",
+                            subtitle: "Scheduled jobs",
+                            systemImage: "checklist",
+                            tint: Color.teal
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
+                        AgentChecksView(
+                            agentId: agent.agent_id,
+                            baseURL: baseURL,
+                            apiKey: effectiveAPIKey
+                        )
+                    } label: {
+                        AgentActionTile(
+                            title: "Checks",
+                            subtitle: "Health status",
+                            systemImage: "waveform.path.ecg",
+                            tint: Color.orange
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
+                        AgentCustomFieldsView(customFields: nonEmptyCustomFields)
+                    } label: {
+                        AgentActionTile(
+                            title: "Custom Fields",
+                            subtitle: "Metadata",
+                            systemImage: "doc.text.fill",
+                            tint: Color.indigo
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(nonEmptyCustomFields.isEmpty ? 0.45 : 1.0)
+                    .allowsHitTesting(!nonEmptyCustomFields.isEmpty)
+                }
+            }
+        }
+    }
+
+    private var statusPill: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 10, height: 10)
+            Text(statusLabel)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(statusColor)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(
+            Capsule(style: .continuous)
+                .fill(statusColor.opacity(0.16))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(statusColor.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private func infoRow(_ title: String, value: String, systemImage: String, tint: Color? = nil) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.cyan)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title.uppercased())
+                    .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(0.55))
+                Text(value)
+                    .font(.body)
+                    .foregroundStyle(tint ?? Color.white)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func powerMessageView(_ message: String) -> some View {
+        let tint = messageColor(for: message)
+        let icon = messageIcon(for: message)
+        return HStack(alignment: .center, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+            Text(message)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .multilineTextAlignment(.leading)
+                .textSelection(.enabled)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.15))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private func messageColor(for message: String) -> Color {
+        let lower = message.lowercased()
+        if lower.contains("success") || lower.contains("sent") || lower.contains("completed") {
+            return .green
+        }
+        if lower.contains("error") || lower.contains("fail") || lower.contains("invalid") || lower.contains("http") {
+            return .red
+        }
+        return .orange
+    }
+
+    private func messageIcon(for message: String) -> String {
+        let lower = message.lowercased()
+        if lower.contains("success") || lower.contains("sent") || lower.contains("completed") {
+            return "checkmark.circle.fill"
+        }
+        if lower.contains("error") || lower.contains("fail") || lower.contains("invalid") || lower.contains("http") {
+            return "exclamationmark.triangle.fill"
+        }
+        return "info.circle.fill"
+    }
+
+    private struct AgentActionTile: View {
+        let title: String
+        let subtitle: String?
+        let systemImage: String
+        let tint: Color
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.title3)
+                    .foregroundStyle(tint)
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(Color.white)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                        .lineLimit(2)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(tint.opacity(0.18))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(tint.opacity(0.35), lineWidth: 1)
+                    )
+            )
+        }
+    }
+    
+    var body: some View {
+        ZStack {
+            DarkGradientBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    overviewCard
+                    hardwareCard
+                    networkCard
+                    insightCard
+                    powerCard
+                    managementCard
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
+            }
+
+            if isProcessing {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                ProgressView("Working…")
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(12)
+            }
+        }
+        .navigationTitle(currentAgent.hostname)
+        .navigationBarTitleDisplayMode(.inline)
+        .alert(item: $pendingPowerAction) { action in
+            Alert(
+                title: Text(action.title),
+                message: Text(action.message),
+                primaryButton: .destructive(Text(action.confirmLabel)) {
+                    Task {
+                        switch action {
+                        case .reboot:
+                            DiagnosticLogger.shared.append("Reboot command confirmed by user.")
+                        case .shutdown:
+                            DiagnosticLogger.shared.append("Shutdown command confirmed by user.")
+                        }
+                        await performAction(action: action.rawValue)
+                    }
+                },
+                secondaryButton: .cancel()
+            )
         }
         .onAppear {
             DiagnosticLogger.shared.append("AgentDetailView onAppear")
+            guard !hasLoadedDetailsOnce else { return }
+            hasLoadedDetailsOnce = true
             Task { await fetchAgentDetail() }
         }
     }
@@ -1859,6 +3305,8 @@ struct SendCommandView: View {
     @State private var outputText: String = ""
     @State private var statusMessage: String? = nil
     @State private var isProcessing: Bool = false
+    @FocusState private var timeoutFocused: Bool
+    @FocusState private var commandFocused: Bool
     
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
@@ -1866,80 +3314,197 @@ struct SendCommandView: View {
     
     var body: some View {
         ZStack {
-            Form {
-                Section(header: Text("Command Options")) {
-                    Picker("Shell", selection: $selectedShell) {
-                        Text("CMD").tag("cmd")
-                        Text("Powershell").tag("powershell")
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    
-                    HStack {
-                        Text("Timeout:")
-                        TextField("Timeout", text: $timeout)
-                            .keyboardType(.numberPad)
-                    }
-                    
-                    Toggle("Run as user", isOn: $runAsUser)
-                    
-                    Button("Send") {
-                        UIApplication.shared.dismissKeyboard()
-                        Task { await sendCommand() }
-                    }
-                    .buttonStyle(.borderedProminent)
+            DarkGradientBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    executionCard
+                    commandCard
+                    outputCard
                 }
-                
-                Section(header: Text("Command")) {
-                    TextEditor(text: $command)
-                        .frame(minHeight: 150)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 5)
-                                .stroke(Color.gray.opacity(0.5))
-                        )
-                }
-                
-                Section(header:
-                    HStack {
-                        Text("Output")
-                        Spacer()
-                        if let status = statusMessage {
-                            Text(status)
-                                .foregroundColor(status == "Command sent successfully!" ? .green : .red)
-                        }
-                    }
-                ) {
-                    let processedOutput = outputText
-                        .replacingOccurrences(of: "\\r", with: "")
-                        .replacingOccurrences(of: "\r", with: "")
-                        .replacingOccurrences(of: "/r", with: "")
-                        .replacingOccurrences(of: "\\n", with: "\n")
-                        .replacingOccurrences(of: "\"\"", with: "")
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                    
-                    TextEditor(text: .constant(processedOutput.isEmpty ? "No output" : processedOutput))
-                        .frame(minHeight: 150)
-                        .disabled(true)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 5)
-                                .stroke(Color.gray.opacity(0.5))
-                        )
-                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
             }
-            
+
             if isProcessing {
-                ZStack {
-                    Color.black.opacity(0.3)
-                        .ignoresSafeArea()
-                    ProgressView("Sending Command...")
-                        .progressViewStyle(CircularProgressViewStyle())
-                        .tint(.white)
-                        .padding()
-                        .background(Color.gray)
-                        .cornerRadius(10)
-                }
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                ProgressView("Sending Command…")
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(12)
             }
         }
         .navigationTitle("Send Command")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private var processedOutput: String {
+        outputText
+            .replacingOccurrences(of: "\\r", with: "")
+            .replacingOccurrences(of: "\r", with: "")
+            .replacingOccurrences(of: "/r", with: "")
+            .replacingOccurrences(of: "\\n", with: "\n")
+            .replacingOccurrences(of: "\"\"", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private var trimmedCommand: String {
+        command.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private var executionCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 18) {
+                SectionHeader("Execution", subtitle: "Configure remote command", systemImage: "terminal")
+                Picker("Shell", selection: $selectedShell) {
+                    Text("CMD").tag("cmd")
+                    Text("PowerShell").tag("powershell")
+                }
+                .pickerStyle(.segmented)
+
+                HStack(spacing: 12) {
+                    Image(systemName: "timer")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.cyan)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("TIMEOUT (SECONDS)")
+                            .font(.caption2)
+                            .foregroundStyle(Color.white.opacity(0.55))
+                        TextField("30", text: $timeout)
+                            .keyboardType(.numberPad)
+                            .focused($timeoutFocused)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(Color.white.opacity(0.05))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                    )
+                            )
+                    }
+                }
+
+                Toggle("Run as logged-in user", isOn: $runAsUser)
+                    .toggleStyle(SwitchToggleStyle(tint: .cyan))
+
+                Button {
+                    UIApplication.shared.dismissKeyboard()
+                    timeoutFocused = false
+                    commandFocused = false
+                    Task { await sendCommand() }
+                } label: {
+                    Label("Send Command", systemImage: "paperplane.fill")
+                }
+                .primaryButton()
+                .disabled(trimmedCommand.isEmpty || isProcessing)
+
+                if let statusMessage {
+                    messageBanner(statusMessage)
+                }
+            }
+        }
+    }
+    
+    private var commandCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Command", subtitle: "Enter the script to run", systemImage: "chevron.left.forwardslash.chevron.right")
+                TextEditor(text: $command)
+                    .focused($commandFocused)
+                    .frame(minHeight: 180)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.white.opacity(0.04))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+                    .font(.body.monospaced())
+                    .foregroundStyle(Color.white)
+            }
+        }
+    }
+    
+    private var outputCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Output", subtitle: "Response from the agent", systemImage: "terminal")
+                if processedOutput.isEmpty {
+                    Text("No output yet. Send a command to view the response here.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else {
+                    ScrollView {
+                        Text(processedOutput)
+                            .font(.callout.monospaced())
+                            .foregroundStyle(Color.white)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(minHeight: 180)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.white.opacity(0.04))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+                }
+            }
+        }
+    }
+
+    private func messageBanner(_ message: String) -> some View {
+        let tint = statusTint(for: message)
+        let icon = statusIcon(for: message)
+        return HStack(alignment: .center, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+            Text(message)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private func statusTint(for message: String) -> Color {
+        let lower = message.lowercased()
+        if lower.contains("success") || lower.contains("sent") || lower.contains("completed") {
+            return .green
+        }
+        if lower.contains("error") || lower.contains("fail") || lower.contains("invalid") || lower.contains("http") {
+            return .red
+        }
+        return .orange
+    }
+
+    private func statusIcon(for message: String) -> String {
+        let lower = message.lowercased()
+        if lower.contains("success") || lower.contains("sent") || lower.contains("completed") {
+            return "checkmark.circle.fill"
+        }
+        if lower.contains("error") || lower.contains("fail") || lower.contains("invalid") || lower.contains("http") {
+            return "exclamationmark.triangle.fill"
+        }
+        return "info.circle.fill"
     }
     
     @MainActor
@@ -1948,6 +3513,12 @@ struct SendCommandView: View {
             statusMessage = "Invalid timeout value"
             return
         }
+        let sanitizedCommand = trimmedCommand
+        guard !sanitizedCommand.isEmpty else {
+            statusMessage = "Enter a command before sending."
+            return
+        }
+        command = sanitizedCommand
         isProcessing = true
         outputText = ""
         statusMessage = nil
@@ -1966,7 +3537,7 @@ struct SendCommandView: View {
 
         let body: [String: Any?] = [
             "shell": selectedShell,
-            "cmd": command,
+            "cmd": sanitizedCommand,
             "timeout": timeoutInt,
             "custom_shell": nil,
             "run_as_user": runAsUser
@@ -2030,20 +3601,18 @@ struct AgentProcessesView: View {
     let baseURL: String
     let apiKey: String
 
-    private let uniformButtonWidth: CGFloat = 150
-
     @State private var processRecords: [ProcessRecord] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
 
     @State private var showKillSheet: Bool = false
     @State private var pidToKill: String = ""
-    @State private var killMessage: String? = nil
-
     @State private var searchQuery: String = ""
     @State private var appliedSearchQuery: String = ""
 
     @State private var selectedProcess: ProcessRecord? = nil
+    @FocusState private var searchFocused: Bool
+    @State private var killBannerMessage: String? = nil
 
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
@@ -2058,62 +3627,124 @@ struct AgentProcessesView: View {
     }
 
     var body: some View {
-        VStack {
-            HStack {
-                TextField("Search process name", text: $searchQuery)
-                    .textFieldStyle(.roundedBorder)
-                    .disableAutocorrection(true)
-                    .submitLabel(.search)
-                    .onSubmit {
-                        appliedSearchQuery = searchQuery
-                    }
+        ZStack {
+            DarkGradientBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    searchCard
+                    processListCard
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 28)
+                .padding(.bottom, 180)
             }
-            .padding(.horizontal)
-            .padding(.top, 8)
 
             if isLoading {
-                ProgressView("Loading processes...")
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                ProgressView("Loading processes…")
                     .padding()
-            } else if let errorMessage = errorMessage {
-                Text("Error: \(errorMessage)")
-                    .foregroundColor(.red)
-                    .padding()
-            } else if processRecords.isEmpty {
-                Text("No processes found.")
-                    .padding()
-            } else {
-                List(displayedProcesses) { process in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Name: \(process.name)")
-                            .font(.headline)
-                        Text("PID: \(process.pid)")
-                            .font(.subheadline)
-                        Text("Memory (bytes): \(process.membytes)")
-                            .font(.subheadline)
-                        Text("Username: \(process.username)")
-                            .font(.caption)
-                        Text("CPU Percent: \(process.cpu_percent)")
-                            .font(.caption)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(12)
+            }
+        }
+        .navigationTitle("Agent Processes")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showKillSheet, onDismiss: { pidToKill = "" }) {
+            killSheet
+        }
+        .overlay(alignment: .bottom) {
+            stickyKillBar
+        }
+        .onAppear {
+            Task { await fetchProcesses() }
+        }
+    }
+
+    private var searchCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Process Search", subtitle: "Filter by name", systemImage: "magnifyingglass")
+                TextField("Search process name", text: $searchQuery)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .focused($searchFocused)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.white.opacity(0.05))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+                    .onSubmit { appliedSearchQuery = searchQuery }
+                    .onChange(of: searchQuery) { _, newValue in
+                        if newValue.isEmpty { appliedSearchQuery = "" }
                     }
-                    .padding(.vertical, 4)
-                    .background(selectedProcess?.id == process.id ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(8)
-                    .onTapGesture {
-                        if selectedProcess?.id == process.id {
-                            selectedProcess = nil
-                        } else {
-                            selectedProcess = process
+
+                if let errorMessage {
+                    statusBanner(errorMessage, isError: true)
+                }
+            }
+        }
+    }
+
+    private var processListCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Processes", subtitle: listSubtitle, systemImage: "memorychip")
+
+                if processRecords.isEmpty && errorMessage == nil && !isLoading {
+                    Text("No processes found.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else if displayedProcesses.isEmpty && !processRecords.isEmpty {
+                    Text("No processes match your search.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else {
+                    LazyVStack(spacing: 14) {
+                        ForEach(displayedProcesses) { process in
+                            ProcessTile(
+                                process: process,
+                                isSelected: selectedProcess?.id == process.id
+                            )
+                            .onTapGesture {
+                                if selectedProcess?.id == process.id {
+                                    selectedProcess = nil
+                                } else {
+                                    selectedProcess = process
+                                }
+                            }
                         }
                     }
                 }
+
+                if let killBannerMessage {
+                    statusBanner(killBannerMessage, isError: killBannerMessage.lowercased().contains("fail") || killBannerMessage.lowercased().contains("error"))
+                }
             }
-            if let killMessage = killMessage {
-                Text(killMessage)
-                    .foregroundColor(killMessage.contains("killed") ? .green : .red)
-                    .multilineTextAlignment(.center)
-                    .padding()
+        }
+    }
+
+    private var stickyKillBar: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SectionHeader("Terminate Process", subtitle: "Select a process or enter PID", systemImage: "nosign")
+
+            if let process = selectedProcess {
+                Text("Ready to kill \(process.name) (PID \(process.pid)).")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.85))
+            } else {
+                Text("Tap a process above or enter a PID manually.")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.7))
             }
-            Button("Kill PID processes") {
+
+            Button {
                 Task {
                     if let process = selectedProcess {
                         await killProcess(withPid: process.pid)
@@ -2121,50 +3752,159 @@ struct AgentProcessesView: View {
                         showKillSheet = true
                     }
                 }
+            } label: {
+                Label(selectedProcessLabel, systemImage: "trash.circle.fill")
+                    .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
-            .frame(width: uniformButtonWidth)
-            .padding()
-            .sheet(isPresented: $showKillSheet) {
-                VStack(spacing: 20) {
-                    Text("Enter PID to kill")
+            .controlSize(.large)
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color.black.opacity(0.78))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.55), radius: 24, x: 0, y: 18)
+        )
+        .padding(.horizontal, 20)
+        .padding(.bottom, 24)
+    }
+
+    private var listSubtitle: String {
+        if isLoading { return "Loading…" }
+        if !appliedSearchQuery.isEmpty { return "Filtered: \(displayedProcesses.count)" }
+        return "Total: \(processRecords.count)"
+    }
+
+    private var selectedProcessLabel: String {
+        if let process = selectedProcess {
+            return "Kill \(process.name) (PID \(process.pid))"
+        }
+        return "Kill Process by PID"
+    }
+
+    private var killSheet: some View {
+        NavigationView {
+            ZStack {
+                DarkGradientBackground()
+                VStack(spacing: 24) {
+                    Text("Enter PID to terminate")
                         .font(.headline)
+                        .foregroundStyle(Color.white)
                     TextField("PID", text: $pidToKill)
-                        .textFieldStyle(.roundedBorder)
                         .keyboardType(.numberPad)
-                        .padding(.horizontal)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.white.opacity(0.05))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
+                        )
+                        .foregroundStyle(Color.white)
+
                     HStack(spacing: 16) {
                         Button("Cancel") {
                             showKillSheet = false
-                            pidToKill = ""
                         }
-                        .frame(width: uniformButtonWidth)
-                        .buttonStyle(.bordered)
-                        
-                        Button("Confirm") {
+                        .secondaryButton()
+
+                        Button("Confirm", role: .destructive) {
                             Task {
                                 if let pidInt = Int(pidToKill), pidInt > 0 {
                                     await killProcess(withPid: pidInt)
+                                } else {
+                                    killBannerMessage = "Invalid PID"
                                 }
                                 showKillSheet = false
-                                pidToKill = ""
                             }
                         }
-                        .frame(width: uniformButtonWidth)
-                        .buttonStyle(.borderedProminent)
+                        .primaryButton()
                         .tint(.red)
                     }
-                    .padding(.horizontal)
                 }
-                .padding()
+                .padding(24)
             }
-            Spacer()
+            .navigationBarHidden(true)
         }
-        .navigationTitle("Agent Processes")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            Task { await fetchProcesses() }
+        .presentationDetents([.fraction(0.35)])
+    }
+
+    private func statusBanner(_ message: String, isError: Bool) -> some View {
+        let tint: Color = isError ? .red : .green
+        let icon = isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+        return HStack(alignment: .center, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+            Text(message)
+                .foregroundStyle(Color.white)
+                .font(.footnote.weight(.semibold))
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private struct ProcessTile: View {
+        let process: ProcessRecord
+        let isSelected: Bool
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(process.name)
+                        .font(.headline)
+                    Spacer()
+                    Text("PID \(process.pid)")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.7))
+                }
+                Text("User: \(process.username)")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.7))
+                HStack(spacing: 12) {
+                    pill(label: "CPU \(process.cpu_percent)%", color: Color.orange)
+                    pill(label: "RAM \(process.membytes)", color: Color.cyan)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(isSelected ? 0.12 : 0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(isSelected ? Color.cyan.opacity(0.6) : Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+        }
+
+        private func pill(label: String, color: Color) -> some View {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(color)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(color.opacity(0.18))
+                )
         }
     }
 
@@ -2205,6 +3945,7 @@ struct AgentProcessesView: View {
 
     @MainActor
     func killProcess(withPid pid: Int) async {
+        killBannerMessage = nil
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/\(agentId)/processes/\(pid)/") else {
             DiagnosticLogger.shared.appendError("Invalid URL in kill process.")
@@ -2218,17 +3959,18 @@ struct AgentProcessesView: View {
             let (_, response) = try await URLSession.shared.data(for: request)
             if let httpResponse = response as? HTTPURLResponse {
                 DiagnosticLogger.shared.logHTTPResponse(method: "DELETE", url: url.absoluteString, status: httpResponse.statusCode, data: Data())
-                if httpResponse.statusCode == 200 {
-                    killMessage = "Process \(pid) killed successfully!"
+                if (200...299).contains(httpResponse.statusCode) {
+                    killBannerMessage = "Process \(pid) killed successfully!"
                     selectedProcess = nil
+                    processRecords.removeAll { $0.pid == pid }
                     await fetchProcesses()
                 } else {
-                    killMessage = "Failed to kill process \(pid)."
+                    killBannerMessage = "Failed to kill process \(pid)."
                     DiagnosticLogger.shared.appendError("Failed to kill process \(pid), HTTP status \(httpResponse.statusCode).")
                 }
             }
         } catch {
-            killMessage = "Error: \(error.localizedDescription)"
+            killBannerMessage = "Error: \(error.localizedDescription)"
             DiagnosticLogger.shared.appendError("Error in kill process: \(error.localizedDescription)")
         }
     }
@@ -2250,44 +3992,133 @@ struct AgentNotesView: View {
     }
 
     var body: some View {
-        VStack {
-            if isLoading {
-                ProgressView("Loading notes...")
-                    .padding()
-            } else if let errorMessage = errorMessage {
-                Text("Error: \(errorMessage)")
-                    .foregroundColor(.red)
-                    .padding()
-            } else if notes.isEmpty {
-                Text("No notes found.")
-                    .padding()
-            } else {
-                ScrollView {
-                    VStack(spacing: 10) {
-                        ForEach(notes) { note in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Note:")
-                                    .font(.headline)
-                                                               Text(note.note)
-                                Text("By: \(note.username)")
-                                    .font(.caption)
-                                Text("Time: \(note.entry_time)")
-                                    .font(.caption)
-                            }
-                            .padding()
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(8)
-                        }
-                    }
-                    .padding()
+        ZStack {
+            DarkGradientBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    notesHeaderCard
+                    notesListCard
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
             }
-            Spacer()
+
+            if isLoading {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                ProgressView("Loading notes…")
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(12)
+            }
         }
         .navigationTitle("Agent Notes")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             Task { await fetchNotes() }
+        }
+    }
+
+    private var notesHeaderCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader("Technician Notes", subtitle: headerSubtitle, systemImage: "note.text")
+                if let errorMessage {
+                    banner(message: errorMessage, isError: true)
+                }
+            }
+        }
+    }
+
+    private var notesListCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                if notes.isEmpty && !isLoading && errorMessage == nil {
+                    Text("No notes available for this agent.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else {
+                    LazyVStack(spacing: 14) {
+                        ForEach(notes) { note in
+                            NoteTile(note: note)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var headerSubtitle: String {
+        if isLoading { return "Loading…" }
+        return notes.count == 1 ? "1 note" : "\(notes.count) notes"
+    }
+
+    private func banner(message: String, isError: Bool) -> some View {
+        let tint: Color = isError ? .red : .green
+        let icon = isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+        return HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+            Text(message)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private struct NoteTile: View {
+        let note: Note
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(note.note)
+                    .font(.body)
+                    .foregroundStyle(Color.white)
+                    .textSelection(.enabled)
+                Divider()
+                    .overlay(Color.white.opacity(0.1))
+                HStack(spacing: 16) {
+                    detailPill(system: "person.fill", label: note.username)
+                    detailPill(system: "calendar", label: note.entry_time)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+        }
+
+        private func detailPill(system: String, label: String) -> some View {
+            HStack(spacing: 6) {
+                Image(systemName: system)
+                Text(label)
+            }
+            .font(.caption2)
+            .foregroundStyle(Color.white.opacity(0.75))
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+            )
         }
     }
 
@@ -2379,74 +4210,172 @@ struct AgentTasksView: View {
     }
 
     var body: some View {
-        VStack {
-            if isLoading {
-                ProgressView("Loading tasks...")
-                    .padding()
-            } else if let errorMessage = errorMessage {
-                Text("Error: \(errorMessage)")
-                    .foregroundColor(.red)
-                    .padding()
-            } else if tasks.isEmpty {
-                Text("No tasks found.")
-                    .padding()
-            } else {
-                ScrollView {
-                    VStack(spacing: 10) {
-                        ForEach(tasks) { task in
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(task.name)
-                                    .font(.headline)
-                                Text("Schedule: \(task.schedule)")
-                                if let runDate = isoFormatter.date(from: task.run_time_date)
-                                    ?? isoNoFractionFormatter.date(from: task.run_time_date)
-                                    ?? noTZDateParser.date(from: task.run_time_date) {
-                                    Text("Run Time: \(displayFormatter.string(from: runDate))")
-                                } else {
-                                    Text("Run Time: \(task.run_time_date)")
-                                }
-                                if let createdDate = isoFormatter.date(from: task.created_time)
-                                    ?? isoNoFractionFormatter.date(from: task.created_time)
-                                    ?? noTZDateParser.date(from: task.created_time) {
-                                    Text("Created by: \(task.created_by) at \(displayFormatter.string(from: createdDate))")
-                                        .font(.caption)
-                                } else {
-                                    Text("Created by: \(task.created_by) at \(task.created_time)")
-                                        .font(.caption)
-                                }
-                                if let result = task.task_result {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Result:")
-                                            .font(.subheadline)
-                                        Text(truncatedResult(result.stdout))
-                                            .font(.caption)
-                                    }
-                                }
-                                if let actions = task.actions, !actions.isEmpty {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Actions:")
-                                            .font(.subheadline)
-                                        ForEach(actions, id: \.name) { action in
-                                            Text("- \(action.name) (\(action.type))")
-                                                .font(.caption)
-                                        }
-                                    }
-                                }
-                            }
-                            .padding()
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(8)
-                        }
-                    }
-                    .padding()
+        ZStack {
+            DarkGradientBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    tasksHeaderCard
+                    tasksListCard
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
             }
-            Spacer()
+
+            if isLoading {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                ProgressView("Loading tasks…")
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(12)
+            }
         }
         .navigationTitle("Agent Tasks")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             Task { await fetchTasks() }
+        }
+    }
+
+    private var tasksHeaderCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader("Scheduled Tasks", subtitle: headerSubtitle, systemImage: "checklist")
+                if let errorMessage {
+                    banner(message: errorMessage, isError: true)
+                }
+            }
+        }
+    }
+
+    private var tasksListCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                if tasks.isEmpty && !isLoading && errorMessage == nil {
+                    Text("No tasks found for this agent.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else {
+                    LazyVStack(spacing: 16) {
+                        ForEach(tasks) { task in
+                            TaskTile(task: task, formattedRunTime: formattedDate(task.run_time_date), formattedCreated: formattedDate(task.created_time), truncate: truncatedResult)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var headerSubtitle: String {
+        if isLoading { return "Loading…" }
+        return tasks.count == 1 ? "1 task" : "\(tasks.count) tasks"
+    }
+
+    private func formattedDate(_ raw: String) -> String {
+        if let date = isoFormatter.date(from: raw)
+            ?? isoNoFractionFormatter.date(from: raw)
+            ?? noTZDateParser.date(from: raw) {
+            return displayFormatter.string(from: date)
+        }
+        return raw
+    }
+
+    private func banner(message: String, isError: Bool) -> some View {
+        let tint: Color = isError ? .red : .green
+        let icon = isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+        return HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+            Text(message)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private struct TaskTile: View {
+        let task: AgentTask
+        let formattedRunTime: String
+        let formattedCreated: String
+        let truncate: (String) -> String
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(task.name)
+                    .font(.headline)
+                    .foregroundStyle(Color.white)
+
+                detailRow(title: "Schedule", value: task.schedule, system: "calendar")
+                detailRow(title: "Next Run", value: formattedRunTime, system: "clock")
+                detailRow(title: "Created", value: "\(task.created_by) • \(formattedCreated)", system: "person")
+
+                if let result = task.task_result {
+                    VStack(alignment: .leading, spacing: 6) {
+                        SectionHeader("Result", subtitle: result.status.capitalized, systemImage: "text.justify")
+                        Text(truncate(result.stdout))
+                            .font(.caption.monospaced())
+                            .foregroundStyle(Color.white.opacity(0.85))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+
+                if let actions = task.actions, !actions.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        SectionHeader("Actions", subtitle: "\(actions.count) defined", systemImage: "bolt.badge.clock")
+                        ForEach(actions, id: \.name) { action in
+                            HStack(spacing: 8) {
+                                Image(systemName: "arrowtriangle.forward.fill")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Color.cyan)
+                                Text("\(action.name) (\(action.type))")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.white.opacity(0.8))
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+        }
+
+        private func detailRow(title: String, value: String, system: String) -> some View {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: system)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.cyan)
+                    .frame(width: 18)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title.uppercased())
+                        .font(.caption2)
+                        .foregroundStyle(Color.white.opacity(0.55))
+                    Text(value)
+                        .font(.callout)
+                        .foregroundStyle(Color.white)
+                        .textSelection(.enabled)
+                }
+                Spacer(minLength: 0)
+            }
         }
     }
 
@@ -2529,35 +4458,90 @@ struct AgentCustomFieldsView: View {
     let customFields: [CustomField]
 
     var body: some View {
-        VStack {
-            if customFields.isEmpty {
-                Text("No custom fields found.")
-                    .foregroundColor(.secondary)
-                    .padding()
-            } else {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        ForEach(customFields) { field in
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Record ID: \(field.id)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Text(field.value)
-                                    .font(.body)
-                                    .textSelection(.enabled)  // let the user copy
-                            }
-                            .padding()
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(8)
-                        }
-                    }
-                    .padding()
+        ZStack {
+            DarkGradientBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    headerCard
+                    fieldsCard
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
             }
-            Spacer()
         }
         .navigationTitle("Custom Fields")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var headerCard: some View {
+        GlassCard {
+            SectionHeader("Custom Fields", subtitle: headerSubtitle, systemImage: "slider.horizontal.3")
+        }
+    }
+
+    private var fieldsCard: some View {
+        GlassCard {
+            if customFields.isEmpty {
+                Text("No custom fields available for this agent.")
+                    .font(.footnote)
+                    .foregroundStyle(Color.white.opacity(0.65))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                LazyVStack(spacing: 16) {
+                    ForEach(customFields) { field in
+                        CustomFieldTile(field: field)
+                    }
+                }
+            }
+        }
+    }
+
+    private var headerSubtitle: String {
+        if customFields.isEmpty { return "No records" }
+        return customFields.count == 1 ? "1 record" : "\(customFields.count) records"
+    }
+
+    private struct CustomFieldTile: View {
+        let field: CustomField
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "number")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.cyan)
+                        .frame(width: 20)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Record ID")
+                            .font(.caption2)
+                            .foregroundStyle(Color.white.opacity(0.6))
+                        Text("#\(field.id)")
+                            .font(.callout)
+                            .foregroundStyle(Color.white)
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                Divider()
+                    .background(Color.white.opacity(0.12))
+
+                Text(field.value.nonEmpty ?? "—")
+                    .font(.body)
+                    .foregroundStyle(Color.white.opacity(0.85))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            .padding(18)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+        }
     }
 }
 
@@ -2580,6 +4564,13 @@ struct AgentChecksView: View {
         formatter.formatOptions = [.withInternetDateTime]
         return formatter
     }
+    private static var noTimeZoneFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return formatter
+    }
 
     @State private var checks: [AgentCheck] = []
     @State private var isLoading: Bool = false
@@ -2588,76 +4579,206 @@ struct AgentChecksView: View {
     var effectiveAPIKey: String { KeychainHelper.shared.getAPIKey() ?? apiKey }
 
     private func truncatedOutput(_ output: String) -> String {
-        return output
+        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count > 600 else { return trimmed }
+        let index = trimmed.index(trimmed.startIndex, offsetBy: 600)
+        return String(trimmed[..<index]) + "…"
     }
 
     var body: some View {
-        VStack {
+        ZStack {
+            DarkGradientBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    headerCard
+                    checksListCard
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
+            }
+
             if isLoading {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
                 ProgressView("Loading checks…")
                     .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(12)
             }
-            else if let errorMessage = errorMessage {
-                Text("Error: \(errorMessage)")
-                    .foregroundColor(.red)
-                    .padding()
-            }
-            else if checks.isEmpty {
-                Text("No checks found.")
-                    .padding()
-            }
-            else {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        ForEach(checks) { result in
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Status: \(result.check_result?.status.capitalized ?? "Unknown")")
-                                    .font(.headline)
-
-                                if let rawDate = result.check_result?.last_run {
-                                    // try parsing with and without fractional seconds
-                                    let parsedDate = Self.iso8601Formatter.date(from: rawDate)
-                                        ?? Self.iso8601NoFractionFormatter.date(from: rawDate)
-                                    if let date = parsedDate {
-                                        Text("Last Run: \(DateFormatter.localizedString(from: date, dateStyle: .short, timeStyle: .medium))")
-                                    } else {
-                                        Text("Last Run: \(rawDate)")
-                                    }
-                                } else {
-                                    Text("Last Run: N/A")
-                                }
-
-                                if let out = result.check_result?.stdout, !out.isEmpty {
-                                    Text(truncatedOutput(out))
-                                        .font(.caption)
-                                } else if let info = result.check_result?.more_info, !info.isEmpty {
-                                    Text(truncatedOutput(info))
-                                        .font(.caption)
-                                }
-
-                                if let err = result.check_result?.stderr, !err.isEmpty {
-                                    Text("Error: \(truncatedOutput(err))")
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(8)
-                            .textSelection(.enabled)
-                        }
-                    }
-                    .padding()
-                }
-            }
-            Spacer()
         }
-        .frame(maxWidth: .infinity)
         .navigationTitle("Agent Checks")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             Task { await fetchChecks() }
+        }
+    }
+
+    private var headerCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader("Health Checks", subtitle: headerSubtitle, systemImage: "waveform.path.ecg")
+                if let errorMessage {
+                    banner(message: errorMessage, isError: true)
+                }
+            }
+        }
+    }
+
+    private var checksListCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                if checks.isEmpty && !isLoading && errorMessage == nil {
+                    Text("No checks returned for this agent.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else {
+                    LazyVStack(spacing: 16) {
+                        ForEach(checks) { check in
+                            CheckTile(
+                                check: check,
+                                statusInfo: statusInfo(for: check.check_result?.status),
+                                formattedLastRun: formattedDate(check.check_result?.last_run),
+                                formattedCreated: formattedDate(check.created_time),
+                                truncatedOutput: truncatedOutput
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var headerSubtitle: String {
+        if isLoading { return "Loading…" }
+        return checks.count == 1 ? "1 check" : "\(checks.count) checks"
+    }
+
+    private func formattedDate(_ raw: String?) -> String {
+        guard let raw else { return "Unknown" }
+        if let date = Self.iso8601Formatter.date(from: raw)
+            ?? Self.iso8601NoFractionFormatter.date(from: raw)
+            ?? Self.noTimeZoneFormatter.date(from: raw) {
+            return DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .short)
+        }
+        return raw
+    }
+
+    private func statusInfo(for status: String?) -> (text: String, color: Color, icon: String) {
+        let normalized = status?.lowercased() ?? "unknown"
+        switch normalized {
+        case let value where value.contains("pass"):
+            return (text: status?.capitalized ?? "Passing", color: Color.green, icon: "checkmark.circle.fill")
+        case let value where value.contains("warn"):
+            return (text: status?.capitalized ?? "Warning", color: Color.orange, icon: "exclamationmark.triangle.fill")
+        case let value where value.contains("fail") || value.contains("error"):
+            return (text: status?.capitalized ?? "Failing", color: Color.red, icon: "xmark.octagon.fill")
+        default:
+            return (text: status?.capitalized ?? "Unknown", color: Color.gray, icon: "questionmark.circle.fill")
+        }
+    }
+
+    private func banner(message: String, isError: Bool) -> some View {
+        let tint: Color = isError ? .red : .green
+        let icon = isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+        return HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+            Text(message)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private struct CheckTile: View {
+        let check: AgentCheck
+        let statusInfo: (text: String, color: Color, icon: String)
+        let formattedLastRun: String
+        let formattedCreated: String
+        let truncatedOutput: (String) -> String
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: statusInfo.icon)
+                        .font(.title3)
+                        .foregroundStyle(statusInfo.color)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(statusInfo.color.opacity(0.18))
+                        )
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(check.readable_desc)
+                            .font(.headline)
+                            .foregroundStyle(Color.white)
+                        Text(statusInfo.text)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(statusInfo.color)
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                infoRow(title: "Last Run", value: formattedLastRun)
+                infoRow(title: "Created", value: "\(check.created_by) • \(formattedCreated)")
+
+                if let severity = check.check_result?.alert_severity?.capitalized, !severity.isEmpty {
+                    infoRow(title: "Alert Severity", value: severity)
+                }
+
+                if let stdout = check.check_result?.stdout?.nonEmpty {
+                    outputSection(title: "Output", value: truncatedOutput(stdout))
+                } else if let info = check.check_result?.more_info?.nonEmpty {
+                    outputSection(title: "Details", value: truncatedOutput(info))
+                }
+
+                if let stderr = check.check_result?.stderr?.nonEmpty {
+                    outputSection(title: "Errors", value: truncatedOutput(stderr), isError: true)
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+            .textSelection(.enabled)
+        }
+
+        private func infoRow(title: String, value: String) -> some View {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title.uppercased())
+                    .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(0.55))
+                Text(value)
+                    .font(.callout)
+                    .foregroundStyle(Color.white)
+            }
+        }
+
+        private func outputSection(title: String, value: String, isError: Bool = false) -> some View {
+            VStack(alignment: .leading, spacing: 6) {
+                SectionHeader(title, subtitle: nil, systemImage: isError ? "exclamationmark.octagon" : "doc.plaintext")
+                Text(value)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(isError ? Color.red.opacity(0.9) : Color.white.opacity(0.85))
+            }
         }
     }
 

@@ -72,9 +72,14 @@ class DiagnosticLogger {
     func logHTTPResponse(method: String, url: String, status: Int, data: Data?) {
         let responseBody: String
         if let data = data, let responseString = String(data: data, encoding: .utf8) {
-            responseBody = responseString.count > 200
-                ? String(responseString.prefix(200)) + "..."
-                : responseString
+            // Do not truncate /agents responses; keep others concise
+            if url.contains("/agents/") {
+                responseBody = responseString
+            } else {
+                responseBody = responseString.count > 200
+                    ? String(responseString.prefix(200)) + "..."
+                    : responseString
+            }
         } else {
             responseBody = "No response body."
         }
@@ -303,6 +308,89 @@ struct Agent: Identifiable, Decodable {
     let custom_fields: [CustomField]?
     let serial_number: String?
     let boot_time: TimeInterval?
+
+    private enum CodingKeys: String, CodingKey {
+        case agent_id, hostname, description, public_ip, local_ips, graphics, make_model, status, site_name, last_seen, physical_disks, custom_fields, serial_number, boot_time
+        case operating_system
+        case cpu_model
+        // Alternate keys sometimes seen in APIs
+        case os
+        case plat
+    }
+
+    init(agent_id: String,
+         hostname: String,
+         operating_system: String,
+         description: String?,
+         cpu_model: [String],
+         public_ip: String?,
+         local_ips: String?,
+         graphics: String?,
+         make_model: String?,
+         status: String,
+         site_name: String?,
+         last_seen: String?,
+         physical_disks: [String]?,
+         custom_fields: [CustomField]?,
+         serial_number: String?,
+         boot_time: TimeInterval?) {
+        self.agent_id = agent_id
+        self.hostname = hostname
+        self.operating_system = operating_system
+        self.description = description
+        self.cpu_model = cpu_model
+        self.public_ip = public_ip
+        self.local_ips = local_ips
+        self.graphics = graphics
+        self.make_model = make_model
+        self.status = status
+        self.site_name = site_name
+        self.last_seen = last_seen
+        self.physical_disks = physical_disks
+        self.custom_fields = custom_fields
+        self.serial_number = serial_number
+        self.boot_time = boot_time
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        // Required minimal fields
+        self.agent_id = try c.decode(String.self, forKey: .agent_id)
+        self.hostname  = try c.decode(String.self, forKey: .hostname)
+
+        // operating_system may be missing or under a different key
+        if let os = try c.decodeIfPresent(String.self, forKey: .operating_system) {
+            self.operating_system = os
+        } else if let osAlt = try c.decodeIfPresent(String.self, forKey: .os) {
+            self.operating_system = osAlt
+        } else if let plat = try c.decodeIfPresent(String.self, forKey: .plat) {
+            self.operating_system = plat
+        } else {
+            self.operating_system = "Unknown OS"
+        }
+
+        // cpu_model may be an array, string, or missing in list payload
+        if let cpuArr = try c.decodeIfPresent([String].self, forKey: .cpu_model) {
+            self.cpu_model = cpuArr
+        } else if let cpuStr = try c.decodeIfPresent(String.self, forKey: .cpu_model) {
+            self.cpu_model = cpuStr.isEmpty ? [] : [cpuStr]
+        } else {
+            self.cpu_model = []
+        }
+
+        self.description   = try c.decodeIfPresent(String.self, forKey: .description)
+        self.public_ip     = try c.decodeIfPresent(String.self, forKey: .public_ip)
+        self.local_ips     = try c.decodeIfPresent(String.self, forKey: .local_ips)
+        self.graphics      = try c.decodeIfPresent(String.self, forKey: .graphics)
+        self.make_model    = try c.decodeIfPresent(String.self, forKey: .make_model)
+        self.status        = try c.decodeIfPresent(String.self, forKey: .status) ?? "unknown"
+        self.site_name     = try c.decodeIfPresent(String.self, forKey: .site_name)
+        self.last_seen     = try c.decodeIfPresent(String.self, forKey: .last_seen)
+        self.physical_disks = try c.decodeIfPresent([String].self, forKey: .physical_disks)
+        self.custom_fields = try c.decodeIfPresent([CustomField].self, forKey: .custom_fields)
+        self.serial_number = try c.decodeIfPresent(String.self, forKey: .serial_number)
+        self.boot_time     = try c.decodeIfPresent(TimeInterval.self, forKey: .boot_time)
+    }
 }
 
 struct MeshCentralResponse: Decodable {
@@ -933,8 +1021,28 @@ struct ContentView: View {
                 )
                 switch http.statusCode {
                 case 200:
-                    agents = try JSONDecoder().decode([Agent].self, from: data)
-                    DiagnosticLogger.shared.append("Fetched agents: \(agents.count)")
+                    do {
+                        agents = try JSONDecoder().decode([Agent].self, from: data)
+                        DiagnosticLogger.shared.append("Fetched agents: \(agents.count)")
+                    } catch {
+                        if let decErr = error as? DecodingError {
+                            let message: String
+                            switch decErr {
+                            case .keyNotFound(let key, let ctx):
+                                message = "Decoding keyNotFound: \(key.stringValue) at \(ctx.codingPath.map{ $0.stringValue }.joined(separator: "."))"
+                            case .typeMismatch(let type, let ctx):
+                                message = "Decoding typeMismatch: \(type) at \(ctx.codingPath.map{ $0.stringValue }.joined(separator: "."))"
+                            case .valueNotFound(let type, let ctx):
+                                message = "Decoding valueNotFound: \(type) at \(ctx.codingPath.map{ $0.stringValue }.joined(separator: "."))"
+                            case .dataCorrupted(let ctx):
+                                message = "Decoding dataCorrupted at \(ctx.codingPath.map{ $0.stringValue }.joined(separator: "."))"
+                            @unknown default:
+                                message = "Decoding unknown error"
+                            }
+                            DiagnosticLogger.shared.appendError(message)
+                        }
+                        throw error
+                    }
                 case 401:
                     errorMessage = "Invalid API Key."
                     DiagnosticLogger.shared.appendError("HTTP 401 during fetch.")
@@ -2232,11 +2340,19 @@ struct AgentTasksView: View {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
-    // ISO8601 parser without fractional seconds
+    // ISO8601 parser without fractional seconds for dates lacking fractional part
     private let isoNoFractionFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
         return formatter
+    }()
+    // Fallback parser for strings like "2025-06-21T15:05:05" (no timezone)
+    private let noTZDateParser: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.calendar = Calendar(identifier: .gregorian)
+        df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return df
     }()
     // Formatter for display dates
     private let displayFormatter: DateFormatter = {
@@ -2283,13 +2399,15 @@ struct AgentTasksView: View {
                                     .font(.headline)
                                 Text("Schedule: \(task.schedule)")
                                 if let runDate = isoFormatter.date(from: task.run_time_date)
-                                    ?? isoNoFractionFormatter.date(from: task.run_time_date) {
+                                    ?? isoNoFractionFormatter.date(from: task.run_time_date)
+                                    ?? noTZDateParser.date(from: task.run_time_date) {
                                     Text("Run Time: \(displayFormatter.string(from: runDate))")
                                 } else {
                                     Text("Run Time: \(task.run_time_date)")
                                 }
                                 if let createdDate = isoFormatter.date(from: task.created_time)
-                                    ?? isoNoFractionFormatter.date(from: task.created_time) {
+                                    ?? isoNoFractionFormatter.date(from: task.created_time)
+                                    ?? noTZDateParser.date(from: task.created_time) {
                                     Text("Created by: \(task.created_by) at \(displayFormatter.string(from: createdDate))")
                                         .font(.caption)
                                 } else {
@@ -2376,6 +2494,34 @@ struct CustomField: Identifiable, Decodable {
     let field: Int
     let agent: Int
     let value: String
+
+    private enum CodingKeys: String, CodingKey { case id, field, agent, value }
+
+    init(id: Int, field: Int, agent: Int, value: String) {
+        self.id = id
+        self.field = field
+        self.agent = agent
+        self.value = value
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(Int.self, forKey: .id)
+        self.field = try c.decode(Int.self, forKey: .field)
+        self.agent = try c.decode(Int.self, forKey: .agent)
+        // Coerce value into String, be tolerant of nulls and non-strings
+        if let s = try c.decodeIfPresent(String.self, forKey: .value) {
+            self.value = s
+        } else if let i = try? c.decode(Int.self, forKey: .value) {
+            self.value = String(i)
+        } else if let d = try? c.decode(Double.self, forKey: .value) {
+            self.value = String(d)
+        } else if let b = try? c.decode(Bool.self, forKey: .value) {
+            self.value = String(b)
+        } else {
+            self.value = ""
+        }
+    }
 }
 
 // MARK: – AgentCustomFieldsView

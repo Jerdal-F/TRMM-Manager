@@ -1853,6 +1853,7 @@ struct ContentView: View {
                             agents = try decoder.decode([Agent].self, from: data)
                             DiagnosticLogger.shared.append("Fetched agents via legacy array: \(agents.count)")
                         }
+
                     } catch {
                         if let decErr = error as? DecodingError {
                             let message: String

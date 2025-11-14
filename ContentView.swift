@@ -316,6 +316,36 @@ extension String {
     }
 }
 
+private let lastSeenISOFormatterWithFractional: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return formatter
+}()
+
+private let lastSeenISOFormatter: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime]
+    return formatter
+}()
+
+private let lastSeenDisplayFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "HH:mm dd/MM/yyyy"
+    formatter.locale = Locale.current
+    formatter.timeZone = TimeZone.current
+    return formatter
+}()
+
+private func formatLastSeenTimestamp(_ dateString: String?) -> String {
+    guard let value = dateString?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+        return "N/A"
+    }
+    if let parsed = lastSeenISOFormatterWithFractional.date(from: value) ?? lastSeenISOFormatter.date(from: value) {
+        return lastSeenDisplayFormatter.string(from: parsed)
+    }
+    return value
+}
+
 // MARK: - Design Helpers
 
 struct DarkGradientBackground: View {
@@ -633,6 +663,10 @@ struct AgentRow: View {
         return agent.local_ips?.ipv4Only().isEmpty == false ? agent.local_ips!.ipv4Only() : "No LAN IP available"
     }
 
+    private var lastSeenDisplay: String {
+        formatLastSeenTimestamp(agent.last_seen)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
@@ -682,7 +716,7 @@ struct AgentRow: View {
             }
 
             if let lastSeen = agent.last_seen, !lastSeen.isEmpty {
-                Text("Last Seen: \(lastSeen)")
+                Text("Last Seen: \(lastSeenDisplay)")
                     .font(.caption2)
                     .foregroundStyle(Color.white.opacity(0.55))
             }
@@ -736,6 +770,99 @@ struct ScriptResults: Codable {
         case id, stderr, stdout, retcode
         case executionTime = "execution_time"
         case scriptName = "script_name"
+    }
+}
+
+struct ScriptEnvVar: Identifiable, Codable {
+    let name: String
+    let value: String?
+    let description: String?
+    let required: Bool?
+
+    var id: String { name }
+
+    enum CodingKeys: String, CodingKey {
+        case name, value, description, required
+    }
+}
+
+struct RMMScript: Identifiable, Decodable {
+    let id: Int
+    let name: String
+    let description: String?
+    let scriptType: String
+    let shell: String
+    let args: [String]
+    let category: String?
+    let favorite: Bool
+    let defaultTimeout: Int
+    let syntax: String?
+    let filename: String?
+    let hidden: Bool
+    let supportedPlatforms: [String]
+    let runAsUser: Bool
+    let envVars: [ScriptEnvVar]
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, description
+        case scriptType = "script_type"
+        case shell, args, category, favorite
+        case defaultTimeout = "default_timeout"
+        case syntax, filename, hidden
+        case supportedPlatforms = "supported_platforms"
+        case runAsUser = "run_as_user"
+        case envVars = "env_vars"
+    }
+
+    init(id: Int,
+         name: String,
+         description: String?,
+         scriptType: String,
+         shell: String,
+         args: [String],
+         category: String?,
+         favorite: Bool,
+         defaultTimeout: Int,
+         syntax: String?,
+         filename: String?,
+         hidden: Bool,
+         supportedPlatforms: [String],
+         runAsUser: Bool,
+         envVars: [ScriptEnvVar]) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.scriptType = scriptType
+        self.shell = shell
+        self.args = args
+        self.category = category
+        self.favorite = favorite
+        self.defaultTimeout = defaultTimeout
+        self.syntax = syntax
+        self.filename = filename
+        self.hidden = hidden
+        self.supportedPlatforms = supportedPlatforms
+        self.runAsUser = runAsUser
+        self.envVars = envVars
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        scriptType = try container.decodeIfPresent(String.self, forKey: .scriptType) ?? "unknown"
+        shell = try container.decodeIfPresent(String.self, forKey: .shell) ?? "powershell"
+        args = try container.decodeIfPresent([String].self, forKey: .args) ?? []
+        category = try container.decodeIfPresent(String.self, forKey: .category)
+        favorite = try container.decodeIfPresent(Bool.self, forKey: .favorite) ?? false
+        defaultTimeout = try container.decodeIfPresent(Int.self, forKey: .defaultTimeout) ?? 90
+        syntax = try container.decodeIfPresent(String.self, forKey: .syntax)
+        filename = try container.decodeIfPresent(String.self, forKey: .filename)
+        hidden = try container.decodeIfPresent(Bool.self, forKey: .hidden) ?? false
+        supportedPlatforms = try container.decodeIfPresent([String].self, forKey: .supportedPlatforms) ?? []
+        runAsUser = try container.decodeIfPresent(Bool.self, forKey: .runAsUser) ?? false
+        envVars = try container.decodeIfPresent([ScriptEnvVar].self, forKey: .envVars) ?? []
     }
 }
 
@@ -2787,16 +2914,6 @@ struct AgentDetailView: View {
              effectiveAPIKey.lowercased() == "demo"
     }
     
-    func formattedLastSeen(from dateString: String?) -> String {
-        guard let dateString = dateString else { return "N/A" }
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        guard let date = isoFormatter.date(from: dateString) else { return "N/A" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm dd/MM/yyyy"
-        return formatter.string(from: date)
-    }
-    
     @MainActor
     func fetchAgentDetail() async {
         if isDemoMode {
@@ -3088,7 +3205,7 @@ struct AgentDetailView: View {
     }
 
     private var lastSeenDisplay: String {
-        formattedLastSeen(from: currentAgent.last_seen)
+        formatLastSeenTimestamp(currentAgent.last_seen)
     }
 
     private var uptimeDisplay: String {
@@ -3307,7 +3424,26 @@ struct AgentDetailView: View {
                     .buttonStyle(.plain)
                     .opacity(nonEmptyCustomFields.isEmpty ? 0.45 : 1.0)
                     .allowsHitTesting(!nonEmptyCustomFields.isEmpty)
+
                 }
+
+                NavigationLink {
+                    RunScriptView(
+                        agent: agent,
+                        baseURL: baseURL,
+                        apiKey: effectiveAPIKey
+                    )
+                } label: {
+                    AgentActionTile(
+                        title: "Run Script",
+                        subtitle: "Execute saved",
+                        systemImage: "play.rectangle.on.rectangle.fill",
+                        tint: Color.pink
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -3789,6 +3925,931 @@ struct SendCommandView: View {
             DiagnosticLogger.shared.appendError("Error sending command: \(error.localizedDescription)")
         }
         isProcessing = false
+    }
+}
+
+// MARK: - RunScriptView
+
+struct RunScriptView: View {
+    let agent: Agent
+    let baseURL: String
+    let apiKey: String
+
+    @State private var scripts: [RMMScript] = []
+    @State private var isLoadingScripts = false
+    @State private var scriptsError: String?
+    @State private var selectedScriptID: Int?
+    @State private var timeout: String = ""
+    @State private var runAsUser: Bool = false
+    @State private var statusMessage: String?
+    @State private var outputMessage: String = ""
+    @State private var isRunningScript = false
+    @State private var hasLoadedScripts = false
+    @FocusState private var timeoutFocused: Bool
+    @State private var showScriptPicker = false
+
+    private static let demoScripts: [RMMScript] = [
+        RMMScript(
+            id: 147,
+            name: "Check Uptime",
+            description: "Queries the current uptime and reports the value.",
+            scriptType: "userdefined",
+            shell: "python",
+            args: [],
+            category: "TRMM (Win):Maintenance",
+            favorite: false,
+            defaultTimeout: 90,
+            syntax: nil,
+            filename: nil,
+            hidden: false,
+            supportedPlatforms: ["windows"],
+            runAsUser: true,
+            envVars: []
+        ),
+        RMMScript(
+            id: 136,
+            name: "Windows Update Install",
+            description: "Installs pending Windows Updates.",
+            scriptType: "userdefined",
+            shell: "powershell",
+            args: [],
+            category: "TRMM (Win):Maintenance",
+            favorite: false,
+            defaultTimeout: 900,
+            syntax: nil,
+            filename: nil,
+            hidden: false,
+            supportedPlatforms: ["windows"],
+            runAsUser: false,
+            envVars: []
+        ),
+        RMMScript(
+            id: 137,
+            name: "Clean Temp Files",
+            description: "Removes temporary files from common Windows locations.",
+            scriptType: "userdefined",
+            shell: "python",
+            args: [],
+            category: "TRMM (Win):Maintenance",
+            favorite: false,
+            defaultTimeout: 200,
+            syntax: nil,
+            filename: nil,
+            hidden: false,
+            supportedPlatforms: ["windows"],
+            runAsUser: true,
+            envVars: []
+        )
+    ]
+
+    var body: some View {
+        ZStack {
+            DarkGradientBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    selectionCard
+                    configurationCard
+                    resultCard
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
+            }
+
+            if isLoadingScripts || isRunningScript {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                ProgressView(isLoadingScripts ? "Loading scripts…" : "Running script…")
+                    .tint(Color.cyan)
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(12)
+            }
+        }
+        .navigationTitle("Run Script")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await loadScriptsIfNeeded() }
+        .onChange(of: selectedScriptID) { _, newValue in
+            guard let id = newValue, let script = scripts.first(where: { $0.id == id }) else { return }
+            applyDefaults(for: script)
+        }
+        .onChange(of: scripts.map { $0.id }) { _, _ in
+            let newScripts = scripts
+            guard let current = selectedScriptID,
+                  newScripts.contains(where: { $0.id == current }) else {
+                selectedScriptID = nil
+                timeout = ""
+                runAsUser = false
+                statusMessage = nil
+                outputMessage = ""
+                return
+            }
+        }
+        .onChange(of: timeout) { _, newValue in
+            let stripped = newValue.filter { $0.isNumber }
+            if stripped != newValue {
+                timeout = stripped
+            }
+        }
+        .sheet(isPresented: $showScriptPicker) {
+            ScriptPickerView(
+                scripts: scripts,
+                agentPlatform: normalizedAgentPlatform,
+                selectedScriptID: $selectedScriptID
+            )
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    private var selectionCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 18) {
+                SectionHeader("Scripts", subtitle: "Choose a saved automation", systemImage: "scroll")
+
+                if isLoadingScripts {
+                    ProgressView("Loading scripts…")
+                        .tint(Color.cyan)
+                } else if let error = scriptsError {
+                    Text("Error: \(error)")
+                        .font(.footnote)
+                        .foregroundStyle(Color.red)
+                } else if scripts.isEmpty {
+                    Text("No scripts available. Create scripts in Tactical RMM first.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else {
+                    Button {
+                        showScriptPicker = true
+                    } label: {
+                        HStack(spacing: 14) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(selectedScript?.name ?? "Choose a script")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(Color.white)
+                                if let script = selectedScript {
+                                    Text(scriptCategory(for: script))
+                                        .font(.caption)
+                                        .foregroundStyle(Color.white.opacity(0.65))
+                                } else if hasCompatibleScript {
+                                    Text("Browse available scripts")
+                                        .font(.caption)
+                                        .foregroundStyle(Color.white.opacity(0.65))
+                                } else {
+                                    Text("No compatible scripts available")
+                                        .font(.caption)
+                                        .foregroundStyle(Color.red.opacity(0.85))
+                                }
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(Color.cyan)
+                        }
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.white.opacity(0.04))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    if let script = selectedScript {
+                        scriptSummary(for: script)
+                    } else {
+                        Text(hasCompatibleScript ? "Pick a script to view its details and defaults." : "No scripts are compatible with this agent's platform.")
+                            .font(.caption)
+                            .foregroundStyle(hasCompatibleScript ? Color.white.opacity(0.6) : Color.red.opacity(0.85))
+                    }
+                }
+            }
+        }
+    }
+
+    private var configurationCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 18) {
+                SectionHeader("Configuration", subtitle: "Adjust runtime options", systemImage: "slider.horizontal.3")
+
+                if let script = selectedScript {
+                    if let description = script.description?.nonEmpty {
+                        Text(description)
+                            .font(.footnote)
+                            .foregroundStyle(Color.white.opacity(0.7))
+                            .textSelection(.enabled)
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        scriptMetaRow(systemImage: "square.stack.3d.up", label: "Category", value: script.category?.nonEmpty ?? "Uncategorized")
+                        scriptMetaRow(systemImage: "terminal", label: "Shell", value: script.shell.uppercased())
+                        scriptMetaRow(systemImage: "clock", label: "Default Timeout", value: "\(script.defaultTimeout) seconds")
+                        scriptMetaRow(systemImage: "desktopcomputer", label: "Platforms", value: platformsLabel(for: script))
+                    }
+
+                    if !script.args.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Arguments")
+                                .font(.caption2)
+                                .foregroundStyle(Color.white.opacity(0.55))
+                                .textCase(.uppercase)
+                            Text(script.args.joined(separator: ", "))
+                                .font(.callout.monospaced())
+                                .foregroundStyle(Color.white)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(Color.white.opacity(0.05))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                        )
+                                )
+                        }
+                    }
+
+                    if !script.envVars.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Environment Variables")
+                                .font(.caption2)
+                                .foregroundStyle(Color.white.opacity(0.55))
+                                .textCase(.uppercase)
+                            ForEach(script.envVars) { variable in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(variable.name)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(Color.white)
+                                    if let value = variable.value?.nonEmpty {
+                                        Text(value)
+                                            .font(.caption)
+                                            .foregroundStyle(Color.white.opacity(0.7))
+                                    }
+                                    if let description = variable.description?.nonEmpty {
+                                        Text(description)
+                                            .font(.caption2)
+                                            .foregroundStyle(Color.white.opacity(0.55))
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(Color.white.opacity(0.05))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                        )
+                                )
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Runtime Options")
+                            .font(.caption2)
+                            .foregroundStyle(Color.white.opacity(0.55))
+                            .textCase(.uppercase)
+
+                        HStack(spacing: 12) {
+                            Image(systemName: "timer")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.cyan)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Timeout (seconds)")
+                                    .font(.caption2)
+                                    .foregroundStyle(Color.white.opacity(0.55))
+                                TextField(String(script.defaultTimeout), text: $timeout)
+                                    .keyboardType(.numberPad)
+                                    .focused($timeoutFocused)
+                                    .padding(.vertical, 10)
+                                    .padding(.horizontal, 12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .fill(Color.white.opacity(0.05))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                            )
+                                    )
+                            }
+                        }
+
+                        Toggle("Run as logged-in user", isOn: $runAsUser)
+                            .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                    }
+
+                    Button {
+                        UIApplication.shared.dismissKeyboard()
+                        timeoutFocused = false
+                        Task { await runSelectedScript() }
+                    } label: {
+                        Label("Run Script", systemImage: "play.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .primaryButton()
+                    .disabled(isRunningScript || selectedScript == nil)
+
+                    if let statusMessage {
+                        messageBanner(statusMessage)
+                    }
+                } else {
+                    Text("Pick a script to configure runtime options.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                }
+            }
+        }
+    }
+
+    private var resultCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader("Result", subtitle: "Output from the agent", systemImage: "doc.text")
+                if processedOutput.isEmpty {
+                    Text("Run a script to view the response here.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else {
+                    ScrollView {
+                        Text(processedOutput)
+                            .font(.callout.monospaced())
+                            .foregroundStyle(Color.white)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(minHeight: 160)
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.white.opacity(0.04))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+                }
+            }
+        }
+    }
+
+    private var selectedScript: RMMScript? {
+        guard let id = selectedScriptID else { return nil }
+        return scripts.first(where: { $0.id == id })
+    }
+
+    private var hasCompatibleScript: Bool {
+        let platform = normalizedAgentPlatform
+        if platform.isEmpty { return !scripts.isEmpty }
+        return scripts.contains { scriptSupports($0, platform: platform) }
+    }
+
+    private var effectiveAPIKey: String {
+        KeychainHelper.shared.getAPIKey() ?? apiKey
+    }
+
+    private var isDemoMode: Bool {
+        baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo"
+    }
+
+    private var processedOutput: String {
+        outputMessage
+            .replacingOccurrences(of: "\r", with: "")
+            .replacingOccurrences(of: "\\r\\n", with: "\n")
+            .replacingOccurrences(of: "\\n", with: "\n")
+            .replacingOccurrences(of: "\\t", with: "\t")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var normalizedAgentPlatform: String {
+        let lower = agent.operating_system.lowercased()
+        if lower.contains("windows") { return "windows" }
+        if lower.contains("linux") { return "linux" }
+        if lower.contains("mac") || lower.contains("darwin") { return "darwin" }
+        return ""
+    }
+
+    private func platformsLabel(for script: RMMScript) -> String {
+        let platforms = script.supportedPlatforms
+        if platforms.isEmpty { return "All platforms" }
+        return platforms.joined(separator: ", ")
+    }
+
+    private func scriptCategory(for script: RMMScript) -> String {
+        script.category?.nonEmpty ?? "Uncategorized"
+    }
+
+    private func scriptSummary(for script: RMMScript) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.cyan)
+                Text(script.category?.nonEmpty ?? "Uncategorized")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.75))
+            }
+            Text("Shell: \(script.shell.uppercased()) • Timeout: \(script.defaultTimeout)s")
+                .font(.caption2)
+                .foregroundStyle(Color.white.opacity(0.55))
+            Text("Platforms: \(platformsLabel(for: script))")
+                .font(.caption2)
+                .foregroundStyle(Color.white.opacity(0.55))
+        }
+    }
+
+    private func scriptMetaRow(systemImage: String, label: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.cyan)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label.uppercased())
+                    .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(0.55))
+                Text(value)
+                    .font(.callout)
+                    .foregroundStyle(Color.white)
+                    .textSelection(.enabled)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func messageBanner(_ message: String) -> some View {
+        let tint = statusTint(for: message)
+        let icon = statusIcon(for: message)
+        return HStack(alignment: .center, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+            Text(message)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private func statusTint(for message: String) -> Color {
+        let lower = message.lowercased()
+        if lower.contains("success") || lower.contains("queued") || lower.contains("sent") {
+            return .green
+        }
+        if lower.contains("error") || lower.contains("fail") || lower.contains("invalid") || lower.contains("http") {
+            return .red
+        }
+        return .orange
+    }
+
+    private func statusIcon(for message: String) -> String {
+        let lower = message.lowercased()
+        if lower.contains("success") || lower.contains("queued") || lower.contains("sent") {
+            return "checkmark.circle.fill"
+        }
+        if lower.contains("error") || lower.contains("fail") || lower.contains("invalid") || lower.contains("http") {
+            return "exclamationmark.triangle.fill"
+        }
+        return "info.circle.fill"
+    }
+
+    @MainActor
+    private func loadScriptsIfNeeded() async {
+        guard !hasLoadedScripts else { return }
+        hasLoadedScripts = true
+        await loadScripts()
+    }
+
+    @MainActor
+    private func loadScripts() async {
+        isLoadingScripts = true
+        scriptsError = nil
+        defer { isLoadingScripts = false }
+
+        if isDemoMode {
+            scripts = RunScriptView.demoScripts
+            selectedScriptID = nil
+            timeout = ""
+            runAsUser = false
+            statusMessage = nil
+            outputMessage = ""
+            return
+        }
+
+        let sanitized = baseURL.removingTrailingSlash()
+        guard let url = URL(string: "\(sanitized)/scripts/?showCommunityScripts=false") else {
+            scriptsError = "Invalid URL."
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 45
+        request.addDefaultHeaders(apiKey: effectiveAPIKey)
+        DiagnosticLogger.shared.logHTTPRequest(
+            method: "GET",
+            url: url.absoluteString,
+            headers: request.allHTTPHeaderFields ?? [:]
+        )
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                DiagnosticLogger.shared.logHTTPResponse(
+                    method: "GET",
+                    url: url.absoluteString,
+                    status: http.statusCode,
+                    data: data
+                )
+                guard http.statusCode == 200 else {
+                    scriptsError = "HTTP \(http.statusCode)"
+                    return
+                }
+            }
+
+            let decoder = JSONDecoder()
+            let decoded = try decoder.decode([RMMScript].self, from: data)
+            scripts = decoded.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            selectedScriptID = nil
+            timeout = ""
+            runAsUser = false
+            statusMessage = nil
+            outputMessage = ""
+        } catch {
+            scriptsError = error.localizedDescription
+            DiagnosticLogger.shared.appendError("Error loading scripts: \(error.localizedDescription)")
+        }
+    }
+
+    private func scriptSupports(_ script: RMMScript, platform: String) -> Bool {
+        let lowered = script.supportedPlatforms.map { $0.lowercased() }
+        return lowered.isEmpty || lowered.contains(platform)
+    }
+
+    private func applyDefaults(for script: RMMScript) {
+        timeout = String(max(script.defaultTimeout, 1))
+        runAsUser = script.runAsUser
+        statusMessage = nil
+        outputMessage = ""
+    }
+
+    @MainActor
+    private func runSelectedScript() async {
+        guard let script = selectedScript else {
+            statusMessage = "Select a script before running."
+            return
+        }
+
+        let trimmedTimeout = timeout.trimmingCharacters(in: .whitespacesAndNewlines)
+        let timeoutSeconds: Int
+        if trimmedTimeout.isEmpty {
+            timeoutSeconds = max(script.defaultTimeout, 1)
+            timeout = String(timeoutSeconds)
+        } else if let value = Int(trimmedTimeout), value > 0 {
+            timeoutSeconds = value
+        } else {
+            statusMessage = "Enter a timeout greater than zero."
+            return
+        }
+
+        isRunningScript = true
+        statusMessage = nil
+        outputMessage = ""
+
+        if isDemoMode {
+            statusMessage = "Demo mode: script queued successfully."
+            outputMessage = "Simulated execution of \(script.name) with timeout \(timeoutSeconds)s."
+            isRunningScript = false
+            return
+        }
+
+        let sanitized = baseURL.removingTrailingSlash()
+        guard let url = URL(string: "\(sanitized)/agents/\(agent.agent_id)/runscript/") else {
+            statusMessage = "Invalid URL."
+            isRunningScript = false
+            return
+        }
+
+        struct RunScriptPayload: Encodable {
+            struct EnvVar: Encodable {
+                let name: String
+                let value: String?
+            }
+
+            let output: String = "wait"
+            let emails: [String] = []
+            let emailMode: String = "default"
+            let customField: String? = nil
+            let saveAllOutput: Bool = false
+            let script: Int
+            let args: [String]
+            let envVars: [EnvVar]
+            let timeout: Int
+            let runAsUser: Bool
+            let runOnServer: Bool = false
+
+            enum CodingKeys: String, CodingKey {
+                case output, emails, emailMode
+                case customField = "custom_field"
+                case saveAllOutput = "save_all_output"
+                case script, args
+                case envVars = "env_vars"
+                case timeout
+                case runAsUser = "run_as_user"
+                case runOnServer = "run_on_server"
+            }
+        }
+
+        let payload = RunScriptPayload(
+            script: script.id,
+            args: script.args,
+            envVars: script.envVars.map { RunScriptPayload.EnvVar(name: $0.name, value: $0.value) },
+            timeout: timeoutSeconds,
+            runAsUser: runAsUser
+        )
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60
+        request.addDefaultHeaders(apiKey: effectiveAPIKey)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let encoder = JSONEncoder()
+
+        do {
+            request.httpBody = try encoder.encode(payload)
+        } catch {
+            statusMessage = "Failed to encode request: \(error.localizedDescription)"
+            isRunningScript = false
+            return
+        }
+
+        DiagnosticLogger.shared.logHTTPRequest(
+            method: "POST",
+            url: url.absoluteString,
+            headers: request.allHTTPHeaderFields ?? [:]
+        )
+        if let bodyString = String(data: request.httpBody ?? Data(), encoding: .utf8) {
+            DiagnosticLogger.shared.append("RunScript payload: \(bodyString)")
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                DiagnosticLogger.shared.logHTTPResponse(
+                    method: "POST",
+                    url: url.absoluteString,
+                    status: http.statusCode,
+                    data: data
+                )
+                if (200...299).contains(http.statusCode) {
+                    statusMessage = "Script queued successfully."
+                } else {
+                    statusMessage = "HTTP \(http.statusCode)"
+                }
+            }
+
+            if !data.isEmpty {
+                if let result = try? JSONDecoder().decode(ScriptResults.self, from: data) {
+                    outputMessage = formatScriptResult(result)
+                } else if let decodedString = try? JSONDecoder().decode(String.self, from: data) {
+                    outputMessage = normalizeScriptOutputString(decodedString)
+                } else if let raw = String(data: data, encoding: .utf8), !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    outputMessage = normalizeScriptOutputString(raw)
+                }
+            }
+        } catch {
+            statusMessage = "Error: \(error.localizedDescription)"
+            DiagnosticLogger.shared.appendError("RunScript error: \(error.localizedDescription)")
+        }
+
+        isRunningScript = false
+    }
+
+    private func formatScriptResult(_ result: ScriptResults) -> String {
+        var segments: [String] = []
+        if let name = result.scriptName?.nonEmpty {
+            segments.append("Script: \(name)")
+        }
+        if let stdout = result.stdout?.nonEmpty {
+            segments.append("Output:\n\(stdout)")
+        }
+        if let stderr = result.stderr?.nonEmpty {
+            segments.append("Errors:\n\(stderr)")
+        }
+        if let retcode = result.retcode {
+            segments.append("Return Code: \(retcode)")
+        }
+        if let execution = result.executionTime {
+            segments.append("Execution Time: \(String(format: "%.2f", execution))s")
+        }
+        return segments.joined(separator: "\n\n")
+    }
+
+    private func normalizeScriptOutputString(_ raw: String) -> String {
+        var cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleaned.hasPrefix("\"") && cleaned.hasSuffix("\"") && cleaned.count >= 2 {
+            cleaned.removeFirst()
+            cleaned.removeLast()
+        }
+        cleaned = cleaned.replacingOccurrences(of: "\\r\\n", with: "\n")
+        cleaned = cleaned.replacingOccurrences(of: "\\n", with: "\n")
+        cleaned = cleaned.replacingOccurrences(of: "\\r", with: "")
+        cleaned = cleaned.replacingOccurrences(of: "\\t", with: "\t")
+        cleaned = cleaned.replacingOccurrences(of: "\\\"", with: "\"")
+        cleaned = cleaned.replacingOccurrences(of: "\\\\", with: "\\")
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private struct ScriptPickerView: View {
+        let scripts: [RMMScript]
+        let agentPlatform: String
+        @Binding var selectedScriptID: Int?
+
+        @Environment(\.dismiss) private var dismiss
+        @State private var searchText: String = ""
+
+        private var filteredScripts: [RMMScript] {
+            let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return scripts }
+            let lower = trimmed.lowercased()
+            return scripts.filter { script in
+                script.name.lowercased().contains(lower) ||
+                (script.description?.lowercased().contains(lower) ?? false) ||
+                (script.category?.lowercased().contains(lower) ?? false)
+            }
+        }
+
+        private var groupedScripts: [(category: String, items: [RMMScript])] {
+            let grouping = Dictionary(grouping: filteredScripts) { script -> String in
+                script.category?.nonEmpty ?? "Uncategorized"
+            }
+            let sortedKeys = grouping.keys.sorted { lhs, rhs in
+                lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+            }
+            return sortedKeys.map { key in
+                let scripts = grouping[key]?.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending } ?? []
+                return (key, scripts)
+            }
+        }
+
+        private func supports(_ script: RMMScript) -> Bool {
+            let platform = agentPlatform.lowercased()
+            guard !platform.isEmpty else { return true }
+            let lowered = script.supportedPlatforms.map { $0.lowercased() }
+            return lowered.isEmpty || lowered.contains(platform)
+        }
+
+        var body: some View {
+            NavigationStack {
+                Group {
+                    if scripts.isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: "tray")
+                                .font(.largeTitle)
+                                .foregroundStyle(Color.cyan)
+                            Text("No scripts available")
+                                .font(.headline)
+                                .foregroundStyle(Color.white)
+                            Text("Create or import scripts in Tactical RMM to select them here.")
+                                .font(.footnote)
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(Color.white.opacity(0.65))
+                                .padding(.horizontal)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(DarkGradientBackground().ignoresSafeArea())
+                    } else {
+                        List {
+                            ForEach(groupedScripts, id: \.category) { group in
+                                Section(header: Text(group.category)) {
+                                    ForEach(group.items) { script in
+                                        ScriptSelectionButton(
+                                            script: script,
+                                            isSelected: selectedScriptID == script.id,
+                                            isSupported: supports(script)
+                                        ) {
+                                            selectedScriptID = script.id
+                                            dismiss()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .scrollContentBackground(.hidden)
+                        .listStyle(.insetGrouped)
+                        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search scripts")
+                        .background(DarkGradientBackground().ignoresSafeArea())
+                        .overlay {
+                            if filteredScripts.isEmpty {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.title2)
+                                        .foregroundStyle(Color.cyan)
+                                    Text("No scripts match your search.")
+                                        .font(.footnote)
+                                        .foregroundStyle(Color.white.opacity(0.7))
+                                }
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Select Script")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }
+                    }
+                }
+            }
+        }
+
+        private struct ScriptRow: View {
+            let script: RMMScript
+            let isSelected: Bool
+            let supported: Bool
+
+            private var categoryLabel: String {
+                script.category?.nonEmpty ?? "Uncategorized"
+            }
+
+            private var compatibilityLabel: String? {
+                supported ? nil : "Incompatible"
+            }
+
+            var body: some View {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            Text(script.name)
+                                .font(.headline)
+                                .foregroundStyle(Color.white)
+                            if script.favorite {
+                                Image(systemName: "star.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.yellow)
+                            }
+                        }
+                        Text(categoryLabel)
+                            .font(.caption)
+                            .foregroundStyle(Color.white.opacity(0.7))
+                        Text("Shell: \(script.shell.uppercased()) • Timeout: \(script.defaultTimeout)s")
+                            .font(.caption2)
+                            .foregroundStyle(Color.white.opacity(0.55))
+                    }
+                    Spacer(minLength: 0)
+                    if let compatibilityLabel {
+                        Text(compatibilityLabel)
+                            .font(.caption2.weight(.semibold))
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(Color.red.opacity(0.15))
+                            )
+                            .foregroundStyle(Color.red)
+                    }
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(Color.cyan)
+                    }
+                }
+                .padding(.vertical, 6)
+                .opacity(supported ? 1 : 0.6)
+            }
+        }
+
+        private struct ScriptSelectionButton: View {
+            let script: RMMScript
+            let isSelected: Bool
+            let isSupported: Bool
+            let onSelect: () -> Void
+
+            var body: some View {
+                Button {
+                    guard isSupported else { return }
+                    onSelect()
+                } label: {
+                    ScriptRow(script: script, isSelected: isSelected, supported: isSupported)
+                }
+                .buttonStyle(.plain)
+                .disabled(!isSupported)
+            }
+        }
     }
 }
 

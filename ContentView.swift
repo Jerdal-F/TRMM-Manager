@@ -3,6 +3,7 @@ import SwiftData
 import Security
 import LocalAuthentication
 import UIKit
+import StoreKit
 
 // MARK: - Diagnostic Logger
 
@@ -428,6 +429,140 @@ struct SectionHeader: View {
                 }
             }
             Spacer()
+        }
+    }
+}
+
+private struct DonationSheet: View {
+    /// Update these identifiers to match the in-app purchase product IDs configured in App Store Connect.
+    private static let productIdentifiers = [
+        "Donate1usd",
+        "Donate5usd",
+        "Donate10usd",
+        "Donate20usd",
+        "Donate50usd",
+        "Donate100usd"
+    ]
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var products: [Product] = []
+    @State private var isLoading = false
+    @State private var statusMessage: String?
+    @State private var isPurchasing = false
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                DarkGradientBackground()
+                VStack(spacing: 20) {
+                    Text("Support Development")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(Color.white)
+                    Text("Select a donation amount to support ongoing work on TacticalRMM Manager.")
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(Color.white.opacity(0.7))
+                        .padding(.horizontal)
+
+                    if isLoading {
+                        ProgressView("Loading donation options…")
+                            .tint(.cyan)
+                    } else if products.isEmpty {
+                        Text("Donation options are currently unavailable. Check back soon.")
+                            .font(.footnote)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(Color.white.opacity(0.7))
+                            .padding(.horizontal)
+                    } else {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                            ForEach(products, id: \.id) { product in
+                                Button {
+                                    Task { await purchase(product) }
+                                } label: {
+                                    VStack(spacing: 4) {
+                                        Text(product.displayPrice)
+                                            .font(.headline)
+                                        Text(product.displayName)
+                                            .font(.caption)
+                                            .foregroundStyle(Color.white.opacity(0.7))
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 18)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.cyan)
+                                .disabled(isPurchasing)
+                            }
+                        }
+                    }
+
+                    if let statusMessage {
+                        Text(statusMessage)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.white)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 8)
+                    }
+                }
+                .padding(24)
+            }
+            .navigationTitle("Donate")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
+        .task {
+            if products.isEmpty {
+                await loadProducts()
+            }
+        }
+    }
+
+    @MainActor
+    private func loadProducts() async {
+        isLoading = true
+        statusMessage = nil
+        defer { isLoading = false }
+        do {
+            var fetched = try await Product.products(for: Self.productIdentifiers)
+            fetched.sort { $0.price < $1.price }
+            products = fetched
+            let identifiers = fetched.map { $0.id.description }.joined(separator: ", ")
+            DiagnosticLogger.shared.append("Loaded StoreKit products: \(identifiers)")
+        } catch {
+            statusMessage = "Unable to load donation options: \(error.localizedDescription)"
+        }
+    }
+
+    @MainActor
+    private func purchase(_ product: Product) async {
+        guard !isPurchasing else { return }
+        isPurchasing = true
+        statusMessage = nil
+        defer { isPurchasing = false }
+        do {
+            let result = try await product.purchase()
+            switch result {
+            case .success(let verification):
+                switch verification {
+                case .verified(let transaction):
+                    await transaction.finish()
+                    statusMessage = "Thank you for your support!"
+                case .unverified(_, let error):
+                    statusMessage = "Purchase unverified: \(error.localizedDescription)"
+                }
+            case .userCancelled:
+                statusMessage = "Purchase cancelled."
+            case .pending:
+                statusMessage = "Purchase pending approval."
+            @unknown default:
+                statusMessage = "Purchase completed with an unknown result."
+            }
+        } catch {
+            statusMessage = "Purchase failed: \(error.localizedDescription)"
         }
     }
 }
@@ -1064,6 +1199,7 @@ struct ContentView: View {
     @State private var sortOption: AgentSortOption = .none
 
     @FocusState private var searchFieldIsFocused: Bool
+    @State private var transactionUpdatesTask: Task<Void, Never>?
 
     var body: some View {
         ZStack {
@@ -1117,6 +1253,7 @@ struct ContentView: View {
                 if !useFaceID {
                     loadInitialSettings()
                 }
+                startTransactionUpdatesIfNeeded()
             }
             .onChange(of: activeSettingsUUID) { _, _ in
                 applyActiveSettings()
@@ -1137,6 +1274,10 @@ struct ContentView: View {
                 } else if let settings = activeSettings {
                     Task { await fetchAgents(using: settings) }
                 }
+            }
+            .onDisappear {
+                transactionUpdatesTask?.cancel()
+                transactionUpdatesTask = nil
             }
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
@@ -1259,7 +1400,7 @@ struct ContentView: View {
                     ResponsiveBadgeRow(badges: [
                         .init(title: "Agents", value: String(agents.count), symbol: "desktopcomputer"),
                         .init(title: "Online", value: String(onlineCount), symbol: "bolt.horizontal.circle"),
-                        .init(title: "Offline", value: String(offlineCount), symbol: "moon.zzz")
+                        .init(title: "Overdue", value: String(offlineCount), symbol: "moon.zzz")
                     ])
                 }
             }
@@ -1715,6 +1856,22 @@ struct ContentView: View {
         }
     }
 
+    private func startTransactionUpdatesIfNeeded() {
+        guard transactionUpdatesTask == nil else { return }
+        transactionUpdatesTask = Task(priority: .background) {
+            for await result in Transaction.updates {
+                if Task.isCancelled { break }
+                switch result {
+                case .verified(let transaction):
+                    await transaction.finish()
+                    DiagnosticLogger.shared.append("Finished pending transaction: \(transaction.id)")
+                case .unverified(let transaction, let error):
+                    DiagnosticLogger.shared.appendError("Unverified transaction (\(transaction.id)): \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
     private func authenticateBiometrics(completion: @escaping (Bool) -> Void) {
         let context = LAContext()
         var error: NSError?
@@ -1853,7 +2010,6 @@ struct ContentView: View {
                             agents = try decoder.decode([Agent].self, from: data)
                             DiagnosticLogger.shared.append("Fetched agents via legacy array: \(agents.count)")
                         }
-
                     } catch {
                         if let decErr = error as? DecodingError {
                             let message: String
@@ -1965,6 +2121,7 @@ struct SettingsView: View {
     @State private var editInstanceKey: String = ""
     @State private var editInstanceError: String?
     @FocusState private var editInstanceField: EditInstanceField?
+    @State private var showDonationSheet = false
 
     private enum AddInstanceField: Hashable { case name, url, key }
     private enum EditInstanceField: Hashable { case name, url, key }
@@ -2023,6 +2180,9 @@ struct SettingsView: View {
                 if let instance = editingInstance {
                     editInstanceSheet(for: instance)
                 }
+            }
+            .sheet(isPresented: $showDonationSheet) {
+                DonationSheet()
             }
             .alert("Delete All App Data?", isPresented: $showResetConfirmation) {
                 Button("Delete", role: .destructive) {
@@ -2106,6 +2266,14 @@ struct SettingsView: View {
                     }
                 } label: {
                     Label("Open Project Guide", systemImage: "globe")
+                        .frame(maxWidth: .infinity)
+                }
+                .secondaryButton()
+
+                Button {
+                    showDonationSheet = true
+                } label: {
+                    Label("Donation", systemImage: "heart.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .secondaryButton()
@@ -2725,24 +2893,37 @@ struct InstallAgentView: View {
                     Text("Expires (hours)")
                         .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.6))
-                    HStack(spacing: 12) {
-                        Image(systemName: "hourglass")
-                            .foregroundStyle(Color.cyan)
-                        TextField("24", text: $expires)
-                            .keyboardType(.numberPad)
-                            .textInputAutocapitalization(.never)
-                            .disableAutocorrection(true)
-                    }
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.white.opacity(0.05))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                            )
-                    )
+                    TextField("24", text: $expires)
+                        .keyboardType(.numberPad)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.white.opacity(0.05))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
+                        )
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Installer File Name")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.6))
+                    TextField("trmm-installer.exe", text: $fileName)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.white.opacity(0.05))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
+                        )
                 }
             }
         }
@@ -2976,7 +3157,12 @@ struct AgentDetailView: View {
                 DiagnosticLogger.shared.logHTTPResponse(method: "POST", url: url.absoluteString, status: httpResponse.statusCode, data: data)
                 if httpResponse.statusCode == 200 {
                     if let responseString = String(data: data, encoding: .utf8) {
-                        message = responseString
+                        var cleaned = responseString.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if cleaned.hasPrefix("\"") && cleaned.hasSuffix("\"") && cleaned.count >= 2 {
+                            cleaned.removeFirst()
+                            cleaned.removeLast()
+                        }
+                        message = cleaned.isEmpty ? "Wake‑on‑LAN sent successfully!" : cleaned
                     } else {
                         message = "Wake‑on‑LAN sent successfully!"
                     }
@@ -3277,34 +3463,37 @@ struct AgentDetailView: View {
     }
 
     private var powerCard: some View {
-        let columns = [GridItem(.flexible()), GridItem(.flexible())]
         return GlassCard {
             VStack(alignment: .leading, spacing: 16) {
                 SectionHeader("Power Controls", subtitle: "Send remote power actions", systemImage: "bolt.fill")
-                LazyVGrid(columns: columns, spacing: 16) {
-                    Button {
-                        pendingPowerAction = .reboot
-                    } label: {
-                        AgentActionTile(
-                            title: "Reboot",
-                            subtitle: "Graceful restart",
-                            systemImage: "arrow.clockwise.circle.fill",
-                            tint: Color.orange
-                        )
-                    }
-                    .buttonStyle(.plain)
+                VStack(spacing: 16) {
+                    HStack(spacing: 16) {
+                        Button {
+                            pendingPowerAction = .reboot
+                        } label: {
+                            AgentActionTile(
+                                title: "Reboot",
+                                subtitle: "Graceful restart",
+                                systemImage: "arrow.clockwise.circle.fill",
+                                tint: Color.orange
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity)
 
-                    Button {
-                        pendingPowerAction = .shutdown
-                    } label: {
-                        AgentActionTile(
-                            title: "Shutdown",
-                            subtitle: "Power down agent",
-                            systemImage: "power.circle.fill",
-                            tint: Color.red
-                        )
+                        Button {
+                            pendingPowerAction = .shutdown
+                        } label: {
+                            AgentActionTile(
+                                title: "Shutdown",
+                                subtitle: "Power down agent",
+                                systemImage: "power.circle.fill",
+                                tint: Color.red
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.plain)
 
                     Button {
                         Task { await performWakeOnLan() }
@@ -3317,6 +3506,7 @@ struct AgentDetailView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
                 }
 
                 if let message, !message.isEmpty {
@@ -3405,7 +3595,7 @@ struct AgentDetailView: View {
                     } label: {
                         AgentActionTile(
                             title: "Checks",
-                            subtitle: "Health status",
+                            subtitle: "Agent checks",
                             systemImage: "waveform.path.ecg",
                             tint: Color.orange
                         )
@@ -3642,6 +3832,7 @@ struct SendCommandView: View {
     @State private var isProcessing: Bool = false
     @FocusState private var timeoutFocused: Bool
     @FocusState private var commandFocused: Bool
+    @State private var processedCommandOutput: String = ""
     
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
@@ -3674,18 +3865,28 @@ struct SendCommandView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
     
-    private var processedOutput: String {
-        outputText
+    private var trimmedCommand: String {
+        command.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func sanitizeCommandOutput(_ raw: String) -> String {
+        raw
             .replacingOccurrences(of: "\\r", with: "")
             .replacingOccurrences(of: "\r", with: "")
-            .replacingOccurrences(of: "/r", with: "")
             .replacingOccurrences(of: "\\n", with: "\n")
+            .replacingOccurrences(of: "\\t", with: "\t")
             .replacingOccurrences(of: "\"\"", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
-    
-    private var trimmedCommand: String {
-        command.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    private func clearCommandOutput() {
+        outputText = ""
+        processedCommandOutput = ""
+    }
+
+    private func updateCommandOutput(with raw: String) {
+        outputText = raw
+        processedCommandOutput = sanitizeCommandOutput(raw)
     }
     
     private var executionCard: some View {
@@ -3766,34 +3967,8 @@ struct SendCommandView: View {
     }
     
     private var outputCard: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Output", subtitle: "Response from the agent", systemImage: "terminal")
-                if processedOutput.isEmpty {
-                    Text("No output yet. Send a command to view the response here.")
-                        .font(.footnote)
-                        .foregroundStyle(Color.white.opacity(0.65))
-                } else {
-                    ScrollView {
-                        Text(processedOutput)
-                            .font(.callout.monospaced())
-                            .foregroundStyle(Color.white)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .frame(minHeight: 180)
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.white.opacity(0.04))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                            )
-                    )
-                }
-            }
-        }
+        CommandOutputCard(text: processedCommandOutput)
+            .equatable()
     }
 
     private func messageBanner(_ message: String) -> some View {
@@ -3841,6 +4016,46 @@ struct SendCommandView: View {
         }
         return "info.circle.fill"
     }
+
+    // Wraps the command output to avoid costly re-layout when the text is unchanged.
+    private struct CommandOutputCard: View, Equatable {
+        let text: String
+
+        static func == (lhs: CommandOutputCard, rhs: CommandOutputCard) -> Bool {
+            lhs.text == rhs.text
+        }
+
+        var body: some View {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    SectionHeader("Output", subtitle: "Response from the agent", systemImage: "terminal")
+                    if text.isEmpty {
+                        Text("No output yet. Send a command to view the response here.")
+                            .font(.footnote)
+                            .foregroundStyle(Color.white.opacity(0.65))
+                    } else {
+                        ScrollView {
+                            Text(text)
+                                .font(.callout.monospaced())
+                                .foregroundStyle(Color.white)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(minHeight: 180)
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color.white.opacity(0.04))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
+                        )
+                    }
+                }
+            }
+        }
+    }
     
     @MainActor
     func sendCommand() async {
@@ -3848,14 +4063,16 @@ struct SendCommandView: View {
             statusMessage = "Invalid timeout value"
             return
         }
+
         let sanitizedCommand = trimmedCommand
         guard !sanitizedCommand.isEmpty else {
             statusMessage = "Enter a command before sending."
             return
         }
+
         command = sanitizedCommand
         isProcessing = true
-        outputText = ""
+        clearCommandOutput()
         statusMessage = nil
 
         let sanitizedURL = baseURL.removingTrailingSlash()
@@ -3877,6 +4094,7 @@ struct SendCommandView: View {
             "custom_shell": nil,
             "run_as_user": runAsUser
         ]
+
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
         } catch {
@@ -3901,30 +4119,29 @@ struct SendCommandView: View {
                     status: httpResponse.statusCode,
                     data: data
                 )
+
                 if httpResponse.statusCode == 200 || httpResponse.statusCode == 204 {
                     statusMessage = "Command sent successfully!"
                 } else {
                     statusMessage = "HTTP Error: \(httpResponse.statusCode)"
                 }
 
-                // Try to decode a JSON‐encoded string first
                 if let decoded = try? JSONDecoder().decode(String.self, from: data) {
-                    outputText = decoded
+                    updateCommandOutput(with: decoded)
                 } else {
-                    // Fallback to raw UTF8
                     var raw = String(data: data, encoding: .utf8) ?? ""
-                    // Trim surrounding quotes if present
                     if raw.hasPrefix("\"") && raw.hasSuffix("\""), raw.count >= 2 {
                         raw.removeFirst()
                         raw.removeLast()
                     }
-                    outputText = raw
+                    updateCommandOutput(with: raw)
                 }
             }
         } catch {
             statusMessage = "Error: \(error.localizedDescription)"
             DiagnosticLogger.shared.appendError("Error sending command: \(error.localizedDescription)")
         }
+
         isProcessing = false
     }
 }
@@ -3942,10 +4159,16 @@ struct RunScriptView: View {
     @State private var selectedScriptID: Int?
     @State private var timeout: String = ""
     @State private var runAsUser: Bool = false
+    @State private var deliverResultsViaEmail: Bool = false
+    @State private var emailDeliveryMode: EmailDeliveryMode = .defaultRecipients
+    @State private var customEmailInput: String = ""
+    @State private var customScriptArguments: String = ""
+    @State private var customEnvironmentVariables: String = ""
     @State private var statusMessage: String?
     @State private var outputMessage: String = ""
     @State private var isRunningScript = false
     @State private var hasLoadedScripts = false
+    @State private var processedOutputText: String = ""
     @FocusState private var timeoutFocused: Bool
     @State private var showScriptPicker = false
 
@@ -4041,8 +4264,13 @@ struct RunScriptView: View {
                 selectedScriptID = nil
                 timeout = ""
                 runAsUser = false
+                deliverResultsViaEmail = false
+                emailDeliveryMode = .defaultRecipients
+                customEmailInput = ""
+                customScriptArguments = ""
+                customEnvironmentVariables = ""
                 statusMessage = nil
-                outputMessage = ""
+                clearScriptOutput()
                 return
             }
         }
@@ -4059,6 +4287,20 @@ struct RunScriptView: View {
                 selectedScriptID: $selectedScriptID
             )
             .presentationDetents([.medium, .large])
+        }
+    }
+
+    private enum EmailDeliveryMode: String, CaseIterable, Identifiable {
+        case defaultRecipients = "default"
+        case custom = "custom"
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .defaultRecipients: return "Account default"
+            case .custom: return "Custom list"
+            }
         }
     }
 
@@ -4152,62 +4394,19 @@ struct RunScriptView: View {
                     }
 
                     if !script.args.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Arguments")
-                                .font(.caption2)
-                                .foregroundStyle(Color.white.opacity(0.55))
-                                .textCase(.uppercase)
-                            Text(script.args.joined(separator: ", "))
-                                .font(.callout.monospaced())
-                                .foregroundStyle(Color.white)
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(Color.white.opacity(0.05))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                                        )
-                                )
-                        }
+                        defaultScriptSection(title: "Arguments", content: script.args.joined(separator: "\n"))
                     }
 
                     if !script.envVars.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Environment Variables")
-                                .font(.caption2)
-                                .foregroundStyle(Color.white.opacity(0.55))
-                                .textCase(.uppercase)
-                            ForEach(script.envVars) { variable in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(variable.name)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(Color.white)
-                                    if let value = variable.value?.nonEmpty {
-                                        Text(value)
-                                            .font(.caption)
-                                            .foregroundStyle(Color.white.opacity(0.7))
-                                    }
-                                    if let description = variable.description?.nonEmpty {
-                                        Text(description)
-                                            .font(.caption2)
-                                            .foregroundStyle(Color.white.opacity(0.55))
-                                    }
+                        defaultScriptSection(
+                            title: "Environment Variables",
+                            content: script.envVars.map { variable in
+                                if let value = variable.value?.nonEmpty {
+                                    return "\(variable.name)=\(value)"
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(Color.white.opacity(0.05))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                                        )
-                                )
-                            }
-                        }
+                                return variable.name
+                            }.joined(separator: "\n")
+                        )
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
@@ -4240,8 +4439,49 @@ struct RunScriptView: View {
                             }
                         }
 
+                        argumentEditor
+                        environmentEditor
+
                         Toggle("Run as logged-in user", isOn: $runAsUser)
                             .toggleStyle(SwitchToggleStyle(tint: .cyan))
+
+                        Toggle("Email results", isOn: $deliverResultsViaEmail)
+                            .toggleStyle(SwitchToggleStyle(tint: .cyan))
+
+                        if deliverResultsViaEmail {
+                            Picker("Delivery method", selection: $emailDeliveryMode) {
+                                ForEach(EmailDeliveryMode.allCases) { mode in
+                                    Text(mode.label).tag(mode)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+
+                            if emailDeliveryMode == .custom {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Recipients")
+                                        .font(.caption2)
+                                        .foregroundStyle(Color.white.opacity(0.55))
+                                        .textCase(.uppercase)
+                                    TextField("user@example.com, second@example.com", text: $customEmailInput)
+                                        .keyboardType(.emailAddress)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled(true)
+                                        .padding(.vertical, 10)
+                                        .padding(.horizontal, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                .fill(Color.white.opacity(0.05))
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                                )
+                                        )
+                                    Text("Separate multiple addresses with commas or spaces.")
+                                        .font(.caption2)
+                                        .foregroundStyle(Color.white.opacity(0.45))
+                                }
+                            }
+                        }
                     }
 
                     Button {
@@ -4268,34 +4508,8 @@ struct RunScriptView: View {
     }
 
     private var resultCard: some View {
-        GlassCard {
-            VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Result", subtitle: "Output from the agent", systemImage: "doc.text")
-                if processedOutput.isEmpty {
-                    Text("Run a script to view the response here.")
-                        .font(.footnote)
-                        .foregroundStyle(Color.white.opacity(0.65))
-                } else {
-                    ScrollView {
-                        Text(processedOutput)
-                            .font(.callout.monospaced())
-                            .foregroundStyle(Color.white)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .frame(minHeight: 160)
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.white.opacity(0.04))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                            )
-                    )
-                }
-            }
-        }
+        ScriptResultCard(text: processedOutputText)
+            .equatable()
     }
 
     private var selectedScript: RMMScript? {
@@ -4317,21 +4531,18 @@ struct RunScriptView: View {
         baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo"
     }
 
-    private var processedOutput: String {
-        outputMessage
-            .replacingOccurrences(of: "\r", with: "")
-            .replacingOccurrences(of: "\\r\\n", with: "\n")
-            .replacingOccurrences(of: "\\n", with: "\n")
-            .replacingOccurrences(of: "\\t", with: "\t")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+    private func clearScriptOutput() {
+        outputMessage = ""
+        processedOutputText = ""
+    }
+
+    private func updateScriptOutput(with raw: String) {
+        outputMessage = raw
+        processedOutputText = normalizeScriptOutputString(raw)
     }
 
     private var normalizedAgentPlatform: String {
-        let lower = agent.operating_system.lowercased()
-        if lower.contains("windows") { return "windows" }
-        if lower.contains("linux") { return "linux" }
-        if lower.contains("mac") || lower.contains("darwin") { return "darwin" }
-        return ""
+        Self.normalizedPlatformIdentifier(from: agent.operating_system) ?? ""
     }
 
     private func platformsLabel(for script: RMMScript) -> String {
@@ -4379,6 +4590,150 @@ struct RunScriptView: View {
                     .textSelection(.enabled)
             }
             Spacer(minLength: 0)
+        }
+    }
+
+    private var argumentEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Script Arguments")
+                .font(.caption2)
+                .foregroundStyle(Color.white.opacity(0.55))
+                .textCase(.uppercase)
+            ScriptTextEditor(text: $customScriptArguments, placeholder: "Enter arguments separated by spaces")
+        }
+    }
+
+    private var environmentEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Environment Variables")
+                .font(.caption2)
+                .foregroundStyle(Color.white.opacity(0.55))
+                .textCase(.uppercase)
+            ScriptTextEditor(text: $customEnvironmentVariables, placeholder: "KEY=value, one per line")
+        }
+    }
+
+    private func defaultScriptSection(title: String, content: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(Color.white.opacity(0.55))
+                .textCase(.uppercase)
+            Text(content)
+                .font(.callout.monospaced())
+                .foregroundStyle(Color.white)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.white.opacity(0.05))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                )
+        }
+    }
+
+    private struct ScriptTextEditor: View {
+        @Binding var text: String
+        let placeholder: String
+
+        var body: some View {
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $text)
+                    .font(.callout.monospaced())
+                    .frame(minHeight: 60)
+                    .scrollContentBackground(.hidden)
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.white.opacity(0.05))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+
+                if text.isEmpty {
+                    Text(placeholder)
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.4))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                }
+            }
+        }
+    }
+
+    // Prevents the result panel from re-rendering while the user edits unrelated fields.
+    private struct ScriptResultCard: View, Equatable {
+        let text: String
+
+        static func == (lhs: ScriptResultCard, rhs: ScriptResultCard) -> Bool {
+            lhs.text == rhs.text
+        }
+
+        var body: some View {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    SectionHeader("Result", subtitle: "Output from the agent", systemImage: "doc.text")
+                    if text.isEmpty {
+                        Text("Run a script to view the response here.")
+                            .font(.footnote)
+                            .foregroundStyle(Color.white.opacity(0.65))
+                    } else {
+                        ScrollView {
+                            Text(text)
+                                .font(.callout.monospaced())
+                                .foregroundStyle(Color.white)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(minHeight: 160)
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color.white.opacity(0.04))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private struct RunScriptPayload: Encodable {
+        struct EnvVar: Encodable {
+            let name: String
+            let value: String?
+        }
+
+        let output: String
+        let emails: [String]
+        let emailMode: String
+        let customField: String?
+        let saveAllOutput: Bool
+        let script: Int
+        let args: [String]
+        let envVars: [EnvVar]
+        let timeout: Int
+        let runAsUser: Bool
+        let runOnServer: Bool = false
+
+        enum CodingKeys: String, CodingKey {
+            case output, emails, emailMode
+            case customField = "custom_field"
+            case saveAllOutput = "save_all_output"
+            case script, args
+            case envVars = "env_vars"
+            case timeout
+            case runAsUser = "run_as_user"
+            case runOnServer = "run_on_server"
         }
     }
 
@@ -4446,8 +4801,13 @@ struct RunScriptView: View {
             selectedScriptID = nil
             timeout = ""
             runAsUser = false
+            deliverResultsViaEmail = false
+            emailDeliveryMode = .defaultRecipients
+            customEmailInput = ""
+            customScriptArguments = ""
+            customEnvironmentVariables = ""
             statusMessage = nil
-            outputMessage = ""
+            clearScriptOutput()
             return
         }
 
@@ -4476,6 +4836,7 @@ struct RunScriptView: View {
                     status: http.statusCode,
                     data: data
                 )
+
                 guard http.statusCode == 200 else {
                     scriptsError = "HTTP \(http.statusCode)"
                     return
@@ -4488,30 +4849,75 @@ struct RunScriptView: View {
             selectedScriptID = nil
             timeout = ""
             runAsUser = false
+            deliverResultsViaEmail = false
+            emailDeliveryMode = .defaultRecipients
+            customEmailInput = ""
+            customScriptArguments = ""
+            customEnvironmentVariables = ""
             statusMessage = nil
-            outputMessage = ""
+            clearScriptOutput()
         } catch {
             scriptsError = error.localizedDescription
             DiagnosticLogger.shared.appendError("Error loading scripts: \(error.localizedDescription)")
         }
     }
 
+    private static func normalizedPlatformIdentifier(from raw: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let lower = trimmed.lowercased()
+        if lower == "all" || lower == "any" { return nil }
+        if lower.contains("mac") || lower.contains("darwin") || lower.contains("osx") { return "darwin" }
+        if lower.contains("lin") || lower.contains("nix") { return "linux" }
+        if lower.contains("win") { return "windows" }
+        return lower
+    }
+
+    private static func scriptSupports(_ script: RMMScript, platform: String) -> Bool {
+        guard let normalizedPlatform = normalizedPlatformIdentifier(from: platform) else { return true }
+        let normalizedScriptPlatforms = script.supportedPlatforms.compactMap { normalizedPlatformIdentifier(from: $0) }
+        if normalizedScriptPlatforms.isEmpty { return true }
+        return normalizedScriptPlatforms.contains(normalizedPlatform)
+    }
+
     private func scriptSupports(_ script: RMMScript, platform: String) -> Bool {
-        let lowered = script.supportedPlatforms.map { $0.lowercased() }
-        return lowered.isEmpty || lowered.contains(platform)
+        Self.scriptSupports(script, platform: platform)
     }
 
     private func applyDefaults(for script: RMMScript) {
+        let platform = normalizedAgentPlatform
+        guard scriptSupports(script, platform: platform) else {
+            statusMessage = "This script is not compatible with the selected agent."
+            selectedScriptID = nil
+            return
+        }
         timeout = String(max(script.defaultTimeout, 1))
         runAsUser = script.runAsUser
+        deliverResultsViaEmail = false
+        emailDeliveryMode = .defaultRecipients
+        customEmailInput = ""
+        customScriptArguments = script.args.joined(separator: " ")
+        customEnvironmentVariables = script.envVars
+            .map { variable in
+                if let value = variable.value?.nonEmpty {
+                    return "\(variable.name)=\(value)"
+                }
+                return variable.name
+            }
+            .joined(separator: "\n")
         statusMessage = nil
-        outputMessage = ""
+        clearScriptOutput()
     }
 
     @MainActor
     private func runSelectedScript() async {
         guard let script = selectedScript else {
             statusMessage = "Select a script before running."
+            return
+        }
+
+        guard scriptSupports(script, platform: normalizedAgentPlatform) else {
+            statusMessage = "This script is not compatible with the selected agent."
             return
         }
 
@@ -4527,13 +4933,51 @@ struct RunScriptView: View {
             return
         }
 
+        let argumentList = parsedArguments(from: customScriptArguments)
+        let environmentEntries: [RunScriptPayload.EnvVar]
+        do {
+            environmentEntries = try parsedEnvironmentVariables(from: customEnvironmentVariables)
+        } catch {
+            statusMessage = error.localizedDescription
+            return
+        }
+
+        let outputSetting: String
+        let emailModeValue: String
+        let emailList: [String]
+
+        if deliverResultsViaEmail {
+            outputSetting = "email"
+            switch emailDeliveryMode {
+            case .defaultRecipients:
+                emailModeValue = "default"
+                emailList = []
+            case .custom:
+                let parsedEmails = parsedCustomEmails()
+                if parsedEmails.isEmpty {
+                    statusMessage = "Add at least one email address or switch to account default delivery."
+                    return
+                }
+                if let invalid = invalidEmails(in: parsedEmails).first {
+                    statusMessage = "Invalid email: \(invalid)"
+                    return
+                }
+                emailModeValue = "custom"
+                emailList = parsedEmails
+            }
+        } else {
+            outputSetting = "wait"
+            emailModeValue = "default"
+            emailList = []
+        }
+
         isRunningScript = true
         statusMessage = nil
-        outputMessage = ""
+        clearScriptOutput()
 
         if isDemoMode {
-            statusMessage = "Demo mode: script queued successfully."
-            outputMessage = "Simulated execution of \(script.name) with timeout \(timeoutSeconds)s."
+            statusMessage = deliverResultsViaEmail ? "Demo mode: email delivery simulated." : "Demo mode: script queued successfully."
+            updateScriptOutput(with: "Simulated execution of \(script.name) with timeout \(timeoutSeconds)s.")
             isRunningScript = false
             return
         }
@@ -4545,47 +4989,23 @@ struct RunScriptView: View {
             return
         }
 
-        struct RunScriptPayload: Encodable {
-            struct EnvVar: Encodable {
-                let name: String
-                let value: String?
-            }
-
-            let output: String = "wait"
-            let emails: [String] = []
-            let emailMode: String = "default"
-            let customField: String? = nil
-            let saveAllOutput: Bool = false
-            let script: Int
-            let args: [String]
-            let envVars: [EnvVar]
-            let timeout: Int
-            let runAsUser: Bool
-            let runOnServer: Bool = false
-
-            enum CodingKeys: String, CodingKey {
-                case output, emails, emailMode
-                case customField = "custom_field"
-                case saveAllOutput = "save_all_output"
-                case script, args
-                case envVars = "env_vars"
-                case timeout
-                case runAsUser = "run_as_user"
-                case runOnServer = "run_on_server"
-            }
-        }
-
         let payload = RunScriptPayload(
+            output: outputSetting,
+            emails: emailList,
+            emailMode: emailModeValue,
+            customField: nil,
+            saveAllOutput: false,
             script: script.id,
-            args: script.args,
-            envVars: script.envVars.map { RunScriptPayload.EnvVar(name: $0.name, value: $0.value) },
+            args: argumentList,
+            envVars: environmentEntries,
             timeout: timeoutSeconds,
             runAsUser: runAsUser
         )
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 60
+        // Match the request timeout to the user-selected script timeout.
+        request.timeoutInterval = TimeInterval(timeoutSeconds)
         request.addDefaultHeaders(apiKey: effectiveAPIKey)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -4626,11 +5046,11 @@ struct RunScriptView: View {
 
             if !data.isEmpty {
                 if let result = try? JSONDecoder().decode(ScriptResults.self, from: data) {
-                    outputMessage = formatScriptResult(result)
+                    updateScriptOutput(with: formatScriptResult(result))
                 } else if let decodedString = try? JSONDecoder().decode(String.self, from: data) {
-                    outputMessage = normalizeScriptOutputString(decodedString)
+                    updateScriptOutput(with: decodedString)
                 } else if let raw = String(data: data, encoding: .utf8), !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    outputMessage = normalizeScriptOutputString(raw)
+                    updateScriptOutput(with: raw)
                 }
             }
         } catch {
@@ -4676,6 +5096,57 @@ struct RunScriptView: View {
         return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private func parsedArguments(from text: String) -> [String] {
+        text
+            .split(whereSeparator: { $0.isWhitespace })
+            .map { String($0) }
+    }
+
+    private func parsedEnvironmentVariables(from text: String) throws -> [RunScriptPayload.EnvVar] {
+        let lines = text.components(separatedBy: CharacterSet.newlines)
+        var envVars: [RunScriptPayload.EnvVar] = []
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            let components = trimmed.split(separator: "=", maxSplits: 1)
+            guard components.count == 2 else {
+                throw ValidationError("Invalid environment variable format: \(trimmed)")
+            }
+            let key = components[0].trimmingCharacters(in: .whitespacesAndNewlines)
+            let value = components[1].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !key.isEmpty else {
+                throw ValidationError("Environment variable name cannot be empty.")
+            }
+            envVars.append(RunScriptPayload.EnvVar(name: key, value: value.isEmpty ? nil : value))
+        }
+        return envVars
+    }
+
+    private struct ValidationError: LocalizedError {
+        let message: String
+        init(_ message: String) { self.message = message }
+        var errorDescription: String? { message }
+    }
+
+    private func parsedCustomEmails() -> [String] {
+        let separators = CharacterSet(charactersIn: ",; \n\t")
+        return customEmailInput
+            .components(separatedBy: separators)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private func invalidEmails(in emails: [String]) -> [String] {
+        emails.filter { !isPlausibleEmail($0) }
+    }
+
+    private func isPlausibleEmail(_ value: String) -> Bool {
+        guard !value.isEmpty, !value.contains(" ") else { return false }
+        let parts = value.split(separator: "@")
+        guard parts.count == 2, parts[0].count > 0, parts[1].contains(".") else { return false }
+        return true
+    }
+
     private struct ScriptPickerView: View {
         let scripts: [RMMScript]
         let agentPlatform: String
@@ -4709,10 +5180,7 @@ struct RunScriptView: View {
         }
 
         private func supports(_ script: RMMScript) -> Bool {
-            let platform = agentPlatform.lowercased()
-            guard !platform.isEmpty else { return true }
-            let lowered = script.supportedPlatforms.map { $0.lowercased() }
-            return lowered.isEmpty || lowered.contains(platform)
+            RunScriptView.scriptSupports(script, platform: agentPlatform)
         }
 
         var body: some View {
@@ -4873,6 +5341,8 @@ struct AgentProcessesView: View {
     @State private var selectedProcess: ProcessRecord? = nil
     @FocusState private var searchFocused: Bool
     @State private var killBannerMessage: String? = nil
+    @State private var deletedPIDs: Set<Int> = []  // Keep recently killed PIDs hidden until reloaded
+    @State private var processFetchSequence: Int = 0  // Prevent stale fetches from overwriting fresh data
 
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
@@ -4898,6 +5368,9 @@ struct AgentProcessesView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 28)
                 .padding(.bottom, 180)
+            }
+            .refreshable {
+                await fetchProcesses(force: true)
             }
 
             if isLoading {
@@ -4979,6 +5452,7 @@ struct AgentProcessesView: View {
                                     selectedProcess = process
                                 }
                             }
+                            .opacity(deletedPIDs.contains(process.pid) ? 0.2 : 1)
                         }
                     }
                 }
@@ -5169,14 +5643,25 @@ struct AgentProcessesView: View {
     }
 
     @MainActor
-    func fetchProcesses() async {
-        isLoading = true
-        errorMessage = nil
+    func fetchProcesses(force: Bool = false) async {
+        processFetchSequence &+= 1
+        let fetchID = processFetchSequence
+        if !force {
+            guard !isLoading else { return }
+            isLoading = true
+            errorMessage = nil
+        } else {
+            errorMessage = nil
+        }
+        defer {
+            if !force {
+                isLoading = false
+            }
+        }
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/\(agentId)/processes/") else {
             errorMessage = "Invalid URL"
             DiagnosticLogger.shared.appendError("Invalid URL in fetching processes.")
-            isLoading = false
             return
         }
         var request = URLRequest(url: url)
@@ -5190,17 +5675,32 @@ struct AgentProcessesView: View {
                 if httpResponse.statusCode != 200 {
                     errorMessage = "HTTP Error: \(httpResponse.statusCode)"
                     DiagnosticLogger.shared.appendError("HTTP Error \(httpResponse.statusCode) in fetching processes.")
-                    isLoading = false
                     return
                 }
             }
             let decodedProcesses = try JSONDecoder().decode([ProcessRecord].self, from: data)
+            guard fetchID == processFetchSequence else {
+                DiagnosticLogger.shared.append("Discarded stale process fetch (id: \(fetchID))")
+                return
+            }
             processRecords = decodedProcesses
+            deletedPIDs.removeAll()
         } catch {
+            guard fetchID == processFetchSequence else {
+                DiagnosticLogger.shared.append("Discarded stale process fetch error (id: \(fetchID))")
+                return
+            }
+            if error is CancellationError {
+                DiagnosticLogger.shared.append("Process fetch cancelled")
+                return
+            }
+            if let urlError = error as? URLError, urlError.code == .cancelled {
+                DiagnosticLogger.shared.append("Process fetch cancelled by URLSession")
+                return
+            }
             errorMessage = error.localizedDescription
             DiagnosticLogger.shared.appendError("Error fetching processes: \(error.localizedDescription)")
         }
-        isLoading = false
     }
 
     @MainActor
@@ -5223,7 +5723,8 @@ struct AgentProcessesView: View {
                     killBannerMessage = "Process \(pid) killed successfully!"
                     selectedProcess = nil
                     processRecords.removeAll { $0.pid == pid }
-                    await fetchProcesses()
+                    deletedPIDs.insert(pid)
+                    pidToKill = ""
                 } else {
                     killBannerMessage = "Failed to kill process \(pid)."
                     DiagnosticLogger.shared.appendError("Failed to kill process \(pid), HTTP status \(httpResponse.statusCode).")
@@ -5246,6 +5747,34 @@ struct AgentNotesView: View {
     @State private var notes: [Note] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
+
+    private static let noteISOFormatterWithFractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let noteISOFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    private static let noteFallbackParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return formatter
+    }()
+
+    private static let noteDisplayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.timeZone = TimeZone.current
+        formatter.dateFormat = "dd/MM/yyyy HH:mm"
+        return formatter
+    }()
 
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
@@ -5301,7 +5830,7 @@ struct AgentNotesView: View {
                 } else {
                     LazyVStack(spacing: 14) {
                         ForEach(notes) { note in
-                            NoteTile(note: note)
+                            NoteTile(note: note, formattedDate: formattedNoteDate(note.entry_time))
                         }
                     }
                 }
@@ -5312,6 +5841,19 @@ struct AgentNotesView: View {
     private var headerSubtitle: String {
         if isLoading { return "Loading…" }
         return notes.count == 1 ? "1 note" : "\(notes.count) notes"
+    }
+
+    private func formattedNoteDate(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "N/A" }
+
+        if let parsed = AgentNotesView.noteISOFormatterWithFractional.date(from: trimmed)
+            ?? AgentNotesView.noteISOFormatter.date(from: trimmed)
+            ?? AgentNotesView.noteFallbackParser.date(from: trimmed) {
+            return AgentNotesView.noteDisplayFormatter.string(from: parsed)
+        }
+
+        return trimmed
     }
 
     private func banner(message: String, isError: Bool) -> some View {
@@ -5340,6 +5882,7 @@ struct AgentNotesView: View {
 
     private struct NoteTile: View {
         let note: Note
+        let formattedDate: String
 
         var body: some View {
             VStack(alignment: .leading, spacing: 10) {
@@ -5351,7 +5894,7 @@ struct AgentNotesView: View {
                     .overlay(Color.white.opacity(0.1))
                 HStack(spacing: 16) {
                     detailPill(system: "person.fill", label: note.username)
-                    detailPill(system: "calendar", label: note.entry_time)
+                    detailPill(system: "calendar", label: formattedDate)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

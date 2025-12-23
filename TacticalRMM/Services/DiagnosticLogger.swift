@@ -1,0 +1,110 @@
+import Foundation
+import UIKit
+
+final class DiagnosticLogger {
+    static let shared = DiagnosticLogger()
+
+    private let fileName: String
+    private var logFileURL: URL? {
+        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
+        return docs.appendingPathComponent(fileName)
+    }
+
+    private init() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd-MM-yyyy HH-mm-ss"
+        let dateString = formatter.string(from: Date())
+        self.fileName = "\(dateString)-TRMM Manager.log"
+        logDeviceInfo()
+    }
+
+    func append(_ message: String) {
+        guard let url = logFileURL else { return }
+        let logEntry = "\(Date()): \(message)\n"
+        do {
+            if FileManager.default.fileExists(atPath: url.path) {
+                let fileHandle = try FileHandle(forWritingTo: url)
+                fileHandle.seekToEndOfFile()
+                if let data = logEntry.data(using: .utf8) {
+                    fileHandle.write(data)
+                }
+                fileHandle.closeFile()
+            } else {
+                try logEntry.write(to: url, atomically: true, encoding: .utf8)
+            }
+        } catch {
+            print("Error writing log: \(error)")
+        }
+    }
+
+    func maskAPIKey(_ key: String) -> String {
+        let length = key.count
+        if length <= 8 {
+            return String(repeating: "X", count: length)
+        }
+        let first = key.prefix(4)
+        let last = key.suffix(4)
+        return "\(first)XXXXXXXXXXXXXX\(last)"
+    }
+
+    func logHTTPRequest(method: String, url: String, headers: [String: String]) {
+        let sanitized = sanitizeHeaders(headers)
+        append("HTTP Request: \(method) \(url) Headers: \(sanitized)")
+    }
+
+    func logHTTPResponse(method: String, url: String, status: Int, data: Data?) {
+        let responseBody: String
+        if let data = data, let responseString = String(data: data, encoding: .utf8) {
+            if url.contains("/agents/") {
+                responseBody = responseString
+            } else {
+                responseBody = responseString.count > 200
+                    ? String(responseString.prefix(200)) + "..."
+                    : responseString
+            }
+        } else {
+            responseBody = "No response body."
+        }
+        append("HTTP Response: \(status) for \(method) \(url). Response Body: \(responseBody)")
+    }
+
+    func appendWarning(_ message: String) {
+        append("WARNING: \(message)")
+    }
+
+    func appendError(_ message: String) {
+        append("ERROR: \(message)")
+    }
+
+    func getLogFileURL() -> URL? {
+        logFileURL
+    }
+
+    private func logDeviceInfo() {
+        let device = UIDevice.current
+        let processInfo = ProcessInfo.processInfo
+        append("Device Version: \(device.name)")
+        append("OS Version: \(device.systemName) \(device.systemVersion)")
+        append("Model: \(device.model)")
+        append("Identifier: \(device.identifierForVendor?.uuidString ?? "N/A")")
+        append("Screen: \(UIScreen.main.bounds.width)x\(UIScreen.main.bounds.height) @\(UIScreen.main.scale)x")
+        append("CPU Cores: \(processInfo.processorCount)")
+        append("Physical Memory: \(processInfo.physicalMemory / 1_048_576) MB")
+        if let info = Bundle.main.infoDictionary {
+            let version = info["CFBundleShortVersionString"] as? String ?? "N/A"
+            let build = info["CFBundleVersion"] as? String ?? "N/A"
+            append("App Version: \(version) (build \(build))")
+        }
+    }
+
+    private func sanitizeHeaders(_ headers: [String: String]) -> [String: String] {
+        var sanitized = headers
+        if sanitized["X-API-KEY"] != nil {
+            sanitized["X-API-KEY"] = "[REDACTED]"
+        }
+        if let authorization = sanitized["Authorization"], authorization.lowercased().contains("token") {
+            sanitized["Authorization"] = "Token [REDACTED]"
+        }
+        return sanitized
+    }
+}

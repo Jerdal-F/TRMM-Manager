@@ -1,0 +1,607 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		5ABE24352EEB8DC8000018B2 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5ABE24342EEB8DC8000018B2 /* StoreKit.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		5A0248B52D71D57A0052F3A8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5A02489A2D71D5780052F3A8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5A0248A12D71D5780052F3A8;
+			remoteInfo = TacticalRMM;
+		};
+		5A0248BF2D71D57B0052F3A8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5A02489A2D71D5780052F3A8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5A0248A12D71D5780052F3A8;
+			remoteInfo = TacticalRMM;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		5A0248A22D71D5780052F3A8 /* TRMM Manager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "TRMM Manager.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A0248B42D71D57A0052F3A8 /* TacticalRMMTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TacticalRMMTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A0248BE2D71D57B0052F3A8 /* TacticalRMMUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TacticalRMMUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5ABE24342EEB8DC8000018B2 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5AC1C8472DB7FD650065A45E /* Exceptions for "TacticalRMM" folder in "TacticalRMM" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 5A0248A12D71D5780052F3A8 /* TacticalRMM */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		5A0248A42D71D5780052F3A8 /* TacticalRMM */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5AC1C8472DB7FD650065A45E /* Exceptions for "TacticalRMM" folder in "TacticalRMM" target */,
+			);
+			path = TacticalRMM;
+			sourceTree = "<group>";
+		};
+		5A0248B72D71D57B0052F3A8 /* TacticalRMMTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = TacticalRMMTests;
+			sourceTree = "<group>";
+		};
+		5A0248C12D71D57B0052F3A8 /* TacticalRMMUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = TacticalRMMUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5A02489F2D71D5780052F3A8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5ABE24352EEB8DC8000018B2 /* StoreKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A0248B12D71D57A0052F3A8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A0248BB2D71D57B0052F3A8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		5A0248992D71D5780052F3A8 = {
+			isa = PBXGroup;
+			children = (
+				5A0248A42D71D5780052F3A8 /* TacticalRMM */,
+				5A0248B72D71D57B0052F3A8 /* TacticalRMMTests */,
+				5A0248C12D71D57B0052F3A8 /* TacticalRMMUITests */,
+				5ABE24332EEB8DC8000018B2 /* Frameworks */,
+				5A0248A32D71D5780052F3A8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		5A0248A32D71D5780052F3A8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5A0248A22D71D5780052F3A8 /* TRMM Manager.app */,
+				5A0248B42D71D57A0052F3A8 /* TacticalRMMTests.xctest */,
+				5A0248BE2D71D57B0052F3A8 /* TacticalRMMUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5ABE24332EEB8DC8000018B2 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				5ABE24342EEB8DC8000018B2 /* StoreKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5A0248A12D71D5780052F3A8 /* TacticalRMM */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A0248C82D71D57B0052F3A8 /* Build configuration list for PBXNativeTarget "TacticalRMM" */;
+			buildPhases = (
+				5A02489E2D71D5780052F3A8 /* Sources */,
+				5A02489F2D71D5780052F3A8 /* Frameworks */,
+				5A0248A02D71D5780052F3A8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				5A0248A42D71D5780052F3A8 /* TacticalRMM */,
+			);
+			name = TacticalRMM;
+			packageProductDependencies = (
+			);
+			productName = TacticalRMM;
+			productReference = 5A0248A22D71D5780052F3A8 /* TRMM Manager.app */;
+			productType = "com.apple.product-type.application";
+		};
+		5A0248B32D71D57A0052F3A8 /* TacticalRMMTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A0248CB2D71D57B0052F3A8 /* Build configuration list for PBXNativeTarget "TacticalRMMTests" */;
+			buildPhases = (
+				5A0248B02D71D57A0052F3A8 /* Sources */,
+				5A0248B12D71D57A0052F3A8 /* Frameworks */,
+				5A0248B22D71D57A0052F3A8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5A0248B62D71D57A0052F3A8 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				5A0248B72D71D57B0052F3A8 /* TacticalRMMTests */,
+			);
+			name = TacticalRMMTests;
+			packageProductDependencies = (
+			);
+			productName = TacticalRMMTests;
+			productReference = 5A0248B42D71D57A0052F3A8 /* TacticalRMMTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		5A0248BD2D71D57B0052F3A8 /* TacticalRMMUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A0248CE2D71D57B0052F3A8 /* Build configuration list for PBXNativeTarget "TacticalRMMUITests" */;
+			buildPhases = (
+				5A0248BA2D71D57B0052F3A8 /* Sources */,
+				5A0248BB2D71D57B0052F3A8 /* Frameworks */,
+				5A0248BC2D71D57B0052F3A8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5A0248C02D71D57B0052F3A8 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				5A0248C12D71D57B0052F3A8 /* TacticalRMMUITests */,
+			);
+			name = TacticalRMMUITests;
+			packageProductDependencies = (
+			);
+			productName = TacticalRMMUITests;
+			productReference = 5A0248BE2D71D57B0052F3A8 /* TacticalRMMUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5A02489A2D71D5780052F3A8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					5A0248A12D71D5780052F3A8 = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					5A0248B32D71D57A0052F3A8 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 5A0248A12D71D5780052F3A8;
+					};
+					5A0248BD2D71D57B0052F3A8 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 5A0248A12D71D5780052F3A8;
+					};
+				};
+			};
+			buildConfigurationList = 5A02489D2D71D5780052F3A8 /* Build configuration list for PBXProject "TacticalRMM" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 5A0248992D71D5780052F3A8;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 5A0248A32D71D5780052F3A8 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				5A0248A12D71D5780052F3A8 /* TacticalRMM */,
+				5A0248B32D71D57A0052F3A8 /* TacticalRMMTests */,
+				5A0248BD2D71D57B0052F3A8 /* TacticalRMMUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5A0248A02D71D5780052F3A8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A0248B22D71D57A0052F3A8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A0248BC2D71D57B0052F3A8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5A02489E2D71D5780052F3A8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A0248B02D71D57A0052F3A8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A0248BA2D71D57B0052F3A8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		5A0248B62D71D57A0052F3A8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5A0248A12D71D5780052F3A8 /* TacticalRMM */;
+			targetProxy = 5A0248B52D71D57A0052F3A8 /* PBXContainerItemProxy */;
+		};
+		5A0248C02D71D57B0052F3A8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5A0248A12D71D5780052F3A8 /* TacticalRMM */;
+			targetProxy = 5A0248BF2D71D57B0052F3A8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		5A0248C62D71D57B0052F3A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = NR87BXDCC8;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		5A0248C72D71D57B0052F3A8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = NR87BXDCC8;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		5A0248C92D71D57B0052F3A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TacticalRMM/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock Tactical RMM agent manager securely.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.6.7;
+				PRODUCT_BUNDLE_IDENTIFIER = "jerdal.TacticalRMM-Manager";
+				PRODUCT_NAME = "TRMM Manager";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		5A0248CA2D71D57B0052F3A8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TacticalRMM/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock Tactical RMM agent manager securely.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.6.7;
+				PRODUCT_BUNDLE_IDENTIFIER = "jerdal.TacticalRMM-Manager";
+				PRODUCT_NAME = "TRMM Manager";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		5A0248CC2D71D57B0052F3A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jerdal.TacticalRMMTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TacticalRMM.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TacticalRMM";
+			};
+			name = Debug;
+		};
+		5A0248CD2D71D57B0052F3A8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jerdal.TacticalRMMTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TacticalRMM.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TacticalRMM";
+			};
+			name = Release;
+		};
+		5A0248CF2D71D57B0052F3A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jerdal.TacticalRMMUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = TacticalRMM;
+			};
+			name = Debug;
+		};
+		5A0248D02D71D57B0052F3A8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jerdal.TacticalRMMUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = TacticalRMM;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5A02489D2D71D5780052F3A8 /* Build configuration list for PBXProject "TacticalRMM" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A0248C62D71D57B0052F3A8 /* Debug */,
+				5A0248C72D71D57B0052F3A8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5A0248C82D71D57B0052F3A8 /* Build configuration list for PBXNativeTarget "TacticalRMM" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A0248C92D71D57B0052F3A8 /* Debug */,
+				5A0248CA2D71D57B0052F3A8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5A0248CB2D71D57B0052F3A8 /* Build configuration list for PBXNativeTarget "TacticalRMMTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A0248CC2D71D57B0052F3A8 /* Debug */,
+				5A0248CD2D71D57B0052F3A8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5A0248CE2D71D57B0052F3A8 /* Build configuration list for PBXNativeTarget "TacticalRMMUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A0248CF2D71D57B0052F3A8 /* Debug */,
+				5A0248D02D71D57B0052F3A8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5A02489A2D71D5780052F3A8 /* Project object */;
+}

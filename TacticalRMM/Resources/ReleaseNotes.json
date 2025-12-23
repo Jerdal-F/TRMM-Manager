@@ -1,0 +1,82 @@
+[ {
+    "version": "0.5.2",
+    "description": "Unified RMM server settings now centralize general configuration, email and SMS alerts, key store management, and code signing.\n\nUser administration has been expanded with password resets, user editing, and active session visibility.\n\nAgent deployment management and a centralized Script Manager have been added to improve rollout and scripting workflows.\n\nAdditional improvements include domain validation for new servers, deletion confirmation for Tactical RMM instances, support for agent notes, minor UI updates, and a new in-app What’s New change log.",
+    "isCurrent": true
+  },
+  {
+    "version": "0.5.1",
+    "description": "QoL improvements with the processes menu.\nAdded in-app donations."
+  },
+  {
+    "version": "0.5",
+    "description": "Completely redesigned user interface for a more modern and intuitive experience. \nAdded support for multiple Tactical RMM instances. \nAdded the ability to run scripts directly from the app. \nAdded new sorting options for agents for easier management. \nAdded the ability to search for agents by description."
+  },
+  {
+    "version": "0.4.6",
+    "description": "Bug fixes."
+  },
+  {
+    "version": "0.4.5",
+    "description": "Fixed an agent checks and tasks timing bug that showed device time instead of API time."
+  },
+  {
+    "version": "0.4.4",
+    "description": "Fixed a bug with the Send Command feature. \nAdded agent checks. \nRemoved Console and Take Control features."
+  },
+  {
+    "version": "0.4.3",
+    "description": "The agents list now shows the total number of agents."
+  },
+  {
+    "version": "0.4.2",
+    "description": "Added a manual app reset to clear all data, including API credentials and settings. \nAdded a privacy mode to hide sensitive information such as IP address, serial number, and site details."
+  },
+  {
+    "version": "0.4.1",
+    "description": "Added serial number to the agent view."
+  },
+  {
+    "version": "0.4.0",
+    "description": "Keychain improvements."
+  },
+  {
+    "version": "0.3.9",
+    "description": "Added custom fields."
+  },
+  {
+    "version": "0.3.8",
+    "description": "Added an app reset prompt when Face ID or device passcode is disabled while Face ID App Lock is on. \nIntroduced UI changes."
+  },
+  {
+    "version": "0.3.7",
+    "description": "Added Face ID login to lock the app. \nEnabled Windows agent installation directly from the device. \nIntroduced a new settings menu with options to hide the Windows agent install button and toggle Face ID login."
+  },
+  {
+    "version": "0.3.6",
+    "description": "New features."
+  },
+  {
+    "version": "0.3.5",
+    "description": "New features."
+  },
+  {
+    "version": "0.3.4",
+    "description": "Even more functions."
+  },
+  {
+    "version": "0.3.3",
+    "description": "Added the Send Command feature for dispatching custom commands to agents via CMD or PowerShell."
+  },
+  {
+    "version": "0.3.2",
+    "description": "Enhanced agent search so tapping the search key filters agents immediately."
+  },
+  {
+    "version": "0.3.1",
+    "description": "Stored the API key securely in the iOS Keychain so it is no longer visible as plain text after saving settings."
+  },
+  {
+    "version": "0.3",
+    "description": "Initial release."
+  }
+]

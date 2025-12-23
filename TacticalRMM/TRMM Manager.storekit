@@ -1,0 +1,179 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "B09486BC",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "1.0",
+      "familyShareable" : false,
+      "internalID" : "6756455180",
+      "localizations" : [
+        {
+          "description" : "A donation of 1 (one) USD",
+          "displayName" : "Donation $1",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "Donate1usd",
+      "referenceName" : "Donate $1",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "10.0",
+      "familyShareable" : false,
+      "internalID" : "6756455489",
+      "localizations" : [
+        {
+          "description" : "A 10 USD donation",
+          "displayName" : "Donate $10",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "Donate10usd",
+      "referenceName" : "Donate $10",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "100.0",
+      "familyShareable" : false,
+      "internalID" : "6756455410",
+      "localizations" : [
+        {
+          "description" : "A 100 USD donation",
+          "displayName" : "Donate $100",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "Donate100usd",
+      "referenceName" : "Donate $100",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "20.0",
+      "familyShareable" : false,
+      "internalID" : "6756455574",
+      "localizations" : [
+        {
+          "description" : "A 20 USD donation",
+          "displayName" : "Donate $20",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "Donate20usd",
+      "referenceName" : "Donate $20",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "5.0",
+      "familyShareable" : false,
+      "internalID" : "6756455554",
+      "localizations" : [
+        {
+          "description" : "A 5 USD donation",
+          "displayName" : "Donate $5",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "Donate5usd",
+      "referenceName" : "Donate $5",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "50.0",
+      "familyShareable" : false,
+      "internalID" : "6756455609",
+      "localizations" : [
+        {
+          "description" : "A 50 USD donation",
+          "displayName" : "Donate $50",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "Donate50usd",
+      "referenceName" : "Donate $50",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6742686284",
+    "_askToBuyEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_developerTeamID" : "NR87BXDCC8",
+    "_disableDialogs" : true,
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 787190696.93034399,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : {
+          "index" : 2,
+          "type" : "generic"
+        },
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : {
+          "index" : 1,
+          "type" : "purchase"
+        },
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

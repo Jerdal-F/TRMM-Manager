@@ -1,0 +1,98 @@
+import SwiftUI
+
+struct AgentRow: View {
+    let agent: Agent
+    let hideSensitiveInfo: Bool
+
+    private var statusColor: Color {
+        if agent.isOnlineStatus { return Color.green }
+        if agent.isOfflineStatus { return Color.red }
+        return Color.orange
+    }
+
+    private var statusLabel: String {
+        agent.status.isEmpty ? "Unknown" : agent.status.capitalized
+    }
+
+    private var publicIPText: String {
+        hideSensitiveInfo ? "••••••" : (agent.public_ip ?? "No IP available")
+    }
+
+    private var lanIPText: String {
+        guard !hideSensitiveInfo else { return "••••••" }
+        if let value = agent.local_ips?.ipv4Only(), !value.isEmpty {
+            return value
+        }
+        return "No LAN IP available"
+    }
+
+    private var lastSeenDisplay: String {
+        formatLastSeenTimestamp(agent.last_seen)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(agent.hostname)
+                        .font(.headline)
+                    Text(agent.operating_system)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                }
+                Spacer()
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 10, height: 10)
+                    Text(statusLabel)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(statusColor)
+                }
+            }
+
+            if let description = agent.description, !description.isEmpty {
+                Text(description)
+                    .font(.footnote)
+                    .foregroundStyle(Color.white.opacity(0.7))
+                    .lineLimit(2)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                if !agent.cpu_model.isEmpty {
+                    Text("CPU: \(agent.cpu_model.joined(separator: ", "))")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.7))
+                }
+
+                Text("Site: \(hideSensitiveInfo ? "••••••" : (agent.site_name ?? "Not available"))")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.7))
+
+                Text("LAN: \(lanIPText)")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.7))
+
+                Text("Public: \(publicIPText)")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.7))
+            }
+
+            if let lastSeen = agent.last_seen, !lastSeen.isEmpty {
+                Text("Last Seen: \(lastSeenDisplay)")
+                    .font(.caption2)
+                    .foregroundStyle(Color.white.opacity(0.55))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
+        )
+    }
+}

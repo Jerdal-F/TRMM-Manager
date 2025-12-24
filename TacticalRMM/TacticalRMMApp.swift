@@ -21,10 +21,13 @@ struct TacticalRMMApp: App {
         }
     }()
 
+    @AppStorage("selectedTheme") private var selectedThemeID: String = AppTheme.default.rawValue
+
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(.dark)
+                .environment(\.appTheme, AppTheme(rawValue: selectedThemeID) ?? .default)
         }
         .modelContainer(sharedModelContainer)
     }

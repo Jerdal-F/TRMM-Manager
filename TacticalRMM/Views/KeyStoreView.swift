@@ -2,6 +2,7 @@ import SwiftUI
 
 struct KeyStoreView: View {
     let settings: RMMSettings
+    @Environment(\.appTheme) private var appTheme
 
     @State private var entries: [KeyStoreEntry] = []
     @State private var isLoading = false
@@ -136,14 +137,14 @@ struct KeyStoreView: View {
                     .padding(.vertical, 9)
                     .padding(.horizontal, 16)
                     .background(
-                        Capsule().fill(Color.cyan.opacity(0.18))
+                        Capsule().fill(appTheme.accent.opacity(0.18))
                             .overlay(
-                                Capsule().stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                                Capsule().stroke(appTheme.accent.opacity(0.3), lineWidth: 1)
                             )
                     )
             }
             .buttonStyle(.plain)
-            .foregroundStyle(Color.cyan)
+            .foregroundStyle(appTheme.accent)
         }
     }
 
@@ -192,7 +193,7 @@ struct KeyStoreView: View {
                                 .font(.callout.weight(.semibold))
                         }
                         .buttonStyle(.plain)
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
 
                         Button {
                             entryPendingDelete = entry

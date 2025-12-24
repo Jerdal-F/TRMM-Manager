@@ -1,7 +1,11 @@
 [ {
+  "version": "0.5.3",
+  "description": "Agent installation is now supported on Linux and macOS.\n\nCode signing has been enhanced with a new Sign All Agents button and the ability to delete signing tokens directly from the interface.\n\nAn application theme option has been added to improve customization and visual experience.",
+  "isCurrent": true
+  },
+  {
     "version": "0.5.2",
-    "description": "Unified RMM server settings now centralize general configuration, email and SMS alerts, key store management, and code signing.\n\nUser administration has been expanded with password resets, user editing, and active session visibility.\n\nAgent deployment management and a centralized Script Manager have been added to improve rollout and scripting workflows.\n\nAdditional improvements include domain validation for new servers, deletion confirmation for Tactical RMM instances, support for agent notes, minor UI updates, and a new in-app What’s New change log.",
-    "isCurrent": true
+    "description": "Unified RMM server settings now centralize general configuration, email and SMS alerts, key store management, and code signing.\n\nUser administration has been expanded with password resets, user editing, and active session visibility.\n\nAgent deployment management and a centralized Script Manager have been added to improve rollout and scripting workflows.\n\nAdditional improvements include domain validation for new servers, deletion confirmation for Tactical RMM instances, support for agent notes, minor UI updates, and a new in-app What’s New change log."
   },
   {
     "version": "0.5.1",

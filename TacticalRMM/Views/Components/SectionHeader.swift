@@ -4,6 +4,7 @@ struct SectionHeader: View {
     let title: String
     let subtitle: String?
     let systemImage: String
+    @Environment(\.appTheme) private var appTheme
 
     init(_ title: String, subtitle: String? = nil, systemImage: String) {
         self.title = title
@@ -15,7 +16,7 @@ struct SectionHeader: View {
         HStack(spacing: 12) {
             Image(systemName: systemImage)
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(Color.cyan)
+                .foregroundStyle(appTheme.accent)
                 .frame(width: 44, height: 44)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct UserAdministrationView: View {
     let settings: RMMSettings
+    @Environment(\.appTheme) private var appTheme
 
     @State private var users: [RMMUser] = []
     @State private var roles: [Int: RMMRole] = [:]
@@ -195,14 +196,14 @@ struct UserAdministrationView: View {
                                     .font(.callout)
                                     .foregroundStyle(Color.white)
                             }
-                            .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+                            .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
                             Toggle(isOn: $editBlockDashboard) {
                                 Text("Block Dashboard Login")
                                     .font(.callout)
                                     .foregroundStyle(Color.white)
                             }
-                            .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+                            .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
                         }
 
                         roleSelector()
@@ -228,7 +229,7 @@ struct UserAdministrationView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { cancelEditingUser() }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                         .disabled(isSavingUser)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -241,7 +242,7 @@ struct UserAdministrationView: View {
                             Text("Save")
                         }
                     }
-                    .foregroundStyle(Color.cyan)
+                    .foregroundStyle(appTheme.accent)
                     .disabled(isSavingUser || editUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -377,7 +378,7 @@ struct UserAdministrationView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { cancelResettingPassword() }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                         .disabled(isResettingPassword)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -390,7 +391,7 @@ struct UserAdministrationView: View {
                             Text("Reset")
                         }
                     }
-                    .foregroundStyle(Color.cyan)
+                    .foregroundStyle(appTheme.accent)
                     .disabled(isResettingPassword || resetPassword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -465,7 +466,7 @@ struct UserAdministrationView: View {
                         sessionUser = nil
                         resetSessionState()
                     }
-                    .foregroundStyle(Color.cyan)
+                    .foregroundStyle(appTheme.accent)
                     .disabled(isLoadingSessions || isLoggingOutAllSessions)
                 }
             }
@@ -582,7 +583,7 @@ struct UserAdministrationView: View {
                         Spacer()
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color.cyan)
+                            .foregroundStyle(appTheme.accent)
                     }
                     .padding(.vertical, 14)
                     .padding(.horizontal, 16)
@@ -665,7 +666,7 @@ struct UserAdministrationView: View {
 
             HStack(spacing: 8) {
                 badge(text: roleDisplayName(for: user), tint: Color.white.opacity(0.12))
-                badge(text: user.canAccessDashboard ? "Dashboard Access" : "Dashboard Blocked", tint: user.canAccessDashboard ? Color.cyan.opacity(0.18) : Color.red.opacity(0.22))
+                badge(text: user.canAccessDashboard ? "Dashboard Access" : "Dashboard Blocked", tint: user.canAccessDashboard ? appTheme.accent.opacity(0.18) : Color.red.opacity(0.22))
             }
         }
         .padding(16)
@@ -702,7 +703,7 @@ struct UserAdministrationView: View {
     }
 
     private func statusBadge(isActive: Bool) -> some View {
-        badge(text: isActive ? "Active" : "Disabled", tint: isActive ? Color.cyan.opacity(0.2) : Color.red.opacity(0.25))
+        badge(text: isActive ? "Active" : "Disabled", tint: isActive ? appTheme.accent.opacity(0.2) : Color.red.opacity(0.25))
     }
 
     private func roleDisplayName(for user: RMMUser) -> String {

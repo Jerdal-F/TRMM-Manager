@@ -8,6 +8,7 @@ import AppKit
 
 struct DeploymentsView: View {
     let settings: RMMSettings
+    @Environment(\.appTheme) private var appTheme
 
     @State private var deployments: [RMMDeployment] = []
     @State private var isLoading = false
@@ -184,21 +185,21 @@ struct DeploymentsView: View {
                                     .font(.callout)
                                     .foregroundStyle(Color.white)
                             }
-                            .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+                            .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
                             Toggle(isOn: $enablePing) {
                                 Text("Enable Ping")
                                     .font(.callout)
                                     .foregroundStyle(Color.white)
                             }
-                            .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+                            .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
                             Toggle(isOn: $enablePower) {
                                 Text("Enable Power")
                                     .font(.callout)
                                     .foregroundStyle(canTogglePower ? Color.white : Color.white.opacity(0.4))
                             }
-                            .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+                            .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
                             .disabled(!canTogglePower)
 
                             architecturePicker()
@@ -219,14 +220,14 @@ struct DeploymentsView: View {
                     Button("Cancel") {
                         showCreateDeployment = false
                     }
-                    .foregroundStyle(Color.cyan)
+                    .foregroundStyle(appTheme.accent)
                     .disabled(isCreatingDeployment)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") {
                         Task { await createDeployment() }
                     }
-                    .foregroundStyle(Color.cyan)
+                    .foregroundStyle(appTheme.accent)
                     .disabled(isCreatingDeployment || selectedSiteID == nil)
                 }
             }
@@ -425,7 +426,7 @@ struct DeploymentsView: View {
                 Spacer(minLength: 0)
                 VStack(alignment: .trailing, spacing: 10) {
                     VStack(alignment: .trailing, spacing: 6) {
-                        capsuleBadge(text: deployment.monType.uppercased(), tint: Color.cyan.opacity(0.2))
+                        capsuleBadge(text: deployment.monType.uppercased(), tint: appTheme.accent.opacity(0.2))
                         capsuleBadge(text: deployment.goArch.uppercased(), tint: Color.white.opacity(0.1))
                     }
 
@@ -488,7 +489,7 @@ struct DeploymentsView: View {
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: icon)
                 .font(.body)
-                .foregroundStyle(Color.cyan)
+                .foregroundStyle(appTheme.accent)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title.uppercased())
                     .font(.caption2)

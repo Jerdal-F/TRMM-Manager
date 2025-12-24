@@ -5,11 +5,13 @@ import LocalAuthentication
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.appTheme) private var appTheme
     @Query private var settingsList: [RMMSettings]
 
     @AppStorage("useFaceID") var useFaceID: Bool = false
     @AppStorage("hideSensitive") var hideSensitiveInfo: Bool = false
     @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
+    @AppStorage("selectedTheme") private var selectedThemeID: String = AppTheme.default.rawValue
 
     @State private var showResetConfirmation = false
     @State private var showAddInstanceSheet = false
@@ -54,6 +56,10 @@ struct SettingsView: View {
         return "Select an instance"
     }
 
+    private var selectedTheme: AppTheme {
+        AppTheme(rawValue: selectedThemeID) ?? .default
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -75,7 +81,7 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                 }
             }
             .sheet(isPresented: $showAddInstanceSheet) {
@@ -169,7 +175,7 @@ struct SettingsView: View {
                         .font(.callout)
                         .foregroundStyle(Color.white)
                 }
-                .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+                .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
                 .disabled(!authAvailable)
                 .opacity(authAvailable ? 1 : 0.4)
 
@@ -177,6 +183,59 @@ struct SettingsView: View {
                     Text("Requires a device passcode or biometrics enabling.")
                         .font(.caption2)
                         .foregroundStyle(Color.white.opacity(0.6))
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Accent Theme")
+                        .font(.callout)
+                        .foregroundStyle(Color.white)
+
+                    Menu {
+                        ForEach(AppTheme.allCases) { theme in
+                            Button {
+                                selectedThemeID = theme.rawValue
+                            } label: {
+                                if theme == selectedTheme {
+                                    Label(theme.displayName, systemImage: "checkmark")
+                                } else {
+                                    Text(theme.displayName)
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Circle()
+                                .fill(selectedTheme.accent)
+                                .frame(width: 18, height: 18)
+                                .shadow(color: selectedTheme.accent.opacity(0.45), radius: 6, x: 0, y: 3)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(selectedTheme.displayName)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Color.white)
+                                Text("Applies across the app")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.white.opacity(0.6))
+                            }
+
+                            Spacer(minLength: 0)
+
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.footnote)
+                                .foregroundStyle(Color.white.opacity(0.7))
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.white.opacity(0.05))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -258,7 +317,7 @@ struct SettingsView: View {
                             .padding(.horizontal, 8)
                             .background(
                                 Capsule(style: .continuous)
-                                    .fill(Color.cyan.opacity(0.2))
+                                    .fill(appTheme.accent.opacity(0.2))
                             )
                     }
                 }
@@ -302,7 +361,7 @@ struct SettingsView: View {
                 .fill(Color.white.opacity(isActive ? 0.12 : 0.05))
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(isActive ? Color.cyan.opacity(0.5) : Color.white.opacity(0.08), lineWidth: 1)
+                        .stroke(isActive ? appTheme.accent.opacity(0.5) : Color.white.opacity(0.08), lineWidth: 1)
                 )
         )
     }
@@ -340,11 +399,11 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { showAddInstanceSheet = false }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { createInstance() }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                         .disabled(newInstanceName.trimmingCharacters(in: .whitespaces).isEmpty ||
                                   newInstanceURL.trimmingCharacters(in: .whitespaces).isEmpty ||
                                   newInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -399,11 +458,11 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { cancelEditInstance() }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { saveEditedInstance() }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                         .disabled(editInstanceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                                   editInstanceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                                   editInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -422,7 +481,7 @@ struct SettingsView: View {
                 .font(.callout)
                 .foregroundStyle(Color.white)
         }
-        .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+        .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
     }
 
     private func inputField(title: String, placeholder: String, text: Binding<String>, isSecure: Bool = false) -> some View {

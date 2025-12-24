@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ScriptManagerView: View {
     let settings: RMMSettings
+    @Environment(\.appTheme) private var appTheme
 
     @ObservedObject private var agentCache = AgentCache.shared
     @State private var scripts: [ScriptSummary] = []
@@ -244,7 +245,7 @@ struct ScriptManagerView: View {
                             }
                             Text(summary.shell.uppercased())
                                 .font(.caption2.weight(.bold))
-                                .foregroundStyle(Color.cyan)
+                                .foregroundStyle(appTheme.accent)
                         }
                     }
 
@@ -1116,6 +1117,7 @@ private struct ScriptTestDraft {
 
 private struct ScriptTestSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appTheme) private var appTheme
     let context: ScriptTestContext
     let agents: [Agent]
     @Binding var isTesting: Bool
@@ -1295,7 +1297,7 @@ private struct ScriptTestSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                         .disabled(isTesting)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -1325,6 +1327,7 @@ private struct ScriptTestSheet: View {
 
 private struct ScriptEditSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appTheme) private var appTheme
     @Binding var draft: ScriptEditDraft
     @Binding var isSaving: Bool
     @Binding var errorMessage: String?
@@ -1471,7 +1474,7 @@ private struct ScriptEditSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                         .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -1552,6 +1555,7 @@ private extension ScriptSummary {
 
 private struct ScriptDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appTheme) private var appTheme
     let summary: ScriptSummary
     let detail: ScriptDetail?
     let isLoading: Bool
@@ -1622,7 +1626,7 @@ private struct ScriptDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                 }
             }
         }

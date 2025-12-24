@@ -2,11 +2,15 @@ import SwiftUI
 import SwiftData
 import LocalAuthentication
 import UIKit
+#if canImport(AppKit)
+import AppKit
+#endif
 import StoreKit
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.appTheme) private var appTheme
     @Query private var settingsList: [RMMSettings]
 
     @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
@@ -64,7 +68,7 @@ struct ContentView: View {
                             Image(systemName: "gearshape.fill")
                                 .font(.title3.weight(.semibold))
                         }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                         .disabled(useFaceID && !didAuthenticate)
                     }
                 }
@@ -358,7 +362,7 @@ struct ContentView: View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: systemImage)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(Color.cyan)
+                .foregroundStyle(appTheme.accent)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title.uppercased())
@@ -412,7 +416,7 @@ struct ContentView: View {
                                     )
                             )
                         }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                         .menuStyle(.automatic)
 
                         Button {
@@ -430,7 +434,7 @@ struct ContentView: View {
                             Image(systemName: showSearch ? "magnifyingglass.circle.fill" : "magnifyingglass")
                                 .font(.title3)
                         }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                     }
                 }
 
@@ -472,7 +476,7 @@ struct ContentView: View {
                 if isLoading {
                     ProgressView("Loading agents…")
                         .progressViewStyle(.circular)
-                        .tint(Color.cyan)
+                        .tint(appTheme.accent)
                 } else if let error = errorMessage {
                     Text("Error: \(error)")
                         .foregroundStyle(Color.red)
@@ -510,6 +514,7 @@ struct ContentView: View {
 
     private struct ResponsiveBadgeRow: View {
         let badges: [BadgeInfo]
+        @Environment(\.appTheme) private var appTheme
 
         var body: some View {
             ViewThatFits(in: .horizontal) {
@@ -538,7 +543,7 @@ struct ContentView: View {
                 HStack(spacing: 6) {
                     Image(systemName: badge.symbol)
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                     Text(badge.title.uppercased())
                         .font(.caption2)
                         .foregroundStyle(Color.white.opacity(0.6))
@@ -972,11 +977,13 @@ struct ContentView: View {
 struct InstallAgentView: View {
     let baseURL: String
     let apiKey: String
+    @Environment(\.appTheme) private var appTheme
 
     @State private var clients: [ClientModel] = []
     @State private var selectedClientId: Int?
     @State private var sites: [Site] = []
     @State private var selectedSiteId: Int?
+    @State private var platform: InstallPlatform = .windows
     @State private var agentType: String = "server" {
         didSet {
             // Reset power toggle whenever switching back to Server
@@ -992,10 +999,21 @@ struct InstallAgentView: View {
     @State private var expires: String = "24"
     @State private var fileName: String = "trmm-installer.exe"
     @State private var isLoadingClients = false
+    @State private var isLoadingCodeSign = false
     @State private var errorMessage: String?
     @State private var isGenerating = false
     @State private var installerURL: URL?
     @State private var showShareSheet = false
+    @State private var macCommand: String?
+    @State private var macDownloadURL: String?
+    @State private var showCommandCopied = false
+    @State private var codesignHasToken = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable {
+        case expires
+        case fileName
+    }
 
     var body: some View {
         ZStack {
@@ -1019,10 +1037,10 @@ struct InstallAgentView: View {
                 loadingOverlay(message: "Generating installer…")
             }
         }
-        .navigationTitle("Install Windows Agent")
-        .task { await fetchClients() }
+        .navigationTitle("Install Agent")
+        .task { await fetchInitialData() }
         .sheet(isPresented: $showShareSheet) {
-            if let url = installerURL {
+            if platform.responseType == .file, let url = installerURL {
                 ActivityView(activityItems: [url])
             }
         }
@@ -1035,6 +1053,24 @@ struct InstallAgentView: View {
                 selectedSiteId = nil
             }
         }
+        .onChange(of: platform) { oldValue, newValue in
+            handlePlatformChange(from: oldValue, to: newValue)
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                    UIApplication.shared.dismissKeyboard()
+                }
+                .tint(appTheme.accent)
+            }
+        }
+    }
+
+    func fetchInitialData() async {
+        await fetchCodeSignStatus()
+        await fetchClients()
     }
 
     func fetchClients() async {
@@ -1073,6 +1109,11 @@ struct InstallAgentView: View {
               let site = selectedSiteId,
               let expiresInt = Int(expires) else { return }
         isGenerating = true
+        installerURL = nil
+        macCommand = nil
+        macDownloadURL = nil
+        showShareSheet = false
+        showCommandCopied = false
         let sanitized = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitized)/agents/installer/") else {
             isGenerating = false
@@ -1083,7 +1124,7 @@ struct InstallAgentView: View {
         request.addDefaultHeaders(apiKey: KeychainHelper.shared.getAPIKey() ?? apiKey)
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         let body: [String: Any] = [
-            "installMethod": "exe",
+            "installMethod": platform.installMethod,
             "client": client,
             "site": site,
             "expires": expiresInt,
@@ -1094,7 +1135,7 @@ struct InstallAgentView: View {
             "goarch": arch,
             "api": "\(sanitized)",
             "fileName": fileName,
-            "plat": "windows"
+            "plat": platform.apiPlatformValue
         ]
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
@@ -1107,14 +1148,73 @@ struct InstallAgentView: View {
                     return
                 }
             }
-            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-            try data.write(to: tempURL)
-            installerURL = tempURL
-            showShareSheet = true
+            switch platform.responseType {
+            case .file:
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+                try data.write(to: tempURL)
+                installerURL = tempURL
+                showShareSheet = true
+            case .command:
+                do {
+                    let decoded = try JSONDecoder().decode(InstallCommandResponse.self, from: data)
+                    macCommand = decoded.cmd.trimmingCharacters(in: .whitespacesAndNewlines)
+                    macDownloadURL = decoded.url?.trimmingCharacters(in: .whitespacesAndNewlines)
+                } catch {
+                    if let fallback = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        let rawCmd = fallback["cmd"] as? String
+                        let rawURL = fallback["url"] as? String
+                        macCommand = rawCmd?.trimmingCharacters(in: .whitespacesAndNewlines)
+                        macDownloadURL = rawURL?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    }
+                    if macCommand == nil {
+                        DiagnosticLogger.shared.appendError("Error decoding installer command: \(error.localizedDescription)")
+                    }
+                }
+            }
         } catch {
             DiagnosticLogger.shared.appendError("Error generating installer: \(error.localizedDescription)")
         }
         isGenerating = false
+    }
+
+    func fetchCodeSignStatus() async {
+        isLoadingCodeSign = true
+        let sanitized = baseURL.removingTrailingSlash()
+        guard let url = URL(string: "\(sanitized)/core/codesign/") else {
+            isLoadingCodeSign = false
+            codesignHasToken = false
+            ensurePlatformAvailability()
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.addDefaultHeaders(apiKey: KeychainHelper.shared.getAPIKey() ?? apiKey)
+        DiagnosticLogger.shared.logHTTPRequest(method: "GET", url: url.absoluteString, headers: request.allHTTPHeaderFields ?? [:])
+        var hasToken = false
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let resp = response as? HTTPURLResponse {
+                DiagnosticLogger.shared.logHTTPResponse(method: "GET", url: url.absoluteString, status: resp.statusCode, data: data)
+                guard resp.statusCode == 200 else {
+                    isLoadingCodeSign = false
+                    codesignHasToken = false
+                    ensurePlatformAvailability()
+                    return
+                }
+            }
+            if let decoded = try? JSONDecoder().decode(CodeSignResponse.self, from: data) {
+                hasToken = decoded.token?.isEmpty == false
+            } else if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let token = object["token"] as? String, !token.isEmpty {
+                    hasToken = true
+                }
+            }
+        } catch {
+            DiagnosticLogger.shared.appendError("Error fetching code sign status: \(error.localizedDescription)")
+        }
+        codesignHasToken = hasToken
+        ensurePlatformAvailability()
+        isLoadingCodeSign = false
     }
 
     private var destinationCard: some View {
@@ -1163,6 +1263,27 @@ struct InstallAgentView: View {
                 SectionHeader("Installer Settings", subtitle: "Configure agent options", systemImage: "slider.horizontal.3")
 
                 VStack(alignment: .leading, spacing: 14) {
+                    Text("Platform")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.6))
+                    Picker("Platform", selection: $platform) {
+                        ForEach(platformChoices, id: \.self) { option in
+                            Text(option.title).tag(option)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    if isLoadingCodeSign {
+                        Text("Checking signing token…")
+                            .font(.caption2)
+                            .foregroundStyle(Color.white.opacity(0.55))
+                    } else if !codesignHasToken {
+                        Text("Linux and macOS installers require a configured signing token.")
+                            .font(.caption2)
+                            .foregroundStyle(Color.white.opacity(0.55))
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 14) {
                     Text("Agent Type")
                         .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.6))
@@ -1183,16 +1304,19 @@ struct InstallAgentView: View {
                         .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.6))
                     Picker("Architecture", selection: $arch) {
-                        Text("64 bit").tag("amd64")
-                        Text("32 bit").tag("386")
+                        ForEach(platform.architectureOptions, id: \.value) { option in
+                            Text(option.label).tag(option.value)
+                        }
                     }
                     .pickerStyle(.segmented)
                 }
 
-                VStack(spacing: 12) {
-                    toggleRow(title: "Disable sleep/hibernate", isOn: $power, disabled: agentType == "server")
-                    toggleRow(title: "Enable RDP", isOn: $rdp)
-                    toggleRow(title: "Enable Ping", isOn: $ping)
+                if platform.supportsRemoteOptions {
+                    VStack(spacing: 12) {
+                        toggleRow(title: "Disable sleep/hibernate", isOn: $power, disabled: agentType == "server")
+                        toggleRow(title: "Enable RDP", isOn: $rdp)
+                        toggleRow(title: "Enable Ping", isOn: $ping)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -1201,6 +1325,8 @@ struct InstallAgentView: View {
                         .foregroundStyle(Color.white.opacity(0.6))
                     TextField("24", text: $expires)
                         .platformKeyboardType(.numberPad)
+                        .focused($focusedField, equals: .expires)
+                        .submitLabel(.done)
                         .padding(.vertical, 12)
                         .padding(.horizontal, 14)
                         .background(
@@ -1217,9 +1343,11 @@ struct InstallAgentView: View {
                     Text("Installer File Name")
                         .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.6))
-                    TextField("trmm-installer.exe", text: $fileName)
+                    TextField(platform.defaultFileName, text: $fileName)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
+                        .focused($focusedField, equals: .fileName)
+                        .submitLabel(.done)
                         .padding(.vertical, 12)
                         .padding(.horizontal, 14)
                         .background(
@@ -1240,11 +1368,52 @@ struct InstallAgentView: View {
             VStack(alignment: .leading, spacing: 18) {
                 SectionHeader("Generate Installer", subtitle: "Download and share the agent", systemImage: "square.and.arrow.down")
 
-                if let installerURL {
+                if platform.responseType == .file, let installerURL {
                     Text("Installer ready: \(installerURL.lastPathComponent)")
                         .font(.footnote)
                         .foregroundStyle(Color.green)
                         .textSelection(.enabled)
+                }
+
+                if platform.responseType == .command, let command = macCommand {
+                    Text("Command ready. Copy and run on the target Mac.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.green)
+
+                    ScrollView {
+                        Text(command)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(Color.white)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(Color.white.opacity(0.06))
+                            )
+                    }
+                    .frame(maxHeight: 180)
+
+                    if let urlString = macDownloadURL, !urlString.isEmpty {
+                        Text("Package URL: \(urlString)")
+                            .font(.caption2)
+                            .foregroundStyle(Color.white.opacity(0.65))
+                            .textSelection(.enabled)
+                    }
+
+                    Button {
+                        copyCommandToClipboard(command)
+                    } label: {
+                        Label("Copy Command", systemImage: "doc.on.doc")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .secondaryButton()
+
+                    if showCommandCopied {
+                        Text("Command copied to clipboard.")
+                            .font(.caption2)
+                            .foregroundStyle(Color.white.opacity(0.6))
+                    }
                 }
 
                 if generateDisabled {
@@ -1256,14 +1425,14 @@ struct InstallAgentView: View {
                 Button {
                     Task { await generateInstaller() }
                 } label: {
-                    Label("Download Installer", systemImage: "icloud.and.arrow.down")
+                    Label(platform.downloadButtonLabel, systemImage: platform.buttonSystemImage)
                         .frame(maxWidth: .infinity)
                 }
                 .primaryButton()
                 .disabled(generateDisabled)
                 .opacity(generateDisabled ? 0.5 : 1)
 
-                Text("Installer expires after the specified duration. Share directly from the completion prompt.")
+                Text(platform.footerNote)
                     .font(.caption2)
                     .foregroundStyle(Color.white.opacity(0.55))
             }
@@ -1272,6 +1441,10 @@ struct InstallAgentView: View {
 
     private var generateDisabled: Bool {
         isGenerating || selectedClientId == nil || selectedSiteId == nil
+    }
+
+    private var platformChoices: [InstallPlatform] {
+        codesignHasToken ? InstallPlatform.allCases : [.windows]
     }
 
     private var destinationSubtitle: String {
@@ -1294,6 +1467,43 @@ struct InstallAgentView: View {
             return site.name
         }
         return ""
+    }
+
+    private func handlePlatformChange(from _: InstallPlatform, to newValue: InstallPlatform) {
+        let options = newValue.architectureOptions
+        if options.contains(where: { $0.value == arch }) == false {
+            arch = options.first?.value ?? arch
+        }
+        fileName = newValue.defaultFileName
+        if newValue.supportsRemoteOptions == false {
+            power = false
+            rdp = false
+            ping = false
+        }
+        installerURL = nil
+        macCommand = nil
+        macDownloadURL = nil
+        showShareSheet = false
+        showCommandCopied = false
+    }
+
+    private func ensurePlatformAvailability() {
+        if platformChoices.contains(platform) == false {
+            platform = .windows
+        }
+    }
+
+    private func copyCommandToClipboard(_ command: String) {
+        #if canImport(UIKit)
+        UIPasteboard.general.string = command
+        #elseif canImport(AppKit)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(command, forType: .string)
+        #endif
+        showCommandCopied = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            showCommandCopied = false
+        }
     }
 
     private func selectionMenu<Content: View>(title: String, value: String, placeholder: String, disabled: Bool, @ViewBuilder content: () -> Content) -> some View {
@@ -1334,7 +1544,7 @@ struct InstallAgentView: View {
                 .font(.callout)
                 .foregroundStyle(Color.white)
         }
-        .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+        .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
         .disabled(disabled)
         .opacity(disabled ? 0.4 : 1)
     }
@@ -1376,12 +1586,131 @@ struct InstallAgentView: View {
 }
 
 
+private enum InstallPlatform: String, CaseIterable {
+    struct ArchitectureOption: Hashable {
+        let label: String
+        let value: String
+    }
+
+    enum ResponseType {
+        case file
+        case command
+    }
+
+    case windows
+    case linux
+    case mac
+
+    var title: String {
+        switch self {
+        case .windows: return "Windows"
+        case .linux: return "Linux"
+        case .mac: return "macOS"
+        }
+    }
+
+    var installMethod: String {
+        switch self {
+        case .windows: return "exe"
+        case .linux: return "bash"
+        case .mac: return "mac"
+        }
+    }
+
+    var defaultFileName: String {
+        switch self {
+        case .windows: return "trmm-installer.exe"
+        case .linux: return "trmm-installer.sh"
+        case .mac: return "trmm-installer-macos.sh"
+        }
+    }
+
+    var downloadButtonLabel: String {
+        switch self {
+        case .windows: return "Download Windows Installer"
+        case .linux: return "Download Linux Install Script"
+        case .mac: return "Generate macOS Install Command"
+        }
+    }
+
+    var buttonSystemImage: String {
+        switch self {
+        case .windows: return "icloud.and.arrow.down"
+        case .linux: return "icloud.and.arrow.down"
+        case .mac: return "terminal"
+        }
+    }
+
+    var apiPlatformValue: String {
+        switch self {
+        case .windows: return "windows"
+        case .linux: return "linux"
+        case .mac: return "darwin"
+        }
+    }
+
+    var footerNote: String {
+        switch self {
+        case .windows, .linux:
+            return "Installer expires after the specified duration. Share directly from the completion prompt."
+        case .mac:
+            return "Command expires after the specified duration. Run it on the target Mac before it expires."
+        }
+    }
+
+    var architectureOptions: [ArchitectureOption] {
+        switch self {
+        case .windows:
+            return [
+                ArchitectureOption(label: "64 bit", value: "amd64"),
+                ArchitectureOption(label: "32 bit", value: "386")
+            ]
+        case .linux:
+            return [
+                ArchitectureOption(label: "64 bit", value: "amd64"),
+                ArchitectureOption(label: "32 bit", value: "386"),
+                ArchitectureOption(label: "ARM 64 bit", value: "arm64"),
+                ArchitectureOption(label: "ARM 32 bit", value: "arm")
+            ]
+        case .mac:
+            return [
+                ArchitectureOption(label: "Intel", value: "amd64"),
+                ArchitectureOption(label: "Apple silicon", value: "arm64")
+            ]
+        }
+    }
+
+    var supportsRemoteOptions: Bool {
+        switch self {
+        case .windows: return true
+        case .linux, .mac: return false
+        }
+    }
+
+    var responseType: ResponseType {
+        switch self {
+        case .windows, .linux: return .file
+        case .mac: return .command
+        }
+    }
+}
+
+private struct InstallCommandResponse: Decodable {
+    let cmd: String
+    let url: String?
+}
+
+private struct CodeSignResponse: Decodable {
+    let token: String?
+}
+
 // MARK: - AgentDetailView
 
 struct AgentDetailView: View {
     let agent: Agent
     let baseURL: String
     let apiKey: String
+    @Environment(\.appTheme) private var appTheme
     
     @State private var updatedAgent: Agent?
     @State private var isProcessing: Bool = false
@@ -1839,7 +2168,7 @@ struct AgentDetailView: View {
                             title: "Processes",
                             subtitle: "Running tasks",
                             systemImage: "chart.bar.doc.horizontal.fill",
-                            tint: Color.cyan
+                            tint: appTheme.accent
                         )
                     }
                     .buttonStyle(.plain)
@@ -1985,7 +2314,7 @@ struct AgentDetailView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: systemImage)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(Color.cyan)
+                .foregroundStyle(appTheme.accent)
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title.uppercased())
@@ -2144,6 +2473,7 @@ struct SendCommandView: View {
     let baseURL: String
     let apiKey: String
     let operatingSystem: String
+    @Environment(\.appTheme) private var appTheme
     
     @State private var command: String = ""
     @State private var selectedShell: String
@@ -2270,7 +2600,7 @@ struct SendCommandView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "timer")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("TIMEOUT (SECONDS)")
                             .font(.caption2)
@@ -2564,6 +2894,7 @@ struct RunScriptView: View {
     let agent: Agent
     let baseURL: String
     let apiKey: String
+    @Environment(\.appTheme) private var appTheme
 
     @State private var scripts: [RMMScript] = []
     @State private var isLoadingScripts = false
@@ -2656,7 +2987,7 @@ struct RunScriptView: View {
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
                 ProgressView(isLoadingScripts ? "Loading scripts…" : "Running script…")
-                    .tint(Color.cyan)
+                    .tint(appTheme.accent)
                     .padding()
                     .background(.ultraThinMaterial)
                     .cornerRadius(12)
@@ -2723,7 +3054,7 @@ struct RunScriptView: View {
 
                 if isLoadingScripts {
                     ProgressView("Loading scripts…")
-                        .tint(Color.cyan)
+                        .tint(appTheme.accent)
                 } else if let error = scriptsError {
                     Text("Error: \(error)")
                         .font(.footnote)
@@ -2758,7 +3089,7 @@ struct RunScriptView: View {
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.headline.weight(.semibold))
-                                .foregroundStyle(Color.cyan)
+                                .foregroundStyle(appTheme.accent)
                         }
                         .padding(.vertical, 14)
                         .padding(.horizontal, 16)
@@ -2830,7 +3161,7 @@ struct RunScriptView: View {
                         HStack(spacing: 12) {
                             Image(systemName: "timer")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(Color.cyan)
+                                .foregroundStyle(appTheme.accent)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Timeout (seconds)")
                                     .font(.caption2)
@@ -2972,7 +3303,7 @@ struct RunScriptView: View {
             HStack(spacing: 6) {
                 Image(systemName: "info.circle")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.cyan)
+                    .foregroundStyle(appTheme.accent)
                 Text(script.category?.nonEmpty ?? "Uncategorized")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.white.opacity(0.75))
@@ -2990,7 +3321,7 @@ struct RunScriptView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: systemImage)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(Color.cyan)
+                .foregroundStyle(appTheme.accent)
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 2) {
                 Text(label.uppercased())
@@ -3565,6 +3896,7 @@ struct RunScriptView: View {
         @Binding var selectedScriptID: Int?
 
         @Environment(\.dismiss) private var dismiss
+        @Environment(\.appTheme) private var appTheme
         @State private var searchText: String = ""
 
         private var filteredScripts: [RMMScript] {
@@ -3602,7 +3934,7 @@ struct RunScriptView: View {
                         VStack(spacing: 16) {
                             Image(systemName: "tray")
                                 .font(.largeTitle)
-                                .foregroundStyle(Color.cyan)
+                                .foregroundStyle(appTheme.accent)
                             Text("No scripts available")
                                 .font(.headline)
                                 .foregroundStyle(Color.white)
@@ -3640,7 +3972,7 @@ struct RunScriptView: View {
                                 VStack(spacing: 12) {
                                     Image(systemName: "magnifyingglass")
                                         .font(.title2)
-                                        .foregroundStyle(Color.cyan)
+                                        .foregroundStyle(appTheme.accent)
                                     Text("No scripts match your search.")
                                         .font(.footnote)
                                         .foregroundStyle(Color.white.opacity(0.7))
@@ -3662,6 +3994,7 @@ struct RunScriptView: View {
             let script: RMMScript
             let isSelected: Bool
             let supported: Bool
+            @Environment(\.appTheme) private var appTheme
 
             private var categoryLabel: String {
                 script.category?.nonEmpty ?? "Uncategorized"
@@ -3706,7 +4039,7 @@ struct RunScriptView: View {
                     if isSelected {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.title3)
-                            .foregroundStyle(Color.cyan)
+                            .foregroundStyle(appTheme.accent)
                     }
                 }
                 .padding(.vertical, 6)
@@ -4011,6 +4344,7 @@ struct AgentProcessesView: View {
     private struct ProcessTile: View {
         let process: ProcessRecord
         let isSelected: Bool
+        @Environment(\.appTheme) private var appTheme
 
         var body: some View {
             VStack(alignment: .leading, spacing: 8) {
@@ -4027,7 +4361,7 @@ struct AgentProcessesView: View {
                     .foregroundStyle(Color.white.opacity(0.7))
                 HStack(spacing: 12) {
                     pill(label: "CPU \(process.cpu_percent)%", color: Color.orange)
-                    pill(label: "RAM \(process.membytes)", color: Color.cyan)
+                    pill(label: "RAM \(process.membytes)", color: appTheme.accent)
                 }
             }
             .padding(16)
@@ -4037,7 +4371,7 @@ struct AgentProcessesView: View {
                     .fill(Color.white.opacity(isSelected ? 0.12 : 0.05))
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(isSelected ? Color.cyan.opacity(0.6) : Color.white.opacity(0.08), lineWidth: 1)
+                            .stroke(isSelected ? appTheme.accent.opacity(0.6) : Color.white.opacity(0.08), lineWidth: 1)
                     )
             )
         }
@@ -4628,6 +4962,7 @@ struct AgentSoftwareView: View {
         let onConfirm: () -> Void
 
         @FocusState private var commandFocused: Bool
+        @Environment(\.appTheme) private var appTheme
 
         var body: some View {
             NavigationStack {
@@ -4685,7 +5020,7 @@ struct AgentSoftwareView: View {
                                             .font(.callout)
                                             .foregroundStyle(Color.white)
                                     }
-                                    .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+                                    .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
                                     if let errorMessage {
                                         Text(errorMessage)
@@ -4734,6 +5069,7 @@ struct AgentSoftwareView: View {
         let installDate: String?
         let isUninstalling: Bool
         let onRequestUninstall: (InstalledSoftware) -> Void
+        @Environment(\.appTheme) private var appTheme
 
         private var softwareName: String {
             software.name.nonEmpty ?? "Unnamed Software"
@@ -4768,7 +5104,7 @@ struct AgentSoftwareView: View {
                     Spacer()
                     HStack(spacing: 8) {
                         if let versionLabel {
-                            pill(text: versionLabel, color: Color.cyan)
+                            pill(text: versionLabel, color: appTheme.accent)
                         }
                         uninstallButton
                     }
@@ -4839,7 +5175,7 @@ struct AgentSoftwareView: View {
             HStack(alignment: .center, spacing: 8) {
                 Image(systemName: icon)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.cyan)
+                    .foregroundStyle(appTheme.accent)
                 Text(text)
                     .font(.caption)
                     .foregroundStyle(Color.white.opacity(0.8))
@@ -4851,7 +5187,7 @@ struct AgentSoftwareView: View {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: icon)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.cyan)
+                    .foregroundStyle(appTheme.accent)
                     .padding(.top, 4)
                 Text(text)
                     .font(.caption)
@@ -5561,6 +5897,7 @@ struct AgentTasksView: View {
         let formattedRunTime: String
         let formattedCreated: String
         let truncate: (String) -> String
+        @Environment(\.appTheme) private var appTheme
 
         var body: some View {
             VStack(alignment: .leading, spacing: 12) {
@@ -5589,7 +5926,7 @@ struct AgentTasksView: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "arrowtriangle.forward.fill")
                                     .font(.caption.weight(.bold))
-                                    .foregroundStyle(Color.cyan)
+                                    .foregroundStyle(appTheme.accent)
                                 Text("\(action.name) (\(action.type))")
                                     .font(.caption)
                                     .foregroundStyle(Color.white.opacity(0.8))
@@ -5614,7 +5951,7 @@ struct AgentTasksView: View {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: system)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.cyan)
+                    .foregroundStyle(appTheme.accent)
                     .frame(width: 18)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title.uppercased())
@@ -5719,13 +6056,14 @@ struct AgentCustomFieldsView: View {
 
     private struct CustomFieldTile: View {
         let field: AgentCustomField
+        @Environment(\.appTheme) private var appTheme
 
         var body: some View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "number")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                         .frame(width: 20)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Record ID")

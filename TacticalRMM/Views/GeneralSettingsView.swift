@@ -8,6 +8,7 @@ struct GeneralSettingsView: View {
     }
 
     let settings: RMMSettings
+    @Environment(\.appTheme) private var appTheme
     let mode: Mode
 
     init(settings: RMMSettings, mode: Mode = .general) {
@@ -115,7 +116,7 @@ struct GeneralSettingsView: View {
                         Text("Save")
                     }
                 }
-                .foregroundStyle(Color.cyan)
+                .foregroundStyle(appTheme.accent)
                 .disabled(isLoading || isSaving)
             }
         }
@@ -169,21 +170,21 @@ struct GeneralSettingsView: View {
                     .font(.callout)
                     .foregroundStyle(Color.white)
             }
-            .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+            .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
             Toggle(isOn: $form.enableServerScripts) {
                 Text("Enable server side scripts")
                     .font(.callout)
                     .foregroundStyle(Color.white)
             }
-            .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+            .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
             Toggle(isOn: $form.enableServerWebterminal) {
                 Text("Enable web terminal")
                     .font(.callout)
                     .foregroundStyle(Color.white)
             }
-            .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+            .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
             separator()
 
@@ -259,14 +260,14 @@ struct GeneralSettingsView: View {
                     .font(.callout)
                     .foregroundStyle(Color.white)
             }
-            .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+            .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
             Toggle(isOn: $form.notifyOnWarningAlerts) {
                 Text("Receive warning alert notifications")
                     .font(.callout)
                     .foregroundStyle(Color.white)
             }
-            .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+            .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
             separator()
 
@@ -369,14 +370,14 @@ struct GeneralSettingsView: View {
                             .padding(.vertical, 10)
                             .padding(.horizontal, 18)
                             .background(
-                                Capsule().fill(Color.cyan.opacity(0.18))
+                                Capsule().fill(appTheme.accent.opacity(0.18))
                                     .overlay(
-                                        Capsule().stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                                        Capsule().stroke(appTheme.accent.opacity(0.3), lineWidth: 1)
                                     )
                             )
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(Color.cyan)
+                    .foregroundStyle(appTheme.accent)
                     .disabled(newEmailRecipient.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -417,7 +418,7 @@ struct GeneralSettingsView: View {
                         .font(.callout)
                         .foregroundStyle(Color.white)
                 }
-                .toggleStyle(SwitchToggleStyle(tint: Color.cyan))
+                .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
                 groupedTextField(
                     title: "Username:",
@@ -509,14 +510,14 @@ struct GeneralSettingsView: View {
                             .padding(.vertical, 10)
                             .padding(.horizontal, 18)
                             .background(
-                                Capsule().fill(Color.cyan.opacity(0.18))
+                                Capsule().fill(appTheme.accent.opacity(0.18))
                                     .overlay(
-                                        Capsule().stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                                        Capsule().stroke(appTheme.accent.opacity(0.3), lineWidth: 1)
                                     )
                             )
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(Color.cyan)
+                    .foregroundStyle(appTheme.accent)
                     .disabled(newSMSRecipient.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -678,7 +679,7 @@ struct GeneralSettingsView: View {
                     Spacer()
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                 }
                 .padding(.vertical, 14)
                 .padding(.horizontal, 16)
@@ -718,7 +719,7 @@ struct GeneralSettingsView: View {
                     Spacer()
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                 }
                 .padding(.vertical, 14)
                 .padding(.horizontal, 16)

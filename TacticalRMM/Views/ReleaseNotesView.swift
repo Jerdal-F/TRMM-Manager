@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ReleaseNotesView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appTheme) private var appTheme
     @State private var notes: [ReleaseNote] = []
     @State private var loadError: String?
     @State private var isLoading = true
@@ -51,7 +52,7 @@ struct ReleaseNotesView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                 }
             }
             .onAppear { loadNotes() }
@@ -72,9 +73,9 @@ struct ReleaseNotesView: View {
                         .padding(.vertical, 4)
                         .background(
                             Capsule(style: .continuous)
-                                .fill(Color.cyan.opacity(0.2))
+                                .fill(appTheme.accent.opacity(0.2))
                         )
-                        .foregroundStyle(Color.cyan)
+                        .foregroundStyle(appTheme.accent)
                 }
             }
 

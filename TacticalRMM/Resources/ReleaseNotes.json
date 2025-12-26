@@ -1,7 +1,11 @@
-[ {
+[  {
+    "version": "0.5.4",
+    "description": "Changed the project guide link to a new website.",
+    "isCurrent": true
+    },
+    {
   "version": "0.5.3",
-  "description": "Agent installation is now supported on Linux and macOS.\n\nCode signing has been enhanced with a new Sign All Agents button and the ability to delete signing tokens directly from the interface.\n\nAn application theme option has been added to improve customization and visual experience.",
-  "isCurrent": true
+  "description": "Agent installation is now supported on Linux and macOS.\n\nCode signing has been enhanced with a new Sign All Agents button and the ability to delete signing tokens directly from the interface.\n\nAn application theme option has been added to improve customization and visual experience."
   },
   {
     "version": "0.5.2",

@@ -247,7 +247,7 @@ struct SettingsView: View {
                 SectionHeader("Resources", subtitle: "Helpful references", systemImage: "book")
 
                 Button {
-                    if let url = URL(string: "https://github.com/Jerdal-F/TacticalRMM-Manager") {
+                    if let url = URL(string: "https://trmm.jerdal.no") {
                         UIApplication.shared.open(url)
                     }
                 } label: {

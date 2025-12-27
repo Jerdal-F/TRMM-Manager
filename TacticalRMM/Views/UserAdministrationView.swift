@@ -1112,6 +1112,9 @@ struct UserAdministrationView: View {
                 users = []
             }
         } catch {
+            if error.isCancelledRequest {
+                return
+            }
             errorMessage = error.localizedDescription
             users = []
             DiagnosticLogger.shared.appendError("Failed to load users: \(error.localizedDescription)")
@@ -1184,6 +1187,9 @@ struct UserAdministrationView: View {
                 roles = [:]
             }
         } catch {
+            if error.isCancelledRequest {
+                return
+            }
             roleErrorMessage = error.localizedDescription
             roles = [:]
             DiagnosticLogger.shared.appendError("Failed to load roles: \(error.localizedDescription)")
@@ -1325,6 +1331,9 @@ struct UserAdministrationView: View {
                 userSessions = []
             }
         } catch {
+            if error.isCancelledRequest {
+                return
+            }
             sessionsErrorMessage = error.localizedDescription
             userSessions = []
             DiagnosticLogger.shared.appendError("Failed to load sessions: \(error.localizedDescription)")

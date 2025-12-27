@@ -17,7 +17,7 @@ final class KeychainHelper {
     func saveAPIKey(_ apiKey: String, identifier: String? = nil) {
         let account = identifier ?? activeIdentifier
         cachedAPIKeys[account] = apiKey
-        DiagnosticLogger.shared.append("Saving API Key for \(account): \(DiagnosticLogger.shared.maskAPIKey(apiKey))")
+        DiagnosticLogger.shared.append("Saving API key for account '\(account)'")
 
         guard let data = apiKey.data(using: .utf8) else {
             DiagnosticLogger.shared.appendError("Failed to encode API key to Data")
@@ -39,7 +39,7 @@ final class KeychainHelper {
         }
 
         cachedAPIKeys[account] = key
-        DiagnosticLogger.shared.append("Retrieved API Key from Keychain (\(account)): \(DiagnosticLogger.shared.maskAPIKey(key))")
+        DiagnosticLogger.shared.append("Retrieved API key from Keychain for account '\(account)'")
         return key
     }
 
@@ -70,7 +70,8 @@ final class KeychainHelper {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecValueData as String: data
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         ]
         SecItemDelete(query as CFDictionary)
         let status = SecItemAdd(query as CFDictionary, nil)

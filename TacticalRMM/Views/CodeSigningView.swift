@@ -315,6 +315,10 @@ struct CodeSigningView: View {
         } catch CodeSigningError.message(let message) {
             await MainActor.run { loadError = message }
         } catch {
+            if error.isCancelledRequest {
+                await MainActor.run { isLoading = false }
+                return
+            }
             await MainActor.run { loadError = error.localizedDescription }
             DiagnosticLogger.shared.appendError("Failed to load code signing token: \(error.localizedDescription)")
         }

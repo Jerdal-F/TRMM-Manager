@@ -5,8 +5,19 @@ final class DiagnosticLogger {
     static let shared = DiagnosticLogger()
 
     private let fileName: String
+    private let fileManager = FileManager.default
+    private let sensitiveURLFragments: [String] = [
+        "/core/keystore",
+        "/core/codesign",
+        "/core/settings",
+        "/accounts/users/reset",
+        "/accounts/users/reset_totp",
+        "/accounts/users/",
+        "/accounts/sessions",
+        "/scripts/"
+    ]
     private var logFileURL: URL? {
-        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
+        guard let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
         return docs.appendingPathComponent(fileName)
     }
 
@@ -22,15 +33,17 @@ final class DiagnosticLogger {
         guard let url = logFileURL else { return }
         let logEntry = "\(Date()): \(message)\n"
         do {
-            if FileManager.default.fileExists(atPath: url.path) {
+            if fileManager.fileExists(atPath: url.path) {
                 let fileHandle = try FileHandle(forWritingTo: url)
                 fileHandle.seekToEndOfFile()
                 if let data = logEntry.data(using: .utf8) {
                     fileHandle.write(data)
                 }
                 fileHandle.closeFile()
+                applyFileProtection(to: url)
             } else {
                 try logEntry.write(to: url, atomically: true, encoding: .utf8)
+                applyFileProtection(to: url)
             }
         } catch {
             print("Error writing log: \(error)")
@@ -54,7 +67,9 @@ final class DiagnosticLogger {
 
     func logHTTPResponse(method: String, url: String, status: Int, data: Data?) {
         let responseBody: String
-        if let data = data, let responseString = String(data: data, encoding: .utf8) {
+        if containsSensitiveData(url: url) {
+            responseBody = "[REDACTED]"
+        } else if let data = data, let responseString = String(data: data, encoding: .utf8) {
             if url.contains("/agents/") {
                 responseBody = responseString
             } else {
@@ -105,6 +120,29 @@ final class DiagnosticLogger {
         if let authorization = sanitized["Authorization"], authorization.lowercased().contains("token") {
             sanitized["Authorization"] = "Token [REDACTED]"
         }
+        if sanitized["Authorization"] != nil {
+            sanitized["Authorization"] = "[REDACTED]"
+        }
+        if sanitized["Cookie"] != nil {
+            sanitized["Cookie"] = "[REDACTED]"
+        }
+        if sanitized["Set-Cookie"] != nil {
+            sanitized["Set-Cookie"] = "[REDACTED]"
+        }
         return sanitized
+    }
+
+    private func containsSensitiveData(url: String) -> Bool {
+        sensitiveURLFragments.contains { fragment in url.contains(fragment) }
+    }
+
+    private func applyFileProtection(to url: URL) {
+        do {
+            try fileManager.setAttributes([
+                .protectionKey: FileProtectionType.completeUntilFirstUserAuthentication
+            ], ofItemAtPath: url.path)
+        } catch {
+            print("Failed to apply file protection: \(error)")
+        }
     }
 }

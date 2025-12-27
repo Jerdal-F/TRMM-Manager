@@ -823,6 +823,12 @@ struct GeneralSettingsView: View {
                 }
             }
         } catch {
+            if error.isCancelledRequest {
+                await MainActor.run {
+                    isLoading = false
+                }
+                return
+            }
             await MainActor.run {
                 loadErrorMessage = error.localizedDescription
             }

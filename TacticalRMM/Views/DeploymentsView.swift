@@ -845,6 +845,9 @@ struct DeploymentsView: View {
                 selectedSiteID = nil
             }
         } catch {
+            if error.isCancelledRequest {
+                return
+            }
             clientErrorMessage = error.localizedDescription
             clients = []
             DiagnosticLogger.shared.appendError("Failed to load clients: \(error.localizedDescription)")
@@ -930,6 +933,9 @@ struct DeploymentsView: View {
                 deployments = []
             }
         } catch {
+            if error.isCancelledRequest {
+                return
+            }
             errorMessage = error.localizedDescription
             deployments = []
             DiagnosticLogger.shared.appendError("Failed to load deployments: \(error.localizedDescription)")

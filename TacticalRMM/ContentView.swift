@@ -16,7 +16,6 @@ struct ContentView: View {
     @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
     @AppStorage("useFaceID") private var useFaceID: Bool = false
     @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
-
     @State private var showGuideAlert = false
     @State private var showDiagnosticAlert = false
     @State private var showLogShareSheet = false
@@ -46,7 +45,8 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            DarkGradientBackground()
+            Color(.systemBackground)
+                .ignoresSafeArea()
 
             NavigationStack {
                 ScrollView(showsIndicators: false) {
@@ -58,6 +58,8 @@ struct ContentView: View {
                     .padding(.horizontal, 20)
                     .padding(.vertical, 28)
                 }
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
                 .scrollDismissesKeyboard(.interactively)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -80,6 +82,7 @@ struct ContentView: View {
                     }
                 }
             }
+            .background(Color.clear)
             .alert("Diagnostics", isPresented: $showDiagnosticAlert) {
                 Button("Save", role: .destructive) { showLogShareSheet = true }
                 Button("Cancel", role: .cancel) {}

@@ -3,6 +3,7 @@ import SwiftUI
 struct UserAdministrationView: View {
     let settings: RMMSettings
     @Environment(\.appTheme) private var appTheme
+    @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
 
     @State private var users: [RMMUser] = []
     @State private var roles: [Int: RMMRole] = [:]
@@ -481,6 +482,8 @@ struct UserAdministrationView: View {
 
     private func sessionRow(_ session: UserSession, for user: RMMUser) -> some View {
         let isDeleting = deletingSessionDigests.contains(session.digest)
+        let createdText = formatLastSeenTimestamp(session.created, customFormat: lastSeenDateFormat)
+        let expiryText = formatLastSeenTimestamp(session.expiry, customFormat: lastSeenDateFormat)
 
         return VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
@@ -493,8 +496,8 @@ struct UserAdministrationView: View {
                     .textSelection(.enabled)
             }
 
-            infoRow(title: "Created", value: session.createdDisplay)
-            infoRow(title: "Expiry", value: session.expiryDisplay)
+            infoRow(title: "Created", value: createdText)
+            infoRow(title: "Expiry", value: expiryText)
 
             Button {
                 Task { await logoutSession(session) }
@@ -622,7 +625,9 @@ struct UserAdministrationView: View {
     }
 
     private func userRow(for user: RMMUser) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let lastLoginText = formatLastSeenTimestamp(user.lastLogin, customFormat: lastSeenDateFormat)
+
+        return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(user.displayName)
@@ -658,7 +663,7 @@ struct UserAdministrationView: View {
                 infoRow(title: "Email", value: email)
             }
 
-            infoRow(title: "Last Login", value: user.lastLoginDisplay)
+            infoRow(title: "Last Login", value: lastLoginText)
 
             if let ip = user.lastLoginIP, !ip.isEmpty {
                 infoRow(title: "Last Login IP", value: ip)

@@ -9,6 +9,7 @@ import AppKit
 struct DeploymentsView: View {
     let settings: RMMSettings
     @Environment(\.appTheme) private var appTheme
+    @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
 
     @State private var deployments: [RMMDeployment] = []
     @State private var isLoading = false
@@ -413,6 +414,8 @@ struct DeploymentsView: View {
 
     private func deploymentRow(for deployment: RMMDeployment) -> some View {
         let isDeleting = deletingDeploymentIDs.contains(deployment.id)
+        let expiryText = formatLastSeenTimestamp(deployment.expiry, customFormat: lastSeenDateFormat)
+        let createdText = formatLastSeenTimestamp(deployment.created, customFormat: lastSeenDateFormat)
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
@@ -454,8 +457,8 @@ struct DeploymentsView: View {
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                infoRow(icon: "calendar.badge.exclamationmark", title: "Expires", value: deployment.expiryDisplayText)
-                infoRow(icon: "clock.arrow.circlepath", title: "Created", value: deployment.createdDisplayText)
+                infoRow(icon: "calendar.badge.exclamationmark", title: "Expires", value: expiryText)
+                infoRow(icon: "clock.arrow.circlepath", title: "Created", value: createdText)
             }
 
             if let flags = deployment.installFlags {

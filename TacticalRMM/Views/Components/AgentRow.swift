@@ -3,6 +3,7 @@ import SwiftUI
 struct AgentRow: View {
     let agent: Agent
     let hideSensitiveInfo: Bool
+    @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
 
     private var statusColor: Color {
         if agent.isOnlineStatus { return Color.green }
@@ -27,7 +28,7 @@ struct AgentRow: View {
     }
 
     private var lastSeenDisplay: String {
-        formatLastSeenTimestamp(agent.last_seen)
+        formatLastSeenTimestamp(agent.last_seen, customFormat: lastSeenDateFormat)
     }
 
     var body: some View {

@@ -16,6 +16,7 @@ struct ContentView: View {
     @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
     @AppStorage("useFaceID") private var useFaceID: Bool = false
     @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
+    @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
     @State private var showGuideAlert = false
     @State private var showDiagnosticAlert = false
     @State private var showLogShareSheet = false
@@ -1714,6 +1715,7 @@ struct AgentDetailView: View {
     let baseURL: String
     let apiKey: String
     @Environment(\.appTheme) private var appTheme
+    @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
     
     @State private var updatedAgent: Agent?
     @State private var isProcessing: Bool = false
@@ -2030,7 +2032,7 @@ struct AgentDetailView: View {
     }
 
     private var lastSeenDisplay: String {
-        formatLastSeenTimestamp(currentAgent.last_seen)
+        formatLastSeenTimestamp(currentAgent.last_seen, customFormat: lastSeenDateFormat)
     }
 
     private var uptimeDisplay: String {
@@ -5238,6 +5240,7 @@ struct AgentNotesView: View {
     let agentId: String
     let baseURL: String
     let apiKey: String
+    @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
 
     @State private var notes: [Note] = []
     @State private var isLoading: Bool = false
@@ -5265,14 +5268,6 @@ struct AgentNotesView: View {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        return formatter
-    }()
-
-    private static let noteDisplayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.timeZone = TimeZone.current
-        formatter.dateFormat = "dd/MM/yyyy HH:mm"
         return formatter
     }()
 
@@ -5385,7 +5380,7 @@ struct AgentNotesView: View {
         if let parsed = AgentNotesView.noteISOFormatterWithFractional.date(from: trimmed)
             ?? AgentNotesView.noteISOFormatter.date(from: trimmed)
             ?? AgentNotesView.noteFallbackParser.date(from: trimmed) {
-            return AgentNotesView.noteDisplayFormatter.string(from: parsed)
+            return formatLastSeenDateValue(parsed, customFormat: lastSeenDateFormat)
         }
 
         return trimmed
@@ -5754,6 +5749,7 @@ struct AgentTasksView: View {
     let agentId: String
     let baseURL: String
     let apiKey: String
+    @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
 
     // ISO8601 parser for task dates
     private let isoFormatter: ISO8601DateFormatter = {
@@ -5775,13 +5771,6 @@ struct AgentTasksView: View {
         df.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         return df
     }()
-    // Formatter for display dates
-    private let displayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm dd/MM/yyyy"
-        return formatter
-    }()
-
     @State private var tasks: [AgentTask] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
@@ -5863,12 +5852,14 @@ struct AgentTasksView: View {
     }
 
     private func formattedDate(_ raw: String) -> String {
-        if let date = isoFormatter.date(from: raw)
-            ?? isoNoFractionFormatter.date(from: raw)
-            ?? noTZDateParser.date(from: raw) {
-            return displayFormatter.string(from: date)
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "N/A" }
+        if let date = isoFormatter.date(from: trimmed)
+            ?? isoNoFractionFormatter.date(from: trimmed)
+            ?? noTZDateParser.date(from: trimmed) {
+            return formatLastSeenDateValue(date, customFormat: lastSeenDateFormat)
         }
-        return raw
+        return trimmed
     }
 
     private func banner(message: String, isError: Bool) -> some View {
@@ -6107,6 +6098,7 @@ struct AgentChecksView: View {
     let agentId: String
     let baseURL: String
     let apiKey: String
+    @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
 
     // shared ISO8601 formatter for parsing last_run
     private static var iso8601Formatter: ISO8601DateFormatter {
@@ -6212,12 +6204,14 @@ struct AgentChecksView: View {
 
     private func formattedDate(_ raw: String?) -> String {
         guard let raw else { return "Unknown" }
-        if let date = Self.iso8601Formatter.date(from: raw)
-            ?? Self.iso8601NoFractionFormatter.date(from: raw)
-            ?? Self.noTimeZoneFormatter.date(from: raw) {
-            return DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .short)
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Unknown" }
+        if let date = Self.iso8601Formatter.date(from: trimmed)
+            ?? Self.iso8601NoFractionFormatter.date(from: trimmed)
+            ?? Self.noTimeZoneFormatter.date(from: trimmed) {
+            return formatLastSeenDateValue(date, customFormat: lastSeenDateFormat)
         }
-        return raw
+        return trimmed
     }
 
     private func statusInfo(for status: String?) -> (text: String, color: Color, icon: String) {

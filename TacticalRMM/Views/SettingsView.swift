@@ -12,6 +12,7 @@ struct SettingsView: View {
     @AppStorage("hideSensitive") var hideSensitiveInfo: Bool = false
     @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
     @AppStorage("selectedTheme") private var selectedThemeID: String = AppTheme.default.rawValue
+    @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
 
     @State private var showResetConfirmation = false
     @State private var showAddInstanceSheet = false
@@ -58,6 +59,43 @@ struct SettingsView: View {
 
     private var selectedTheme: AppTheme {
         AppTheme(rawValue: selectedThemeID) ?? .default
+    }
+
+    private struct TimestampFormatChoice: Identifiable {
+        let id: String
+        let title: String
+        let storedValue: String
+        let detail: String
+    }
+
+    private var sanitizedLastSeenFormat: String {
+        lastSeenDateFormat.replacingOccurrences(of: "\n", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var timestampFormatChoices: [TimestampFormatChoice] {
+        let devicePattern = DateConstants.devicePreferredLastSeenFormat()
+        return [
+            TimestampFormatChoice(id: "device", title: "Match Device Locale", storedValue: "", detail: devicePattern),
+            TimestampFormatChoice(id: "fallback", title: "24-hour · Day/Month", storedValue: DateConstants.fallbackLastSeenFormat, detail: DateConstants.fallbackLastSeenFormat),
+            TimestampFormatChoice(id: "us12", title: "12-hour · Month/Day", storedValue: "hh:mm a MM/dd/yyyy", detail: "HH:MM a MM/dd/yyyy")
+        ]
+    }
+    
+    private var selectedTimestampFormatChoice: TimestampFormatChoice {
+        let sanitized = sanitizedLastSeenFormat
+        if sanitized.isEmpty {
+            return timestampFormatChoices.first(where: { $0.id == "device" }) ?? timestampFormatChoices[0]
+        }
+        return timestampFormatChoices.first(where: { $0.storedValue == sanitized }) ?? timestampFormatChoices.first(where: { $0.id == "device" }) ?? timestampFormatChoices[0]
+    }
+
+    private var lastSeenPreviewText: String {
+        previewString(for: selectedTimestampFormatChoice.storedValue)
+    }
+
+    private func previewString(for storedValue: String) -> String {
+        let sampleISO = DateConstants.lastSeenISOFormatter.string(from: Date())
+        return formatLastSeenTimestamp(sampleISO, customFormat: storedValue)
     }
 
     var body: some View {
@@ -236,6 +274,74 @@ struct SettingsView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Timestamp Format")
+                        .font(.callout)
+                        .foregroundStyle(Color.white)
+
+                    Menu {
+                        ForEach(timestampFormatChoices) { choice in
+                            Button {
+                                lastSeenDateFormat = choice.storedValue
+                            } label: {
+                                let isSelected = choice.id == selectedTimestampFormatChoice.id
+                                HStack(alignment: .center, spacing: 12) {
+                                    if isSelected {
+                                        Image(systemName: "checkmark")
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(choice.title)
+                                        Text(previewString(for: choice.storedValue))
+                                            .font(.caption2)
+                                            .foregroundStyle(Color.white.opacity(0.6))
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(selectedTimestampFormatChoice.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Color.white)
+                                Text(lastSeenPreviewText)
+                                    .font(.caption)
+                                    .foregroundStyle(Color.white.opacity(0.6))
+                            }
+
+                            Spacer(minLength: 0)
+
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.footnote)
+                                .foregroundStyle(Color.white.opacity(0.7))
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.white.opacity(0.05))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                }
+                .onAppear {
+                    let sanitized = sanitizedLastSeenFormat
+                    if sanitized != lastSeenDateFormat {
+                        lastSeenDateFormat = sanitized
+                    }
+                }
+                .onChange(of: lastSeenDateFormat) { _, newValue in
+                    let sanitized = newValue.replacingOccurrences(of: "\n", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    if sanitized != newValue {
+                        lastSeenDateFormat = sanitized
+                    }
                 }
             }
         }

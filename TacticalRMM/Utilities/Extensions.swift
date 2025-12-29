@@ -126,6 +126,168 @@ extension AppTheme {
     static let `default`: AppTheme = .ocean
 }
 
+enum AppBackgroundStyle: String, CaseIterable, Identifiable {
+    case midnight
+    case graphite
+    case twilight
+    case aurora
+    case nebula
+    case solstice
+    case lagoon
+    case emberGlow
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .midnight: return "Midnight"
+        case .graphite: return "Graphite"
+        case .twilight: return "Twilight"
+        case .aurora: return "Aurora"
+        case .nebula: return "Nebula"
+        case .solstice: return "Solstice"
+        case .lagoon: return "Lagoon"
+        case .emberGlow: return "Ember Glow"
+        }
+    }
+
+    var gradientColors: [Color] {
+        switch self {
+        case .midnight:
+            return [
+                Color(red: 0.18, green: 0.20, blue: 0.38),
+                Color(red: 0.04, green: 0.07, blue: 0.20)
+            ]
+        case .graphite:
+            return [
+                Color(red: 0.16, green: 0.16, blue: 0.18),
+                Color(red: 0.03, green: 0.03, blue: 0.05)
+            ]
+        case .twilight:
+            return [
+                Color(red: 0.36, green: 0.14, blue: 0.58),
+                Color(red: 0.12, green: 0.03, blue: 0.32)
+            ]
+        case .aurora:
+            return [
+                Color(red: 0.08, green: 0.30, blue: 0.35),
+                Color(red: 0.02, green: 0.12, blue: 0.16)
+            ]
+        case .nebula:
+            return [
+                Color(red: 0.34, green: 0.08, blue: 0.70),
+                Color(red: 0.14, green: 0.02, blue: 0.36)
+            ]
+        case .solstice:
+            return [
+                Color(red: 0.48, green: 0.16, blue: 0.14),
+                Color(red: 0.16, green: 0.04, blue: 0.05)
+            ]
+        case .lagoon:
+            return [
+                Color(red: 0.12, green: 0.40, blue: 0.46),
+                Color(red: 0.03, green: 0.16, blue: 0.24)
+            ]
+        case .emberGlow:
+            return [
+                Color(red: 0.58, green: 0.22, blue: 0.06),
+                Color(red: 0.24, green: 0.06, blue: 0.02)
+            ]
+        }
+    }
+
+    var overlayBlurRadius: CGFloat { 200 }
+
+    func overlayGradient(accent: Color) -> AngularGradient? {
+        switch self {
+        case .midnight:
+            return AngularGradient(
+                colors: [
+                    accent.opacity(0.28),
+                    .clear,
+                    accent.opacity(0.20),
+                    .clear
+                ],
+                center: .center
+            )
+        case .graphite:
+            return AngularGradient(
+                colors: [
+                    Color.white.opacity(0.18),
+                    .clear,
+                    accent.opacity(0.16),
+                    .clear
+                ],
+                center: .center
+            )
+        case .twilight:
+            return AngularGradient(
+                colors: [
+                    Color(red: 0.72, green: 0.40, blue: 0.95).opacity(0.30),
+                    .clear,
+                    accent.opacity(0.22),
+                    .clear
+                ],
+                center: .center
+            )
+        case .aurora:
+            return AngularGradient(
+                colors: [
+                    Color(red: 0.20, green: 0.75, blue: 0.60).opacity(0.28),
+                    .clear,
+                    accent.opacity(0.20),
+                    .clear
+                ],
+                center: .center
+            )
+        case .nebula:
+            return AngularGradient(
+                colors: [
+                    Color(red: 0.52, green: 0.32, blue: 0.96).opacity(0.30),
+                    .clear,
+                    accent.opacity(0.20),
+                    .clear
+                ],
+                center: .center
+            )
+        case .solstice:
+            return AngularGradient(
+                colors: [
+                    Color(red: 0.98, green: 0.46, blue: 0.28).opacity(0.32),
+                    .clear,
+                    accent.opacity(0.22),
+                    .clear
+                ],
+                center: .center
+            )
+        case .lagoon:
+            return AngularGradient(
+                colors: [
+                    Color(red: 0.16, green: 0.78, blue: 0.74).opacity(0.30),
+                    .clear,
+                    accent.opacity(0.20),
+                    .clear
+                ],
+                center: .center
+            )
+        case .emberGlow:
+            return AngularGradient(
+                colors: [
+                    Color(red: 0.98, green: 0.52, blue: 0.24).opacity(0.34),
+                    .clear,
+                    accent.opacity(0.26),
+                    .clear
+                ],
+                center: .center
+            )
+        }
+    }
+}
+
+extension AppBackgroundStyle {
+    static let `default`: AppBackgroundStyle = .midnight
+}
+
 private struct AppThemeKey: EnvironmentKey {
     static let defaultValue: AppTheme = .default
 }
@@ -134,6 +296,17 @@ extension EnvironmentValues {
     var appTheme: AppTheme {
         get { self[AppThemeKey.self] }
         set { self[AppThemeKey.self] = newValue }
+    }
+}
+
+private struct AppBackgroundKey: EnvironmentKey {
+    static let defaultValue: AppBackgroundStyle = .default
+}
+
+extension EnvironmentValues {
+    var appBackground: AppBackgroundStyle {
+        get { self[AppBackgroundKey.self] }
+        set { self[AppBackgroundKey.self] = newValue }
     }
 }
 

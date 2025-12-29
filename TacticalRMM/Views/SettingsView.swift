@@ -13,6 +13,7 @@ struct SettingsView: View {
     @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
     @AppStorage("selectedTheme") private var selectedThemeID: String = AppTheme.default.rawValue
     @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
+    @AppStorage("selectedBackground") private var selectedBackgroundID: String = AppBackgroundStyle.default.rawValue
 
     @State private var showResetConfirmation = false
     @State private var showAddInstanceSheet = false
@@ -61,6 +62,10 @@ struct SettingsView: View {
         AppTheme(rawValue: selectedThemeID) ?? .default
     }
 
+    private var selectedBackground: AppBackgroundStyle {
+        AppBackgroundStyle(rawValue: selectedBackgroundID) ?? .default
+    }
+
     private struct TimestampFormatChoice: Identifiable {
         let id: String
         let title: String
@@ -96,6 +101,14 @@ struct SettingsView: View {
     private func previewString(for storedValue: String) -> String {
         let sampleISO = DateConstants.lastSeenISOFormatter.string(from: Date())
         return formatLastSeenTimestamp(sampleISO, customFormat: storedValue)
+    }
+
+    private func backgroundGradient(for style: AppBackgroundStyle) -> LinearGradient {
+        LinearGradient(
+            colors: style.gradientColors,
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 
     var body: some View {
@@ -276,6 +289,72 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 }
 
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Background Style")
+                        .font(.callout)
+                        .foregroundStyle(Color.white)
+
+                    Menu {
+                        ForEach(AppBackgroundStyle.allCases) { style in
+                            Button {
+                                selectedBackgroundID = style.rawValue
+                            } label: {
+                                let isSelected = style == selectedBackground
+                                HStack(spacing: 12) {
+                                    backgroundGradient(for: style)
+                                        .frame(width: 40, height: 24)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                        )
+                                    Text(style.displayName)
+                                    if isSelected {
+                                        Spacer(minLength: 0)
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            backgroundGradient(for: selectedBackground)
+                                .frame(width: 46, height: 28)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .stroke(Color.white.opacity(0.35), lineWidth: 1)
+                                )
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(selectedBackground.displayName)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Color.white)
+                                Text("Applies across all screens")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.white.opacity(0.6))
+                            }
+
+                            Spacer(minLength: 0)
+
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.footnote)
+                                .foregroundStyle(Color.white.opacity(0.7))
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.white.opacity(0.05))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Timestamp Format")
                         .font(.callout)
@@ -353,7 +432,7 @@ struct SettingsView: View {
                 SectionHeader("Resources", subtitle: "Helpful references", systemImage: "book")
 
                 Button {
-                    if let url = URL(string: "https://trmm.jerdal.no") {
+                    if let url = URL(string: "https://trmm-manager.jerdal.no") {
                         UIApplication.shared.open(url)
                     }
                 } label: {

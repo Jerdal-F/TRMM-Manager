@@ -445,7 +445,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 0.7.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "jerdal.TacticalRMM-Manager";
 				PRODUCT_NAME = "TRMM Manager";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -483,7 +483,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 0.7.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "jerdal.TacticalRMM-Manager";
 				PRODUCT_NAME = "TRMM Manager";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

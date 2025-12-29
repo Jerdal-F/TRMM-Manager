@@ -1,8 +1,12 @@
 [  
   {
-  "version": "0.5.5",
-  "description": "Fixed refresh cancellations showing as errors across server administration views.",
+  "version": "0.5.6",
+  "description": "Introduced customizable timestamp format options across agent views.\n\nAdded a Settings background style selector that applies richer gradients to the main dashboard.",
   "isCurrent": true
+  },
+  {
+  "version": "0.5.5",
+  "description": "Fixed refresh cancellations showing as errors across server administration views."
   },
   {
   "version": "0.5.4",

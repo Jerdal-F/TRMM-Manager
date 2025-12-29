@@ -1,27 +1,21 @@
 import SwiftUI
 
 struct DarkGradientBackground: View {
+    @Environment(\.appTheme) private var appTheme
+    @Environment(\.appBackground) private var backgroundStyle
+
     var body: some View {
         LinearGradient(
-            colors: [
-                Color(red: 0.06, green: 0.07, blue: 0.12),
-                Color(red: 0.02, green: 0.03, blue: 0.07)
-            ],
+            colors: backgroundStyle.gradientColors,
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
         .ignoresSafeArea()
-        .overlay(
-            AngularGradient(
-                colors: [
-                    Color(red: 0.35, green: 0.55, blue: 0.90).opacity(0.18),
-                    Color.clear,
-                    Color(red: 0.35, green: 0.55, blue: 0.90).opacity(0.12),
-                    Color.clear
-                ],
-                center: .center
-            )
-            .blur(radius: 160)
-        )
+        .overlay {
+            if let overlay = backgroundStyle.overlayGradient(accent: appTheme.accent) {
+                overlay
+                    .blur(radius: backgroundStyle.overlayBlurRadius)
+            }
+        }
     }
 }

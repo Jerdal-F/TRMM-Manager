@@ -46,8 +46,7 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemBackground)
-                .ignoresSafeArea()
+            DarkGradientBackground()
 
             NavigationStack {
                 ScrollView(showsIndicators: false) {

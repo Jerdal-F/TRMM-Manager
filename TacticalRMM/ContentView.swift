@@ -3559,7 +3559,7 @@ struct RunScriptView: View {
         }
 
         let sanitized = baseURL.removingTrailingSlash()
-        guard let url = URL(string: "\(sanitized)/scripts/?showCommunityScripts=false") else {
+        guard let url = URL(string: "\(sanitized)/scripts/") else {
             scriptsError = "Invalid URL."
             return
         }

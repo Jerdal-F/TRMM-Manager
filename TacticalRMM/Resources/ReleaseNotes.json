@@ -1,7 +1,7 @@
 [  
   {
   "version": "0.5.6",
-  "description": "Introduced customizable timestamp format options across agent views.\n\nAdded a Settings background style selector that applies richer gradients to the main dashboard.",
+  "description": "Introduced customizable timestamp format options across agent views.\n\nAdded a Settings background style selector that applies richer gradients to the main dashboard.\n\nUpdate scripts URL to remove community scripts parameter",
   "isCurrent": true
   },
   {

@@ -1341,27 +1341,6 @@ struct InstallAgentView: View {
                                 )
                         )
                 }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Installer File Name")
-                        .font(.caption)
-                        .foregroundStyle(Color.white.opacity(0.6))
-                    TextField(platform.defaultFileName, text: $fileName)
-                        .textInputAutocapitalization(.never)
-                        .disableAutocorrection(true)
-                        .focused($focusedField, equals: .fileName)
-                        .submitLabel(.done)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color.white.opacity(0.05))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                                )
-                        )
-                }
             }
         }
     }
@@ -5176,28 +5155,15 @@ struct AgentSoftwareView: View {
         }
 
         private func detailRow(icon: String, text: String) -> some View {
-            HStack(alignment: .center, spacing: 8) {
-                Image(systemName: icon)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(appTheme.accent)
-                Text(text)
-                    .font(.caption)
-                    .foregroundStyle(Color.white.opacity(0.8))
-                    .textSelection(.enabled)
-            }
-        }
-
-        private func detailBox(icon: String, text: String) -> some View {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: icon)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(appTheme.accent)
-                    .padding(.top, 4)
+                    .frame(width: 18)
                 Text(text)
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(Color.white.opacity(0.85))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
             }
             .padding(12)
             .background(
@@ -5206,6 +5172,29 @@ struct AgentSoftwareView: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+            )
+        }
+
+        private func detailBox(icon: String, text: String) -> some View {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: icon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(appTheme.accent)
+                    .frame(width: 18)
+                Text(text)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.white)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
                     )
             )
         }

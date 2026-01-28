@@ -87,11 +87,11 @@ struct CodeSigningView: View {
             }
         }
         .confirmationDialog(
-            "Delete code signing token?",
+            "Remove code signing token?",
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Delete Token", role: .destructive) {
+            Button("Remove Token", role: .destructive) {
                 Task { await deleteToken() }
             }
             Button("Cancel", role: .cancel) { }
@@ -150,12 +150,6 @@ struct CodeSigningView: View {
                 .foregroundStyle(Color.white)
                 .textSelection(.enabled)
 
-            if let lastFetched {
-                Text("Last fetched: \(lastFetched.formatted(date: .omitted, time: .shortened))")
-                    .font(.caption2)
-                    .foregroundStyle(Color.white.opacity(0.5))
-            }
-
             if isDeleting {
                 HStack(spacing: 10) {
                     ProgressView()
@@ -168,7 +162,7 @@ struct CodeSigningView: View {
                 Button(role: .destructive) {
                     showDeleteConfirmation = true
                 } label: {
-                    Label("Delete Token", systemImage: "trash")
+                    Label("Remove Token", systemImage: "trash")
                         .font(.subheadline.weight(.semibold))
                         .padding(.vertical, 9)
                         .padding(.horizontal, 16)

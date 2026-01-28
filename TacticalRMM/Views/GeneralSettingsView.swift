@@ -540,7 +540,7 @@ struct GeneralSettingsView: View {
                     placeholder: "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                 )
 
-                groupedTextField(
+                groupedSecureField(
                     title: "Twilio Auth Token:",
                     text: $form.twilioAuthToken,
                     placeholder: "Auth token"

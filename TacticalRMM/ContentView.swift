@@ -248,7 +248,7 @@ struct ContentView: View {
                         .overlay(Color.white.opacity(0.08))
 
                     ResponsiveBadgeRow(badges: [
-                        .init(title: "Agents", value: String(agents.count), symbol: "desktopcomputer"),
+                        .init(title: String(localized: "agents.title"), value: String(agents.count), symbol: "desktopcomputer"),
                         .init(title: "Online", value: String(onlineCount), symbol: "bolt.horizontal.circle"),
                         .init(title: "Overdue", value: String(offlineCount), symbol: "moon.zzz")
                     ])
@@ -262,7 +262,11 @@ struct ContentView: View {
     private var connectionCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 20) {
-                SectionHeader("Connection", subtitle: "Securely connect to Tactical RMM", systemImage: "lock.shield")
+                SectionHeader(
+                    String(localized: "connection.title"),
+                    subtitle: String(localized: "connection.subtitle.secure"),
+                    systemImage: "lock.shield"
+                )
 
                 if settingsList.isEmpty {
                     Text("No instances are configured. Open Settings to add your first server.")
@@ -325,12 +329,12 @@ struct ContentView: View {
 
     @ViewBuilder
     private func refreshButton(for settings: RMMSettings) -> some View {
-        let buttonTitle = agents.isEmpty ? "Fetch Agents" : "Refresh Agents"
+        let buttonTitleKey = agents.isEmpty ? "agents.fetch" : "agents.refresh"
         Button {
             DiagnosticLogger.shared.append("Login tapped.")
             Task { await fetchAgents(using: settings) }
         } label: {
-            Label(buttonTitle, systemImage: "arrow.clockwise")
+            Label(LocalizedStringKey(buttonTitleKey), systemImage: "arrow.clockwise")
                 .frame(maxWidth: .infinity)
         }
         .primaryButton()
@@ -385,8 +389,8 @@ struct ContentView: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 20) {
                 SectionHeader(
-                    "Agents",
-                    subtitle: agents.isEmpty ? "Connect to retrieve your estate" : agentCountText,
+                    String(localized: "agents.title"),
+                    subtitle: agents.isEmpty ? String(localized: "agents.subtitle.connectEstate") : agentCountText,
                     systemImage: "list.bullet.rectangle"
                 )
 

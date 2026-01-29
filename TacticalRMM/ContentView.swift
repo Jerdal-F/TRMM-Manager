@@ -173,7 +173,7 @@ struct ContentView: View {
                     Color.black.opacity(0.4)
                         .ignoresSafeArea()
 
-                    ProgressView(isAuthenticating ? "Authenticating with FaceID…" : "Please wait…")
+                    ProgressView(isAuthenticating ? L10n.key("faceid.authenticating") : L10n.key("faceid.locked"))
                         .padding()
                         .background(.ultraThinMaterial)
                         .cornerRadius(10)
@@ -357,8 +357,8 @@ struct ContentView: View {
     @ViewBuilder
     private func connectionSummary(for settings: RMMSettings) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            summaryRow(title: "Instance", value: settings.displayName, systemImage: "server.rack")
-            Text("Manage connection details, including URL and credentials, from Settings.")
+            summaryRow(title: L10n.key("connection.summary.instanceLabel"), value: settings.displayName, systemImage: "server.rack")
+            Text(L10n.key("connection.summary.manageDetails"))
                 .font(.caption)
                 .foregroundStyle(Color.white.opacity(0.65))
         }

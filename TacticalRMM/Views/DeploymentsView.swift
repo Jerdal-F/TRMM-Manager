@@ -41,12 +41,12 @@ struct DeploymentsView: View {
                 VStack(spacing: 24) {
                     GlassCard {
                         VStack(alignment: .leading, spacing: 18) {
-                            SectionHeader("Deployments", subtitle: "Manage deployments for this instance", systemImage: "shippingbox.circle.fill")
+                            SectionHeader(L10n.key("Deployments"), subtitle: L10n.key("deployments.subtitle"), systemImage: "shippingbox.circle.fill")
 
                             Button {
                                 showCreateDeployment = true
                             } label: {
-                                Label("New Deployment", systemImage: "plus")
+                                Label(L10n.key("New Deployment"), systemImage: "plus")
                                     .frame(maxWidth: .infinity)
                             }
                             .primaryButton()
@@ -60,7 +60,7 @@ struct DeploymentsView: View {
                             if isLoading && deployments.isEmpty {
                                 HStack {
                                     ProgressView()
-                                    Text("Loading deployments…")
+                                    Text(L10n.key("deployments.loading"))
                                         .font(.footnote)
                                         .foregroundStyle(Color.white.opacity(0.7))
                                 }
@@ -72,13 +72,13 @@ struct DeploymentsView: View {
                                     Button {
                                         Task { await loadDeployments(force: true) }
                                     } label: {
-                                        Label("Retry", systemImage: "arrow.clockwise")
+                                        Label(L10n.key("Retry"), systemImage: "arrow.clockwise")
                                             .frame(maxWidth: .infinity)
                                     }
                                     .primaryButton()
                                 }
                             } else if deployments.isEmpty {
-                                Text("No deployments found.")
+                                Text(L10n.key("deployments.empty"))
                                     .font(.footnote)
                                     .foregroundStyle(Color.white.opacity(0.7))
                             } else {
@@ -95,7 +95,7 @@ struct DeploymentsView: View {
                 .padding(.vertical, 28)
             }
         }
-        .navigationTitle("Deployments")
+        .navigationTitle(L10n.key("Deployments"))
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await loadDeployments(force: true)
@@ -109,22 +109,22 @@ struct DeploymentsView: View {
             createDeploymentSheet()
         }
         .confirmationDialog(
-            "Delete deployment?",
+            L10n.key("deployments.delete.title"),
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible,
             presenting: deploymentPendingDeletion
         ) { deployment in
-            Button("Delete", role: .destructive) {
+            Button(L10n.key("common.delete"), role: .destructive) {
                 showDeleteConfirmation = false
                 deploymentPendingDeletion = nil
                 Task { await deleteDeployment(deployment) }
             }
-            Button("Cancel", role: .cancel) {
+            Button(L10n.key("common.cancel"), role: .cancel) {
                 showDeleteConfirmation = false
                 deploymentPendingDeletion = nil
             }
         } message: { deployment in
-            Text("Are you sure you want to delete the deployment for \(deployment.displayTitle)?")
+            Text(L10n.format("deployments.delete.message", deployment.displayTitle))
         }
         .onChange(of: selectedClientID) { _, newValue in
             updateSiteSelection(for: newValue)
@@ -138,12 +138,12 @@ struct DeploymentsView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        SectionHeader("New Deployment", subtitle: "Create an installer", systemImage: "shippingbox")
+                        SectionHeader(L10n.key("New Deployment"), subtitle: L10n.key("deployments.create.subtitle"), systemImage: "shippingbox")
 
                         if isLoadingClients && clients.isEmpty {
                             HStack {
                                 ProgressView()
-                                Text("Loading clients…")
+                                Text(L10n.key("deployments.clients.loading"))
                                     .font(.footnote)
                                     .foregroundStyle(Color.white.opacity(0.7))
                             }
@@ -155,7 +155,7 @@ struct DeploymentsView: View {
                                 Button {
                                     Task { await loadClients(force: true) }
                                 } label: {
-                                    Label("Retry", systemImage: "arrow.clockwise")
+                                    Label(L10n.key("Retry"), systemImage: "arrow.clockwise")
                                         .frame(maxWidth: .infinity)
                                 }
                                 .primaryButton()
@@ -166,7 +166,7 @@ struct DeploymentsView: View {
                             agentTypePicker()
 
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("Expiry")
+                                Text(L10n.key("Expiry"))
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(Color.white.opacity(0.6))
                                     .kerning(1.2)
@@ -182,21 +182,21 @@ struct DeploymentsView: View {
                             .padding(.vertical, 4)
 
                             Toggle(isOn: $enableRDP) {
-                                Text("Enable RDP")
+                                Text(L10n.key("Enable RDP"))
                                     .font(.callout)
                                     .foregroundStyle(Color.white)
                             }
                             .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
                             Toggle(isOn: $enablePing) {
-                                Text("Enable Ping")
+                                Text(L10n.key("Enable Ping"))
                                     .font(.callout)
                                     .foregroundStyle(Color.white)
                             }
                             .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
                             Toggle(isOn: $enablePower) {
-                                Text("Enable Power")
+                                Text(L10n.key("deployments.enablePower"))
                                     .font(.callout)
                                     .foregroundStyle(canTogglePower ? Color.white : Color.white.opacity(0.4))
                             }
@@ -215,17 +215,17 @@ struct DeploymentsView: View {
                     .padding(24)
                 }
             }
-            .navigationTitle("New Deployment")
+            .navigationTitle(L10n.key("New Deployment"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L10n.key("common.cancel")) {
                         showCreateDeployment = false
                     }
                     .foregroundStyle(appTheme.accent)
                     .disabled(isCreatingDeployment)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
+                    Button(L10n.key("Create")) {
                         Task { await createDeployment() }
                     }
                     .foregroundStyle(appTheme.accent)
@@ -253,12 +253,12 @@ struct DeploymentsView: View {
     private func clientPickers() -> some View {
         VStack(alignment: .leading, spacing: 18) {
             selectionMenu(
-                title: "Client",
+                title: L10n.key("installer.destination.client"),
                 value: selectedClientName,
-                placeholder: clients.isEmpty ? "No clients available" : "Select a client",
+                placeholder: clients.isEmpty ? L10n.key("deployments.clients.empty") : L10n.key("installer.destination.selectClient"),
                 disabled: clients.isEmpty
             ) {
-                Button("Clear Selection", role: .destructive) {
+                Button(L10n.key("Clear Selection"), role: .destructive) {
                     selectedClientID = nil
                     selectedSiteID = nil
                 }
@@ -270,12 +270,12 @@ struct DeploymentsView: View {
             }
 
             selectionMenu(
-                title: "Site",
+                title: L10n.key("installer.destination.site"),
                 value: selectedSiteName,
-                placeholder: selectedClientID == nil ? "Select a client first" : "Select a site",
+                placeholder: selectedClientID == nil ? L10n.key("deployments.client.selectFirst") : L10n.key("installer.destination.selectSite"),
                 disabled: selectedSites.isEmpty
             ) {
-                Button("Clear Selection", role: .destructive) {
+                Button(L10n.key("Clear Selection"), role: .destructive) {
                     selectedSiteID = nil
                 }
                 ForEach(selectedSites.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }) { site in
@@ -286,7 +286,7 @@ struct DeploymentsView: View {
             }
 
             if selectedClientID != nil && selectedSites.isEmpty {
-                Text("No sites available for this client.")
+                Text(L10n.key("deployments.site.empty"))
                     .font(.footnote)
                     .foregroundStyle(Color.white.opacity(0.6))
             }
@@ -296,11 +296,11 @@ struct DeploymentsView: View {
     @ViewBuilder
     private func agentTypePicker() -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Agent Type")
+            Text(L10n.key("agents.type.title"))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(Color.white.opacity(0.6))
                 .kerning(1.2)
-            Picker("Agent Type", selection: $selectedAgentType) {
+            Picker(L10n.key("agents.type.title"), selection: $selectedAgentType) {
                 ForEach(AgentType.allCases, id: \.self) { type in
                     Text(type.displayName).tag(type)
                 }
@@ -312,11 +312,11 @@ struct DeploymentsView: View {
     @ViewBuilder
     private func architecturePicker() -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Architecture")
+            Text(L10n.key("Architecture"))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(Color.white.opacity(0.6))
                 .kerning(1.2)
-            Picker("Architecture", selection: $selectedArchitecture) {
+            Picker(L10n.key("Architecture"), selection: $selectedArchitecture) {
                 ForEach(Architecture.allCases, id: \.self) { arch in
                     Text(arch.displayName).tag(arch)
                 }
@@ -385,9 +385,9 @@ struct DeploymentsView: View {
         var displayName: String {
             switch self {
             case .server:
-                return "Server"
+                return L10n.key("Server")
             case .workstation:
-                return "Workstation"
+                return L10n.key("Workstation")
             }
         }
     }
@@ -452,7 +452,7 @@ struct DeploymentsView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(isDeleting ? Color.white.opacity(0.6) : Color.red)
                     .disabled(isDeleting)
-                    .accessibilityLabel("Delete deployment")
+                    .accessibilityLabel(L10n.key("deployments.delete.accessibility"))
                 }
             }
 
@@ -472,7 +472,7 @@ struct DeploymentsView: View {
             Button {
                 copyDeploymentLink(deployment)
             } label: {
-                Label("Copy Download Link", systemImage: "doc.on.doc")
+                Label(L10n.key("Copy Download Link"), systemImage: "doc.on.doc")
                     .frame(maxWidth: .infinity)
             }
             .secondaryButton()

@@ -12,7 +12,7 @@ struct AgentRow: View {
     }
 
     private var statusLabel: String {
-        agent.status.isEmpty ? "Unknown" : agent.status.capitalized
+        agent.statusDisplayLabel
     }
 
     private var publicIPText: String {
@@ -49,6 +49,10 @@ struct AgentRow: View {
                     Text(statusLabel)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(statusColor)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(1)
                 }
             }
 

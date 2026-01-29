@@ -1,24 +1,24 @@
 [  
   {
     "version": "0.5.7",
-    "description": "Minor UI changes.",
+    "description": "Minor UI changes.!\nAdded Norwegian localization.",
     "isCurrent": true
   },
   {
-  "version": "0.5.6",
-  "description": "Introduced customizable timestamp format options across agent views.\n\nAdded a Settings background style selector that applies richer gradients to the main dashboard.\n\nUpdate scripts URL to remove community scripts parameter"
+    "version": "0.5.6",
+    "description": "Introduced customizable timestamp format options across agent views.\n\nAdded a Settings background style selector that applies richer gradients to the main dashboard.\n\nUpdate scripts URL to remove community scripts parameter"
   },
   {
-  "version": "0.5.5",
-  "description": "Fixed refresh cancellations showing as errors across server administration views."
+    "version": "0.5.5",
+    "description": "Fixed refresh cancellations showing as errors across server administration views."
   },
   {
-  "version": "0.5.4",
-  "description": "Changed the project guide link to a new website."
+    "version": "0.5.4",
+    "description": "Changed the project guide link to a new website."
   },
   {
-  "version": "0.5.3",
-  "description": "Agent installation is now supported on Linux and macOS.\n\nCode signing has been enhanced with a new Sign All Agents button and the ability to delete signing tokens directly from the interface.\n\nAn application theme option has been added to improve customization and visual experience."
+    "version": "0.5.3",
+    "description": "Agent installation is now supported on Linux and macOS.\n\nCode signing has been enhanced with a new Sign All Agents button and the ability to delete signing tokens directly from the interface.\n\nAn application theme option has been added to improve customization and visual experience."
   },
   {
     "version": "0.5.2",

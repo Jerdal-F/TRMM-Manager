@@ -26,7 +26,7 @@ struct CodeSigningView: View {
                 VStack(spacing: 24) {
                     GlassCard {
                         VStack(alignment: .leading, spacing: 18) {
-                            SectionHeader("Code Signing", subtitle: "Manage your Tactical RMM code signing token", systemImage: "checkmark.seal.fill")
+                            SectionHeader(L10n.key("codesigning.title"), subtitle: L10n.key("codesigning.subtitle"), systemImage: "checkmark.seal.fill")
 
                             headerButtons()
 
@@ -41,7 +41,7 @@ struct CodeSigningView: View {
                                     Button {
                                         Task { await loadToken(force: true) }
                                     } label: {
-                                        Label("Retry", systemImage: "arrow.clockwise")
+                                        Label(L10n.key("common.retry"), systemImage: "arrow.clockwise")
                                             .frame(maxWidth: .infinity)
                                     }
                                     .primaryButton()
@@ -49,7 +49,7 @@ struct CodeSigningView: View {
                             } else if let token, !token.isEmpty {
                                 tokenCard(token)
                             } else {
-                                Text("No code signing token stored yet.")
+                                Text(L10n.key("codesigning.empty"))
                                     .font(.footnote)
                                     .foregroundStyle(Color.white.opacity(0.7))
                             }
@@ -64,7 +64,7 @@ struct CodeSigningView: View {
                 .padding(.vertical, 28)
             }
         }
-        .navigationTitle("Code Signing")
+        .navigationTitle(L10n.key("codesigning.title"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadToken(force: true) }
         .refreshable { await loadToken(force: true) }
@@ -76,27 +76,27 @@ struct CodeSigningView: View {
             )
             .presentationDetents([.medium])
         }
-        .alert("Error", isPresented: Binding(
+        .alert(L10n.key("common.error"), isPresented: Binding(
             get: { alertMessage != nil },
             set: { if !$0 { alertMessage = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button(L10n.key("common.ok"), role: .cancel) { }
         } message: {
             if let alertMessage {
                 Text(alertMessage)
             }
         }
         .confirmationDialog(
-            "Remove code signing token?",
+            L10n.key("codesigning.delete.title"),
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Remove Token", role: .destructive) {
+            Button(L10n.key("codesigning.delete.confirm"), role: .destructive) {
                 Task { await deleteToken() }
             }
-            Button("Cancel", role: .cancel) { }
+            Button(L10n.key("common.cancel"), role: .cancel) { }
         } message: {
-            Text("This removes the stored signing token and disables macOS/Linux installers until a new token is added.")
+            Text(L10n.key("codesigning.delete.message"))
         }
     }
 
@@ -106,7 +106,7 @@ struct CodeSigningView: View {
             Button {
                 showToken.toggle()
             } label: {
-                Label(showToken ? "Hide Token" : "Show Token", systemImage: showToken ? "eye.slash" : "eye")
+                Label(showToken ? L10n.key("codesigning.hideToken") : L10n.key("codesigning.showToken"), systemImage: showToken ? "eye.slash" : "eye")
                     .font(.subheadline.weight(.semibold))
                     .padding(.vertical, 9)
                     .padding(.horizontal, 16)
@@ -126,7 +126,7 @@ struct CodeSigningView: View {
                 draftToken = token ?? ""
                 isShowingEditor = true
             } label: {
-                Label(token?.isEmpty == false ? "Edit Token" : "Add Token", systemImage: "square.and.pencil")
+                Label(token?.isEmpty == false ? L10n.key("codesigning.editToken") : L10n.key("codesigning.addToken"), systemImage: "square.and.pencil")
                     .font(.subheadline.weight(.semibold))
                     .padding(.vertical, 9)
                     .padding(.horizontal, 16)
@@ -154,7 +154,7 @@ struct CodeSigningView: View {
                 HStack(spacing: 10) {
                     ProgressView()
                         .tint(Color.red.opacity(0.8))
-                    Text("Deleting token…")
+                    Text(L10n.key("codesigning.deleting"))
                         .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.7))
                 }
@@ -162,7 +162,7 @@ struct CodeSigningView: View {
                 Button(role: .destructive) {
                     showDeleteConfirmation = true
                 } label: {
-                    Label("Remove Token", systemImage: "trash")
+                    Label(L10n.key("codesigning.delete.confirm"), systemImage: "trash")
                         .font(.subheadline.weight(.semibold))
                         .padding(.vertical, 9)
                         .padding(.horizontal, 16)
@@ -209,7 +209,7 @@ struct CodeSigningView: View {
                                 Image(systemName: "checkmark.seal")
                                     .font(.headline)
                             }
-                            Text(isSigningAll ? "Signing agents…" : "Code Sign All Agents")
+                            Text(isSigningAll ? L10n.key("codesigning.signingAgents") : L10n.key("codesigning.signAll"))
                                 .font(.subheadline.weight(.semibold))
                         }
                         .frame(maxWidth: .infinity)
@@ -267,12 +267,12 @@ struct CodeSigningView: View {
         }
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-            await MainActor.run { loadError = "Missing API key for this instance." }
+            await MainActor.run { loadError = L10n.key("codesigning.error.missingApiKey") }
             return
         }
 
         guard let request = makeRequest(path: "/core/codesign/", method: "GET", apiKey: apiKey) else {
-            await MainActor.run { loadError = "Invalid base URL." }
+            await MainActor.run { loadError = L10n.key("codesigning.error.invalidBaseUrl") }
             return
         }
 
@@ -302,9 +302,9 @@ struct CodeSigningView: View {
                     lastFetched = Date()
                 }
             case 401:
-                throw CodeSigningError.message("Invalid API key or insufficient permissions.")
+                throw CodeSigningError.message(L10n.key("codesigning.error.invalidApiKey"))
             default:
-                throw CodeSigningError.message("HTTP \(http.statusCode) while loading code signing token.")
+                throw CodeSigningError.message(L10n.format("codesigning.error.httpLoad", http.statusCode))
             }
         } catch CodeSigningError.message(let message) {
             await MainActor.run { loadError = message }
@@ -342,24 +342,24 @@ struct CodeSigningView: View {
         guard !isSigningAll else { return }
 
         guard let token, !token.isEmpty else {
-            await MainActor.run { alertMessage = "Add a code signing token before signing agents." }
+            await MainActor.run { alertMessage = L10n.key("codesigning.error.missingToken") }
             return
         }
 
         if settings.baseURL.isDemoEntry {
             await MainActor.run {
-                signAllMessage = "Demo mode does not support bulk code signing."
+                signAllMessage = L10n.key("codesigning.error.demoBulkUnsupported")
             }
             return
         }
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-            await MainActor.run { alertMessage = "Missing API key for this instance." }
+            await MainActor.run { alertMessage = L10n.key("codesigning.error.missingApiKey") }
             return
         }
 
         guard var request = makeRequest(path: "/core/codesign/", method: "POST", apiKey: apiKey) else {
-            await MainActor.run { alertMessage = "Invalid base URL." }
+            await MainActor.run { alertMessage = L10n.key("codesigning.error.invalidBaseUrl") }
             return
         }
 
@@ -383,12 +383,12 @@ struct CodeSigningView: View {
 
             switch http.statusCode {
             case 200, 202, 204:
-                let message = cleanedMessage(from: data, fallback: "Agents will be code signed shortly.")
+                let message = cleanedMessage(from: data, fallback: L10n.key("codesigning.status.signAllQueued"))
                 await MainActor.run { signAllMessage = message }
             case 401:
-                throw CodeSigningError.message("Invalid API key or insufficient permissions.")
+                throw CodeSigningError.message(L10n.key("codesigning.error.invalidApiKey"))
             default:
-                let fallback = "HTTP \(http.statusCode) while requesting agent code signing."
+                let fallback = L10n.format("codesigning.error.httpSignAll", http.statusCode)
                 let message = cleanedMessage(from: data, fallback: fallback)
                 throw CodeSigningError.message(message)
             }
@@ -420,12 +420,12 @@ struct CodeSigningView: View {
         }
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-            await MainActor.run { alertMessage = "Missing API key for this instance." }
+            await MainActor.run { alertMessage = L10n.key("codesigning.error.missingApiKey") }
             return
         }
 
         guard let request = makeRequest(path: "/core/codesign/", method: "DELETE", apiKey: apiKey) else {
-            await MainActor.run { alertMessage = "Invalid base URL." }
+            await MainActor.run { alertMessage = L10n.key("codesigning.error.invalidBaseUrl") }
             return
         }
 
@@ -454,10 +454,10 @@ struct CodeSigningView: View {
                     alertMessage = nil
                 }
             case 401:
-                throw CodeSigningError.message("Invalid API key or insufficient permissions.")
+                throw CodeSigningError.message(L10n.key("codesigning.error.invalidApiKey"))
             default:
                 let serverMessage = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
-                let message = (serverMessage?.isEmpty == false) ? serverMessage! : "HTTP \(http.statusCode) while deleting code signing token."
+                let message = (serverMessage?.isEmpty == false) ? serverMessage! : L10n.format("codesigning.error.httpDelete", http.statusCode)
                 throw CodeSigningError.message(message)
             }
         } catch CodeSigningError.message(let message) {
@@ -477,11 +477,11 @@ struct CodeSigningView: View {
         }
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-            throw CodeSigningError.message("Missing API key for this instance.")
+            throw CodeSigningError.message(L10n.key("codesigning.error.missingApiKey"))
         }
 
         guard var request = makeRequest(path: "/core/codesign/", method: "PATCH", apiKey: apiKey) else {
-            throw CodeSigningError.message("Invalid base URL.")
+            throw CodeSigningError.message(L10n.key("codesigning.error.invalidBaseUrl"))
         }
 
         let cleanedToken = draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -502,14 +502,14 @@ struct CodeSigningView: View {
         case 200, 202, 204:
             return
         case 400:
-            let rawMessage = String(data: data, encoding: .utf8) ?? "Server rejected the token."
+            let rawMessage = String(data: data, encoding: .utf8) ?? L10n.key("codesigning.error.serverRejectedToken")
             let trimmed = rawMessage.trimmingCharacters(in: .whitespacesAndNewlines)
                 .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
-            throw CodeSigningError.message(trimmed.isEmpty ? "Server rejected the token." : trimmed)
+            throw CodeSigningError.message(trimmed.isEmpty ? L10n.key("codesigning.error.serverRejectedToken") : trimmed)
         case 401:
-            throw CodeSigningError.message("Invalid API key or insufficient permissions.")
+            throw CodeSigningError.message(L10n.key("codesigning.error.invalidApiKey"))
         default:
-            throw CodeSigningError.message("HTTP \(http.statusCode) while updating token.")
+            throw CodeSigningError.message(L10n.format("codesigning.error.httpUpdate", http.statusCode))
         }
     }
 
@@ -560,16 +560,16 @@ private struct CodeSigningEditorSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Token") {
-                    TextField("Enter token", text: $token)
+                Section(L10n.key("codesigning.editor.section")) {
+                    TextField(L10n.key("codesigning.editor.placeholder"), text: $token)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
                 }
             }
-            .navigationTitle("Code Signing Token")
+            .navigationTitle(L10n.key("codesigning.editor.title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L10n.key("common.cancel")) {
                         dismiss()
                     }
                 }
@@ -580,7 +580,7 @@ private struct CodeSigningEditorSheet: View {
                         if isSaving {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text(L10n.key("common.save"))
                         }
                     }
                     .disabled(isSaving)

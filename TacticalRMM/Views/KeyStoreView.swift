@@ -29,7 +29,7 @@ struct KeyStoreView: View {
                 VStack(spacing: 24) {
                     GlassCard {
                         VStack(alignment: .leading, spacing: 18) {
-                            SectionHeader("Key Store", subtitle: "Secure key/value storage", systemImage: "key.fill")
+                            SectionHeader(L10n.key("keystore.title"), subtitle: L10n.key("keystore.subtitle"), systemImage: "key.fill")
 
                             headerButtons()
 
@@ -44,13 +44,13 @@ struct KeyStoreView: View {
                                     Button {
                                         Task { await loadEntries(force: true) }
                                     } label: {
-                                        Label("Retry", systemImage: "arrow.clockwise")
+                                        Label(L10n.key("common.retry"), systemImage: "arrow.clockwise")
                                             .frame(maxWidth: .infinity)
                                     }
                                     .primaryButton()
                                 }
                             } else if entries.isEmpty {
-                                Text("No keys stored.")
+                                Text(L10n.key("keystore.empty"))
                                     .font(.footnote)
                                     .foregroundStyle(Color.white.opacity(0.7))
                             } else {
@@ -63,7 +63,7 @@ struct KeyStoreView: View {
                 .padding(.vertical, 28)
             }
         }
-        .navigationTitle("Key Store")
+        .navigationTitle(L10n.key("keystore.title"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadEntries(force: true) }
         .refreshable { await loadEntries(force: true) }
@@ -76,32 +76,32 @@ struct KeyStoreView: View {
             )
             .presentationDetents([.medium])
         }
-        .alert("Error", isPresented: Binding(
+        .alert(L10n.key("common.error"), isPresented: Binding(
             get: { alertMessage != nil },
             set: { if !$0 { alertMessage = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button(L10n.key("common.ok"), role: .cancel) { }
         } message: {
             if let alertMessage {
                 Text(alertMessage)
             }
         }
         .confirmationDialog(
-            "Delete Key",
+            L10n.key("keystore.delete.title"),
             isPresented: Binding(
                 get: { entryPendingDelete != nil },
                 set: { if !$0 { entryPendingDelete = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
+            Button(L10n.key("common.delete"), role: .destructive) {
                 if let entry = entryPendingDelete {
                     Task { await deleteEntry(entry) }
                 }
             }
-            Button("Cancel", role: .cancel) { entryPendingDelete = nil }
+            Button(L10n.key("common.cancel"), role: .cancel) { entryPendingDelete = nil }
         } message: {
-            Text("This action cannot be undone.")
+            Text(L10n.key("common.destructiveWarning"))
         }
     }
 
@@ -111,7 +111,7 @@ struct KeyStoreView: View {
             Button {
                 showValues.toggle()
             } label: {
-                Label(showValues ? "Hide Values" : "Show Values", systemImage: showValues ? "eye.slash" : "eye")
+                Label(showValues ? L10n.key("keystore.hideValues") : L10n.key("keystore.showValues"), systemImage: showValues ? "eye.slash" : "eye")
                     .font(.subheadline.weight(.semibold))
                     .padding(.vertical, 9)
                     .padding(.horizontal, 16)
@@ -132,7 +132,7 @@ struct KeyStoreView: View {
                 draft = KeyStoreDraft()
                 isShowingEditor = true
             } label: {
-                Label("Add Key", systemImage: "plus")
+                Label(L10n.key("keystore.add"), systemImage: "plus")
                     .font(.subheadline.weight(.semibold))
                     .padding(.vertical, 9)
                     .padding(.horizontal, 16)
@@ -152,11 +152,11 @@ struct KeyStoreView: View {
     private func keyTable() -> some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Name")
+                Text(L10n.key("common.name"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.white.opacity(0.8))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text("Value")
+                Text(L10n.key("common.value"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.white.opacity(0.8))
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -172,7 +172,7 @@ struct KeyStoreView: View {
                         Text(entry.name)
                             .font(.callout)
                             .foregroundStyle(Color.white)
-                        Text("by \(entry.createdBy)")
+                        Text(L10n.format("keystore.createdByFormat", entry.createdBy))
                             .font(.caption2)
                             .foregroundStyle(Color.white.opacity(0.5))
                     }
@@ -238,14 +238,14 @@ struct KeyStoreView: View {
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
             await MainActor.run {
-                loadError = "Missing API key for this instance."
+                loadError = L10n.key("keystore.error.missingApiKey")
             }
             return
         }
 
         guard let request = makeRequest(path: "/core/keystore/", method: "GET", apiKey: apiKey) else {
             await MainActor.run {
-                loadError = "Invalid base URL."
+                loadError = L10n.key("keystore.error.invalidBaseUrl")
             }
             return
         }
@@ -277,9 +277,9 @@ struct KeyStoreView: View {
                     loadError = nil
                 }
             case 401:
-                throw KeyStoreError.message("Invalid API key or insufficient permissions.")
+                throw KeyStoreError.message(L10n.key("keystore.error.invalidApiKey"))
             default:
-                throw KeyStoreError.message("HTTP \(http.statusCode) while loading keystore.")
+                throw KeyStoreError.message(L10n.format("keystore.error.httpLoad", http.statusCode))
             }
         } catch KeyStoreError.message(let message) {
             await MainActor.run { loadError = message }
@@ -320,10 +320,10 @@ struct KeyStoreView: View {
 
     private func createEntry() async throws {
         guard !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw KeyStoreError.message("Name cannot be empty.")
+            throw KeyStoreError.message(L10n.key("keystore.error.nameEmpty"))
         }
         guard !draft.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw KeyStoreError.message("Value cannot be empty.")
+            throw KeyStoreError.message(L10n.key("keystore.error.valueEmpty"))
         }
 
         try await sendMutatingRequest(method: "POST", body: draft.encodePayload(), pathSuffix: nil)
@@ -346,12 +346,12 @@ struct KeyStoreView: View {
         }
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-            await MainActor.run { alertMessage = "Missing API key for this instance." }
+            await MainActor.run { alertMessage = L10n.key("keystore.error.missingApiKey") }
             return
         }
 
         guard let request = makeRequest(path: "/core/keystore/\(entry.id)/", method: "DELETE", apiKey: apiKey) else {
-            await MainActor.run { alertMessage = "Invalid base URL." }
+            await MainActor.run { alertMessage = L10n.key("keystore.error.invalidBaseUrl") }
             return
         }
 
@@ -365,9 +365,9 @@ struct KeyStoreView: View {
             case 200, 202, 204:
                 await loadEntries(force: true)
             case 401:
-                throw KeyStoreError.message("Invalid API key or insufficient permissions.")
+                throw KeyStoreError.message(L10n.key("keystore.error.invalidApiKey"))
             default:
-                throw KeyStoreError.message("HTTP \(http.statusCode) while deleting key.")
+                throw KeyStoreError.message(L10n.format("keystore.error.httpDelete", http.statusCode))
             }
         } catch KeyStoreError.message(let message) {
             await MainActor.run { alertMessage = message }
@@ -389,11 +389,11 @@ struct KeyStoreView: View {
         }
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-            throw KeyStoreError.message("Missing API key for this instance.")
+            throw KeyStoreError.message(L10n.key("keystore.error.missingApiKey"))
         }
 
         guard var request = makeRequest(path: "/core/keystore/" + (pathSuffix ?? ""), method: method, apiKey: apiKey) else {
-            throw KeyStoreError.message("Invalid base URL.")
+            throw KeyStoreError.message(L10n.key("keystore.error.invalidBaseUrl"))
         }
 
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -413,11 +413,11 @@ struct KeyStoreView: View {
         case 200, 201, 202, 204:
             return
         case 400:
-            throw KeyStoreError.message("Server rejected the request.")
+            throw KeyStoreError.message(L10n.key("keystore.error.serverRejected"))
         case 401:
-            throw KeyStoreError.message("Invalid API key or insufficient permissions.")
+            throw KeyStoreError.message(L10n.key("keystore.error.invalidApiKey"))
         default:
-            throw KeyStoreError.message("HTTP \(http.statusCode) while updating keystore.")
+            throw KeyStoreError.message(L10n.format("keystore.error.httpUpdate", http.statusCode))
         }
     }
 
@@ -526,19 +526,19 @@ private struct KeyStoreEditorSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Key Details") {
-                    TextField("Name", text: $draft.name)
+                Section(L10n.key("keystore.editor.section")) {
+                    TextField(L10n.key("common.name"), text: $draft.name)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
-                    TextField("Value", text: $draft.value)
+                    TextField(L10n.key("common.value"), text: $draft.value)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
                 }
             }
-            .navigationTitle(mode == .add ? "Add Key" : "Edit Key")
+            .navigationTitle(mode == .add ? L10n.key("keystore.add") : L10n.key("keystore.edit"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(L10n.key("common.cancel")) {
                         draft = KeyStoreDraft(entry: draft.entry)
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         dismiss()
@@ -551,7 +551,7 @@ private struct KeyStoreEditorSheet: View {
                         if isSaving {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text(L10n.key("common.save"))
                         }
                     }
                     .disabled(isSaving)

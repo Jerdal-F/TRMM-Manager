@@ -64,7 +64,7 @@ struct GeneralSettingsView: View {
                             if isLoading {
                                 HStack {
                                     ProgressView()
-                                    Text("Loading settings…")
+                                    Text(L10n.key("settings.general.loading"))
                                         .font(.footnote)
                                         .foregroundStyle(Color.white.opacity(0.7))
                                 }
@@ -76,7 +76,7 @@ struct GeneralSettingsView: View {
                                     Button {
                                         Task { await loadSettings(force: true) }
                                     } label: {
-                                        Label("Retry", systemImage: "arrow.clockwise")
+                                        Label(L10n.key("common.retry"), systemImage: "arrow.clockwise")
                                             .frame(maxWidth: .infinity)
                                     }
                                     .primaryButton()
@@ -113,7 +113,7 @@ struct GeneralSettingsView: View {
                     if isSaving {
                         ProgressView()
                     } else {
-                        Text("Save")
+                        Text(L10n.key("common.save"))
                     }
                 }
                 .foregroundStyle(appTheme.accent)
@@ -131,7 +131,7 @@ struct GeneralSettingsView: View {
     private func headerContent() -> (title: String, subtitle: String, icon: String)? {
         switch mode {
         case .general:
-            return ("General", "Core server configuration", "gearshape")
+            return (L10n.key("settings.general.header.title"), L10n.key("settings.general.header.subtitle"), "gearshape")
         case .email:
             return nil
         case .sms:
@@ -142,11 +142,11 @@ struct GeneralSettingsView: View {
     private func navigationTitle() -> String {
         switch mode {
         case .general:
-            return "General Settings"
+            return L10n.key("settings.general.navigationTitle")
         case .email:
-            return "Email Settings"
+            return L10n.key("settings.email.navigationTitle")
         case .sms:
-            return "SMS Settings"
+            return L10n.key("settings.sms.navigationTitle")
         }
     }
 
@@ -166,21 +166,21 @@ struct GeneralSettingsView: View {
     private func generalSettingsSection() -> some View {
         VStack(alignment: .leading, spacing: 18) {
             Toggle(isOn: $form.agentAutoUpdate) {
-                Text("Enable agent automatic self update")
+                Text(L10n.key("settings.general.agentAutoUpdate"))
                     .font(.callout)
                     .foregroundStyle(Color.white)
             }
             .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
             Toggle(isOn: $form.enableServerScripts) {
-                Text("Enable server side scripts")
+                Text(L10n.key("settings.general.enableServerScripts"))
                     .font(.callout)
                     .foregroundStyle(Color.white)
             }
             .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
             Toggle(isOn: $form.enableServerWebterminal) {
-                Text("Enable web terminal")
+                Text(L10n.key("settings.general.enableWebTerminal"))
                     .font(.callout)
                     .foregroundStyle(Color.white)
             }
@@ -189,22 +189,22 @@ struct GeneralSettingsView: View {
             separator()
 
             selectionMenu(
-                title: "Default agent timezone",
-                current: form.defaultTimeZone.isEmpty ? "Not set" : form.defaultTimeZone,
+                title: L10n.key("settings.general.defaultTimezone"),
+                current: form.defaultTimeZone.isEmpty ? L10n.key("common.notSet") : form.defaultTimeZone,
                 options: allTimezones,
                 onSelect: { form.defaultTimeZone = $0 }
             )
             .disabled(allTimezones.isEmpty)
 
             selectionMenu(
-                title: "Default date format",
-                current: form.dateFormat.isEmpty ? "Not set" : form.dateFormat,
+                title: L10n.key("settings.general.defaultDateFormat"),
+                current: form.dateFormat.isEmpty ? L10n.key("common.notSet") : form.dateFormat,
                 options: effectiveDateFormats,
                 onSelect: { form.dateFormat = $0 }
             )
 
             selectionMenu(
-                title: "Agent debug level",
+                title: L10n.key("settings.general.debugLevel"),
                 current: form.agentDebugLevel,
                 options: debugLevels,
                 onSelect: { form.agentDebugLevel = $0 }
@@ -213,19 +213,19 @@ struct GeneralSettingsView: View {
             separator()
 
             policyPicker(
-                title: "Default server policy",
+                title: L10n.key("settings.general.defaultServerPolicy"),
                 options: serverPolicyOptions,
                 selected: $form.serverPolicy
             )
 
             policyPicker(
-                title: "Default workstation policy",
+                title: L10n.key("settings.general.defaultWorkstationPolicy"),
                 options: workstationPolicyOptions,
                 selected: $form.workstationPolicy
             )
 
             policyPicker(
-                title: "Default alert template",
+                title: L10n.key("settings.general.defaultAlertTemplate"),
                 options: alertTemplateOptions,
                 selected: $form.alertTemplate
             )
@@ -233,7 +233,7 @@ struct GeneralSettingsView: View {
             separator()
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Clear faults on agents that haven't checked in after (days)")
+                Text(L10n.key("settings.general.clearFaultsDays"))
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(Color.white.opacity(0.6))
                     .kerning(1.1)
@@ -256,14 +256,14 @@ struct GeneralSettingsView: View {
             separator()
 
             Toggle(isOn: $form.notifyOnInfoAlerts) {
-                Text("Receive informational alert notifications")
+                Text(L10n.key("settings.general.notifyInfoAlerts"))
                     .font(.callout)
                     .foregroundStyle(Color.white)
             }
             .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
             Toggle(isOn: $form.notifyOnWarningAlerts) {
-                Text("Receive warning alert notifications")
+                Text(L10n.key("settings.general.notifyWarningAlerts"))
                     .font(.callout)
                     .foregroundStyle(Color.white)
             }
@@ -278,7 +278,7 @@ struct GeneralSettingsView: View {
                     ProgressView()
                         .frame(maxWidth: .infinity)
                 } else {
-                    Label("Reset Patch Policy on Agents", systemImage: "arrow.counterclockwise")
+                    Label(L10n.key("settings.general.resetPatchPolicy"), systemImage: "arrow.counterclockwise")
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -298,16 +298,16 @@ struct GeneralSettingsView: View {
     private func emailAlertsSection(includeHeader: Bool = true) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             if includeHeader {
-                SectionHeader("Email Alerts", subtitle: "Routing & SMTP", systemImage: "envelope")
+                SectionHeader(L10n.key("settings.email.title"), subtitle: L10n.key("settings.email.subtitle"), systemImage: "envelope")
             }
 
-            SectionHeader("Email Alert Routing", subtitle: "Recipients", systemImage: "envelope.badge")
+            SectionHeader(L10n.key("settings.email.routing.title"), subtitle: L10n.key("settings.email.routing.subtitle"), systemImage: "envelope.badge")
 
             VStack(alignment: .leading, spacing: 8) {
-                fieldLabel("Recipients")
+                fieldLabel(L10n.key("common.recipients"))
 
                 if form.emailRecipients.isEmpty {
-                    Text("No recipients added yet.")
+                    Text(L10n.key("common.recipients.empty"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.6))
                 } else {
@@ -327,7 +327,7 @@ struct GeneralSettingsView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(Color.red)
-                                .accessibilityLabel("Remove \(recipient)")
+                                .accessibilityLabel(L10n.format("common.removeFormat", recipient))
                             }
                             .padding(.vertical, 12)
                             .padding(.horizontal, 16)
@@ -344,7 +344,7 @@ struct GeneralSettingsView: View {
                 }
 
                 HStack(spacing: 12) {
-                    TextField("user@example.com", text: $newEmailRecipient)
+                    TextField(L10n.key("settings.email.recipient.placeholder"), text: $newEmailRecipient)
                         .platformKeyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
@@ -365,7 +365,7 @@ struct GeneralSettingsView: View {
                     Button {
                         addEmailRecipient()
                     } label: {
-                        Label("Add", systemImage: "plus")
+                        Label(L10n.key("common.add"), systemImage: "plus")
                             .font(.subheadline.weight(.semibold))
                             .padding(.vertical, 10)
                             .padding(.horizontal, 18)
@@ -385,53 +385,53 @@ struct GeneralSettingsView: View {
             separator()
 
             VStack(alignment: .leading, spacing: 12) {
-                SectionHeader("SMTP Settings", subtitle: "Outbound email configuration", systemImage: "paperplane")
+                SectionHeader(L10n.key("settings.email.smtp.title"), subtitle: L10n.key("settings.email.smtp.subtitle"), systemImage: "paperplane")
 
                 groupedTextField(
-                    title: "From email:",
+                    title: L10n.key("settings.email.smtp.fromEmail.title"),
                     text: $form.smtpFromEmail,
-                    placeholder: "notify@example.com",
+                    placeholder: L10n.key("settings.email.smtp.fromEmail.placeholder"),
                     keyboard: .emailAddress
                 )
 
                 groupedTextField(
-                    title: "From name:",
+                    title: L10n.key("settings.email.smtp.fromName.title"),
                     text: $form.smtpFromName,
-                    placeholder: "Tactical RMM"
+                    placeholder: L10n.key("settings.email.smtp.fromName.placeholder")
                 )
 
                 groupedTextField(
-                    title: "Host:",
+                    title: L10n.key("settings.email.smtp.host.title"),
                     text: $form.smtpHost,
-                    placeholder: "mail.smtp2go.com"
+                    placeholder: L10n.key("settings.email.smtp.host.placeholder")
                 )
 
                 groupedTextField(
-                    title: "Port:",
+                    title: L10n.key("settings.email.smtp.port.title"),
                     text: $form.smtpPort,
-                    placeholder: "2525",
+                    placeholder: L10n.key("settings.email.smtp.port.placeholder"),
                     keyboard: .numberPad
                 )
 
                 Toggle(isOn: $form.smtpRequiresAuth) {
-                    Text("My Server Requires Authentication")
+                    Text(L10n.key("settings.email.smtp.requiresAuth"))
                         .font(.callout)
                         .foregroundStyle(Color.white)
                 }
                 .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
                 groupedTextField(
-                    title: "Username:",
+                    title: L10n.key("settings.email.smtp.username.title"),
                     text: $form.smtpUsername,
-                    placeholder: "notify@example.com",
+                    placeholder: L10n.key("settings.email.smtp.username.placeholder"),
                     keyboard: .emailAddress,
                     disabled: !form.smtpRequiresAuth
                 )
 
                 groupedSecureField(
-                    title: "Password:",
+                    title: L10n.key("settings.email.smtp.password.title"),
                     text: $form.smtpPassword,
-                    placeholder: "Password",
+                    placeholder: L10n.key("settings.email.smtp.password.placeholder"),
                     disabled: !form.smtpRequiresAuth
                 )
             }
@@ -441,13 +441,13 @@ struct GeneralSettingsView: View {
     @ViewBuilder
     private func smsAlertsSection() -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            SectionHeader("SMS Alert Routing", subtitle: "Recipients", systemImage: "bubble.left.and.bubble.right")
+            SectionHeader(L10n.key("settings.sms.routing.title"), subtitle: L10n.key("settings.sms.routing.subtitle"), systemImage: "bubble.left.and.bubble.right")
 
             VStack(alignment: .leading, spacing: 8) {
-                fieldLabel("Recipients")
+                fieldLabel(L10n.key("common.recipients"))
 
                 if form.smsRecipients.isEmpty {
-                    Text("No recipients added yet.")
+                    Text(L10n.key("common.recipients.empty"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.6))
                 } else {
@@ -467,7 +467,7 @@ struct GeneralSettingsView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundStyle(Color.red)
-                                .accessibilityLabel("Remove \(recipient)")
+                                .accessibilityLabel(L10n.format("common.removeFormat", recipient))
                             }
                             .padding(.vertical, 12)
                             .padding(.horizontal, 16)
@@ -484,7 +484,7 @@ struct GeneralSettingsView: View {
                 }
 
                 HStack(spacing: 12) {
-                    TextField("+1234567890", text: $newSMSRecipient)
+                    TextField(L10n.key("settings.sms.recipient.placeholder"), text: $newSMSRecipient)
                         .platformKeyboardType(.phonePad)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
@@ -505,7 +505,7 @@ struct GeneralSettingsView: View {
                     Button {
                         addSMSRecipient()
                     } label: {
-                        Label("Add", systemImage: "plus")
+                        Label(L10n.key("common.add"), systemImage: "plus")
                             .font(.subheadline.weight(.semibold))
                             .padding(.vertical, 10)
                             .padding(.horizontal, 18)
@@ -525,25 +525,25 @@ struct GeneralSettingsView: View {
             separator()
 
             VStack(alignment: .leading, spacing: 12) {
-                SectionHeader("Twilio Settings", subtitle: "SMS delivery provider", systemImage: "dot.radiowaves.left.and.right")
+                SectionHeader(L10n.key("settings.sms.twilio.title"), subtitle: L10n.key("settings.sms.twilio.subtitle"), systemImage: "dot.radiowaves.left.and.right")
 
                 groupedTextField(
-                    title: "Twilio Number:",
+                    title: L10n.key("settings.sms.twilio.number.title"),
                     text: $form.twilioNumber,
-                    placeholder: "+1234567890",
+                    placeholder: L10n.key("settings.sms.twilio.number.placeholder"),
                     keyboard: .phonePad
                 )
 
                 groupedTextField(
-                    title: "Twilio Account SID:",
+                    title: L10n.key("settings.sms.twilio.accountSid.title"),
                     text: $form.twilioAccountSid,
-                    placeholder: "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    placeholder: L10n.key("settings.sms.twilio.accountSid.placeholder")
                 )
 
                 groupedSecureField(
-                    title: "Twilio Auth Token:",
+                    title: L10n.key("settings.sms.twilio.authToken.title"),
                     text: $form.twilioAuthToken,
-                    placeholder: "Auth token"
+                    placeholder: L10n.key("settings.sms.twilio.authToken.placeholder")
                 )
             }
         }
@@ -711,7 +711,7 @@ struct GeneralSettingsView: View {
                 }
             } label: {
                 HStack {
-                    Text(selected.wrappedValue?.name ?? options.first?.name ?? "Not set")
+                    Text(selected.wrappedValue?.name ?? options.first?.name ?? L10n.key("common.notSet"))
                         .font(.callout)
                         .foregroundStyle(Color.white)
                         .lineLimit(2)
@@ -745,7 +745,7 @@ struct GeneralSettingsView: View {
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
             await MainActor.run {
-                loadErrorMessage = "Missing API key for this instance."
+                loadErrorMessage = L10n.key("settings.general.error.missingApiKey")
                 isLoading = false
             }
             return
@@ -754,7 +754,7 @@ struct GeneralSettingsView: View {
         let base = settings.baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(base)/core/settings/") else {
             await MainActor.run {
-                loadErrorMessage = "Invalid base URL."
+                loadErrorMessage = L10n.key("settings.general.error.invalidBaseUrl")
                 isLoading = false
             }
             return
@@ -781,7 +781,7 @@ struct GeneralSettingsView: View {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else {
                 await MainActor.run {
-                    loadErrorMessage = "Unexpected response."
+                    loadErrorMessage = L10n.key("settings.general.error.unexpectedResponse")
                 }
                 DiagnosticLogger.shared.appendError("General settings response missing HTTPURLResponse.")
                 return
@@ -805,21 +805,21 @@ struct GeneralSettingsView: View {
                     }
                 } catch {
                     await MainActor.run {
-                        loadErrorMessage = "Failed to decode settings."
+                        loadErrorMessage = L10n.key("settings.general.error.decodeSettings")
                     }
                     DiagnosticLogger.shared.appendError("Failed to decode general settings: \(error.localizedDescription)")
                 }
             case 401:
                 await MainActor.run {
-                    loadErrorMessage = "Invalid API key or insufficient permissions."
+                    loadErrorMessage = L10n.key("settings.general.error.invalidApiKey")
                 }
             case 403:
                 await MainActor.run {
-                    loadErrorMessage = "You do not have permission to view settings."
+                    loadErrorMessage = L10n.key("settings.general.error.permissionView")
                 }
             default:
                 await MainActor.run {
-                    loadErrorMessage = "HTTP \(http.statusCode) while loading settings."
+                    loadErrorMessage = L10n.format("settings.general.error.httpLoad", http.statusCode)
                 }
             }
         } catch {
@@ -830,7 +830,7 @@ struct GeneralSettingsView: View {
                 return
             }
             await MainActor.run {
-                loadErrorMessage = error.localizedDescription
+                loadErrorMessage = L10n.format("settings.general.error.loadDetail", error.localizedDescription)
             }
             DiagnosticLogger.shared.appendError("Failed to load general settings: \(error.localizedDescription)")
         }
@@ -845,7 +845,7 @@ struct GeneralSettingsView: View {
 
         if settings.baseURL.isDemoEntry {
             await MainActor.run {
-                statusMessage = "Settings updated (demo)."
+                statusMessage = L10n.key("settings.general.status.demoUpdated")
                 saveErrorMessage = nil
             }
             return
@@ -853,14 +853,14 @@ struct GeneralSettingsView: View {
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
             await MainActor.run {
-                saveErrorMessage = "Missing API key for this instance."
+                saveErrorMessage = L10n.key("settings.general.error.missingApiKey")
             }
             return
         }
 
         guard form.settingsID != nil else {
             await MainActor.run {
-                saveErrorMessage = "Settings not loaded yet."
+                saveErrorMessage = L10n.key("settings.general.error.settingsNotLoaded")
             }
             return
         }
@@ -870,7 +870,7 @@ struct GeneralSettingsView: View {
 
         guard let fullPayload = buildFullPayload(clearFaultsDays: clearFaultsValue) else {
             await MainActor.run {
-                saveErrorMessage = "Failed to encode request."
+                saveErrorMessage = L10n.key("settings.general.error.encodeRequest")
             }
             return
         }
@@ -878,7 +878,7 @@ struct GeneralSettingsView: View {
         let base = settings.baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(base)/core/settings/") else {
             await MainActor.run {
-                saveErrorMessage = "Invalid base URL."
+                saveErrorMessage = L10n.key("settings.general.error.invalidBaseUrl")
             }
             return
         }
@@ -906,7 +906,7 @@ struct GeneralSettingsView: View {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else {
                 await MainActor.run {
-                    saveErrorMessage = "Unexpected response."
+                    saveErrorMessage = L10n.key("settings.general.error.unexpectedResponse")
                 }
                 DiagnosticLogger.shared.appendError("General settings save missing HTTPURLResponse.")
                 return
@@ -923,29 +923,29 @@ struct GeneralSettingsView: View {
             case 200, 202, 204:
                 await loadSettings(force: true)
                 await MainActor.run {
-                    statusMessage = "Settings updated successfully."
+                    statusMessage = L10n.key("settings.general.status.saveSuccess")
                     saveErrorMessage = nil
                 }
             case 400:
                 await MainActor.run {
-                    saveErrorMessage = "Server rejected the update."
+                    saveErrorMessage = L10n.key("settings.general.error.serverRejectedUpdate")
                 }
             case 401:
                 await MainActor.run {
-                    saveErrorMessage = "Invalid API key or insufficient permissions."
+                    saveErrorMessage = L10n.key("settings.general.error.invalidApiKey")
                 }
             case 403:
                 await MainActor.run {
-                    saveErrorMessage = "You do not have permission to update settings."
+                    saveErrorMessage = L10n.key("settings.general.error.permissionUpdate")
                 }
             default:
                 await MainActor.run {
-                    saveErrorMessage = "HTTP \(http.statusCode) while saving settings."
+                    saveErrorMessage = L10n.format("settings.general.error.httpSave", http.statusCode)
                 }
             }
         } catch {
             await MainActor.run {
-                saveErrorMessage = error.localizedDescription
+                saveErrorMessage = L10n.format("settings.general.error.saveDetail", error.localizedDescription)
             }
             DiagnosticLogger.shared.appendError("Failed to save general settings: \(error.localizedDescription)")
         }
@@ -960,7 +960,7 @@ struct GeneralSettingsView: View {
 
         if settings.baseURL.isDemoEntry {
             await MainActor.run {
-                statusMessage = "Patch policies reset (demo)."
+                statusMessage = L10n.key("settings.general.status.patchResetDemo")
             }
             return
         }
@@ -968,7 +968,7 @@ struct GeneralSettingsView: View {
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
             await MainActor.run {
                 statusMessage = nil
-                saveErrorMessage = "Missing API key for this instance."
+                saveErrorMessage = L10n.key("settings.general.error.missingApiKey")
             }
             return
         }
@@ -977,7 +977,7 @@ struct GeneralSettingsView: View {
         guard let url = URL(string: "\(base)/core/settings/reset_patch_policy/") else {
             await MainActor.run {
                 statusMessage = nil
-                saveErrorMessage = "Invalid base URL."
+                saveErrorMessage = L10n.key("settings.general.error.invalidBaseUrl")
             }
             return
         }
@@ -1003,7 +1003,7 @@ struct GeneralSettingsView: View {
             let (_, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else {
                 await MainActor.run {
-                    saveErrorMessage = "Unexpected response while resetting patch policy."
+                    saveErrorMessage = L10n.key("settings.general.error.resetUnexpectedResponse")
                 }
                 DiagnosticLogger.shared.appendError("Reset patch policy response missing HTTPURLResponse.")
                 return
@@ -1019,24 +1019,24 @@ struct GeneralSettingsView: View {
             switch http.statusCode {
             case 200, 202, 204:
                 await MainActor.run {
-                    statusMessage = "Patch policies reset successfully."
+                    statusMessage = L10n.key("settings.general.status.patchResetSuccess")
                 }
             case 401:
                 await MainActor.run {
-                    saveErrorMessage = "Invalid API key or insufficient permissions."
+                    saveErrorMessage = L10n.key("settings.general.error.invalidApiKey")
                 }
             case 403:
                 await MainActor.run {
-                    saveErrorMessage = "You do not have permission to reset patch policies."
+                    saveErrorMessage = L10n.key("settings.general.error.permissionReset")
                 }
             default:
                 await MainActor.run {
-                    saveErrorMessage = "HTTP \(http.statusCode) while resetting patch policy."
+                    saveErrorMessage = L10n.format("settings.general.error.httpReset", http.statusCode)
                 }
             }
         } catch {
             await MainActor.run {
-                saveErrorMessage = error.localizedDescription
+                saveErrorMessage = L10n.format("settings.general.error.resetDetail", error.localizedDescription)
             }
             DiagnosticLogger.shared.appendError("Failed to reset patch policy: \(error.localizedDescription)")
         }
@@ -1054,9 +1054,9 @@ struct GeneralSettingsView: View {
         workstationPolicyOptions = []
         alertTemplateOptions = []
 
-        let serverOption = option(for: response.serverPolicy, in: &serverPolicyOptions, placeholder: "No policy")
-        let workstationOption = option(for: response.workstationPolicy, in: &workstationPolicyOptions, placeholder: "No policy")
-        let alertOption = option(for: response.alertTemplate, in: &alertTemplateOptions, placeholder: "No alert template")
+        let serverOption = option(for: response.serverPolicy, in: &serverPolicyOptions, placeholder: L10n.key("settings.general.policy.none"))
+        let workstationOption = option(for: response.workstationPolicy, in: &workstationPolicyOptions, placeholder: L10n.key("settings.general.policy.none"))
+        let alertOption = option(for: response.alertTemplate, in: &alertTemplateOptions, placeholder: L10n.key("settings.general.alertTemplate.none"))
 
         form = GeneralSettingsForm(
             settingsID: response.id,
@@ -1104,7 +1104,7 @@ struct GeneralSettingsView: View {
             return existing
         }
 
-        let newOption = GeneralOption(rawID: rawID, name: "ID #\(rawID)")
+        let newOption = GeneralOption(rawID: rawID, name: L10n.format("settings.general.policy.idFormat", rawID))
         storage.append(newOption)
         return newOption
     }
@@ -1226,9 +1226,9 @@ struct GeneralSettingsView: View {
             twilioNumber: "+46000000000",
             twilioAccountSid: "XXXXXXXXXXXXXXXXXX",
             twilioAuthToken: "XXXXXXXXXXXXXXXXXX",
-            serverPolicy: GeneralOption(rawID: nil, name: "No policy"),
-            workstationPolicy: GeneralOption(rawID: nil, name: "No policy"),
-            alertTemplate: GeneralOption(rawID: nil, name: "No alert template"),
+            serverPolicy: GeneralOption(rawID: nil, name: L10n.key("settings.general.policy.none")),
+            workstationPolicy: GeneralOption(rawID: nil, name: L10n.key("settings.general.policy.none")),
+            alertTemplate: GeneralOption(rawID: nil, name: L10n.key("settings.general.alertTemplate.none")),
             notifyOnInfoAlerts: false,
             notifyOnWarningAlerts: true,
             agentDebugLevel: "warning",
@@ -1236,9 +1236,9 @@ struct GeneralSettingsView: View {
             clearFaultsFallback: 20
         )
         allTimezones = TimeZone.knownTimeZoneIdentifiers
-        serverPolicyOptions = [GeneralOption(rawID: nil, name: "No policy")]
-        workstationPolicyOptions = [GeneralOption(rawID: nil, name: "No policy")]
-        alertTemplateOptions = [GeneralOption(rawID: nil, name: "No alert template")]
+        serverPolicyOptions = [GeneralOption(rawID: nil, name: L10n.key("settings.general.policy.none"))]
+        workstationPolicyOptions = [GeneralOption(rawID: nil, name: L10n.key("settings.general.policy.none"))]
+        alertTemplateOptions = [GeneralOption(rawID: nil, name: L10n.key("settings.general.alertTemplate.none"))]
         loadErrorMessage = nil
         statusMessage = nil
         newEmailRecipient = ""
@@ -1272,9 +1272,9 @@ private struct GeneralSettingsForm {
     var twilioNumber: String = ""
     var twilioAccountSid: String = ""
     var twilioAuthToken: String = ""
-    var serverPolicy: GeneralOption? = GeneralOption(rawID: nil, name: "No policy")
-    var workstationPolicy: GeneralOption? = GeneralOption(rawID: nil, name: "No policy")
-    var alertTemplate: GeneralOption? = GeneralOption(rawID: nil, name: "No alert template")
+    var serverPolicy: GeneralOption? = GeneralOption(rawID: nil, name: L10n.key("settings.general.policy.none"))
+    var workstationPolicy: GeneralOption? = GeneralOption(rawID: nil, name: L10n.key("settings.general.policy.none"))
+    var alertTemplate: GeneralOption? = GeneralOption(rawID: nil, name: L10n.key("settings.general.alertTemplate.none"))
     var notifyOnInfoAlerts: Bool = false
     var notifyOnWarningAlerts: Bool = true
     var agentDebugLevel: String = "warning"

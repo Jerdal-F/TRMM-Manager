@@ -249,8 +249,8 @@ struct ContentView: View {
 
                     ResponsiveBadgeRow(badges: [
                         .init(title: String(localized: "agents.title"), value: String(agents.count), symbol: "desktopcomputer"),
-                        .init(title: "Online", value: String(onlineCount), symbol: "bolt.horizontal.circle"),
-                        .init(title: "Overdue", value: String(offlineCount), symbol: "moon.zzz")
+                        .init(title: L10n.key("agents.summary.online"), value: String(onlineCount), symbol: "bolt.horizontal.circle"),
+                        .init(title: L10n.key("agents.summary.overdue"), value: String(offlineCount), symbol: "moon.zzz")
                     ])
                 }
             }
@@ -290,14 +290,14 @@ struct ContentView: View {
                             serverSettingsButton(for: saved)
                         }
                     } else {
-                        Text("API key missing for this instance. Update the credentials in Settings before refreshing.")
+                        Text(L10n.key("connection.apiKeyMissingRefresh"))
                             .font(.footnote)
                             .foregroundStyle(Color.red)
 
                         Button {
                             showSettings = true
                         } label: {
-                            Label("Update Credentials", systemImage: "key.fill")
+                            Label(L10n.key("connection.updateCredentials"), systemImage: "key.fill")
                                 .frame(maxWidth: .infinity)
                         }
                         .primaryButton()
@@ -305,21 +305,21 @@ struct ContentView: View {
                         serverSettingsButton(for: saved)
                     }
                 } else {
-                    Text("Unable to determine the active instance. Open Settings to select a server.")
+                    Text(L10n.key("connection.activeInstance.missing"))
                         .font(.footnote)
                         .foregroundStyle(Color.red)
 
                     Button {
                         showSettings = true
                     } label: {
-                        Label("Manage Instances", systemImage: "gearshape")
+                        Label(L10n.key("settings.instances.manage"), systemImage: "gearshape")
                             .frame(maxWidth: .infinity)
                     }
                     .primaryButton()
                 }
 
                 if !settingsList.isEmpty {
-                    Text("Note: Large environments may take longer to load on mobile hardware.")
+                    Text(L10n.key("agents.note.largeEnvironment"))
                         .font(.caption2)
                         .foregroundStyle(Color.white.opacity(0.55))
                 }
@@ -347,7 +347,7 @@ struct ContentView: View {
             selectedServerSettings = resolved
             showServerSettings = true
         } label: {
-            Label("Server Options", systemImage: "gearshape")
+            Label(L10n.key("settings.serverOptions"), systemImage: "gearshape")
                 .frame(maxWidth: .infinity)
         }
         .primaryButton()
@@ -372,7 +372,7 @@ struct ContentView: View {
                 .foregroundStyle(appTheme.accent)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 4) {
-                Text(title.uppercased())
+                Text(title)
                     .font(.caption2)
                     .foregroundStyle(Color.white.opacity(0.6))
                 Text(value)
@@ -524,24 +524,19 @@ struct ContentView: View {
         @Environment(\.appTheme) private var appTheme
 
         var body: some View {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 12) {
+            GeometryReader { proxy in
+                let spacing: CGFloat = 12
+                let columnWidth = (proxy.size.width - (spacing * 2)) / 3
+
+                HStack(spacing: spacing) {
                     ForEach(badges) { badge in
                         badgeView(for: badge)
+                            .frame(width: columnWidth, alignment: .leading)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 130), spacing: 12)],
-                    alignment: .leading,
-                    spacing: 12
-                ) {
-                    ForEach(badges) { badge in
-                        badgeView(for: badge)
-                    }
-                }
             }
+            .frame(height: 68)
         }
 
         @ViewBuilder
@@ -555,8 +550,9 @@ struct ContentView: View {
                         .font(.caption2)
                         .foregroundStyle(Color.white.opacity(0.6))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .minimumScaleFactor(0.55)
                 }
+                .frame(minHeight: 16, alignment: .leading)
                 Text(badge.value)
                     .font(.title3.weight(.semibold))
                     .lineLimit(1)
@@ -859,7 +855,9 @@ struct ContentView: View {
                         }
 
                         let result = try await decodeTask.value
-                        agents = result.agents
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            agents = result.agents
+                        }
                         AgentCache.shared.setAgents(result.agents)
 
                         if result.usedWrapper {
@@ -932,7 +930,8 @@ struct ContentView: View {
     private func loadDemoAgents() {
         DiagnosticLogger.shared.append("Loading demo agents.")
         let now = Date().timeIntervalSince1970
-        agents = [
+        withAnimation(.easeInOut(duration: 0.25)) {
+            agents = [
             Agent(
                 agent_id: "demo1",
                 hostname: "Demo1",
@@ -969,7 +968,8 @@ struct ContentView: View {
                 serial_number: "Demo Serial2",
                 boot_time: now - 86400
             )
-        ]
+            ]
+        }
         AgentCache.shared.setAgents(agents)
     }
 }
@@ -1227,7 +1227,7 @@ struct InstallAgentView: View {
     private var destinationCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 18) {
-                SectionHeader("Destination", subtitle: destinationSubtitle, systemImage: "building.2")
+                SectionHeader(L10n.key("installer.destination.title"), subtitle: destinationSubtitle, systemImage: "building.2")
 
                 if let errorMessage {
                     statusBanner(message: errorMessage, isError: true)
@@ -1239,7 +1239,7 @@ struct InstallAgentView: View {
                         .foregroundStyle(Color.white.opacity(0.65))
                 }
 
-                selectionMenu(title: "Client", value: selectedClientName, placeholder: "Select a client", disabled: clients.isEmpty) {
+                selectionMenu(title: L10n.key("installer.destination.client"), value: selectedClientName, placeholder: L10n.key("installer.destination.selectClient"), disabled: clients.isEmpty) {
                     Button("Clear Selection", role: .destructive) {
                         selectedClientId = nil
                     }
@@ -1250,7 +1250,7 @@ struct InstallAgentView: View {
                     }
                 }
 
-                selectionMenu(title: "Site", value: selectedSiteName, placeholder: "Select a site", disabled: sites.isEmpty) {
+                selectionMenu(title: L10n.key("installer.destination.site"), value: selectedSiteName, placeholder: L10n.key("installer.destination.selectSite"), disabled: sites.isEmpty) {
                     Button("Clear Selection", role: .destructive) {
                         selectedSiteId = nil
                     }
@@ -1267,7 +1267,7 @@ struct InstallAgentView: View {
     private var settingsCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 18) {
-                SectionHeader("Installer Settings", subtitle: "Configure agent options", systemImage: "slider.horizontal.3")
+                SectionHeader(L10n.key("installer.settings.title"), subtitle: L10n.key("installer.settings.subtitle"), systemImage: "slider.horizontal.3")
 
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Platform")
@@ -1291,10 +1291,10 @@ struct InstallAgentView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Agent Type")
+                    Text(L10n.key("agents.type.title"))
                         .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.6))
-                    Picker("Agent Type", selection: $agentType) {
+                    Picker(L10n.key("agents.type.title"), selection: $agentType) {
                         Text("Server").tag("server")
                         Text("Workstation").tag("workstation")
                     }
@@ -1320,9 +1320,9 @@ struct InstallAgentView: View {
 
                 if platform.supportsRemoteOptions {
                     VStack(spacing: 12) {
-                        toggleRow(title: "Disable sleep/hibernate", isOn: $power, disabled: agentType == "server")
-                        toggleRow(title: "Enable RDP", isOn: $rdp)
-                        toggleRow(title: "Enable Ping", isOn: $ping)
+                        toggleRow(title: L10n.key("installer.settings.disableSleepHibernate"), isOn: $power, disabled: agentType == "server")
+                        toggleRow(title: L10n.key("Enable RDP"), isOn: $rdp)
+                        toggleRow(title: L10n.key("Enable Ping"), isOn: $ping)
                     }
                 }
 
@@ -1434,11 +1434,11 @@ struct InstallAgentView: View {
     }
 
     private var destinationSubtitle: String {
-        if isLoadingClients { return "Loading…" }
+        if isLoadingClients { return L10n.key("installer.destination.loading") }
         if let client = selectedClientName.nonEmpty, let site = selectedSiteName.nonEmpty {
             return "\(client) • \(site)"
         }
-        return "Choose where to deploy"
+        return L10n.key("installer.destination.choose")
     }
 
     private var selectedClientName: String {
@@ -1728,7 +1728,7 @@ struct AgentDetailView: View {
         DiagnosticLogger.shared.append("AgentDetailView: fetchAgentDetail started")
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/\(agent.agent_id)/") else {
-            message = "Invalid URL for agent details"
+            message = L10n.key("agents.error.invalidUrlDetails")
             DiagnosticLogger.shared.appendError("Invalid URL when fetching agent details.")
             return
         }
@@ -1743,7 +1743,7 @@ struct AgentDetailView: View {
             if let httpResponse = response as? HTTPURLResponse {
                 DiagnosticLogger.shared.logHTTPResponse(method: "GET", url: url.absoluteString, status: httpResponse.statusCode, data: data)
                 if httpResponse.statusCode != 200 {
-                    message = "HTTP Error: \(httpResponse.statusCode)"
+                    message = L10n.format("agents.error.http", httpResponse.statusCode)
                     DiagnosticLogger.shared.appendError("HTTP Error \(httpResponse.statusCode) during agent detail fetch.")
                     return
                 }
@@ -1752,7 +1752,7 @@ struct AgentDetailView: View {
             updatedAgent = decodedAgent
             DiagnosticLogger.shared.append("Fetched updated details for agent.")
         } catch {
-            message = "Error fetching agent details: \(error.localizedDescription)"
+            message = L10n.format("agents.error.fetchDetails", error.localizedDescription)
             DiagnosticLogger.shared.appendError("Error fetching agent details: \(error.localizedDescription)")
         }
     }
@@ -1763,7 +1763,7 @@ struct AgentDetailView: View {
         message = nil
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/\(agent.agent_id)/wol/") else {
-            message = "Invalid URL"
+            message = L10n.key("agents.error.invalidUrl")
             DiagnosticLogger.shared.appendError("Invalid URL in Wake‑On‑Lan.")
             isProcessing = false
             return
@@ -1784,18 +1784,26 @@ struct AgentDetailView: View {
                             cleaned.removeFirst()
                             cleaned.removeLast()
                         }
-                        message = cleaned.isEmpty ? "Wake‑on‑LAN sent successfully!" : cleaned
+                        if cleaned.isEmpty {
+                            message = L10n.key("agents.wol.success")
+                        } else if cleaned.lowercased().hasPrefix("wake-on-lan sent to ") {
+                            let agentName = String(cleaned.dropFirst("Wake-on-LAN sent to ".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+                            let name = agentName.isEmpty ? agent.hostname : agentName
+                            message = L10n.format("agents.wol.sentToFormat", name)
+                        } else {
+                            message = cleaned
+                        }
                     } else {
-                        message = "Wake‑on‑LAN sent successfully!"
+                        message = L10n.key("agents.wol.success")
                     }
                 } else {
-                    message = "HTTP Error: \(httpResponse.statusCode)"
+                    message = L10n.format("agents.error.http", httpResponse.statusCode)
                 }
             } else {
-                message = "Unknown error"
+                message = L10n.key("agents.error.unknown")
             }
         } catch {
-            message = "Error: \(error.localizedDescription)"
+            message = L10n.format("agents.error.generic", error.localizedDescription)
             DiagnosticLogger.shared.appendError("Error in Wake‑On‑Lan: \(error.localizedDescription)")
         }
         isProcessing = false
@@ -1803,14 +1811,25 @@ struct AgentDetailView: View {
     
     @MainActor
     func performAction(action: String) async {
+        let actionLabel: String = {
+            switch action.lowercased() {
+            case "reboot":
+                return L10n.key("agents.power.reboot")
+            case "shutdown":
+                return L10n.key("agents.power.shutdown")
+            default:
+                return action.capitalized
+            }
+        }()
+
         if isDemoMode {
-            message = "Demo mode does not support \(action) action."
+            message = L10n.format("agents.error.demoUnsupported", action)
             DiagnosticLogger.shared.append("Demo mode: skipping \(action) command.")
             return
         }
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/\(agent.agent_id)/\(action)/") else {
-            message = "Invalid URL"
+            message = L10n.key("agents.error.invalidUrl")
             DiagnosticLogger.shared.appendError("Invalid URL for \(action) command.")
             return
         }
@@ -1828,21 +1847,21 @@ struct AgentDetailView: View {
             if let httpResponse = response as? HTTPURLResponse {
                 DiagnosticLogger.shared.logHTTPResponse(method: "POST", url: url.absoluteString, status: httpResponse.statusCode, data: Data())
                 if httpResponse.statusCode == 200 || httpResponse.statusCode == 204 {
-                    message = "\(action.capitalized) command sent successfully!"
+                    message = L10n.format("agents.action.successFormat", actionLabel)
                     DiagnosticLogger.shared.append("API returned \(httpResponse.statusCode), \(action) command confirmed by API.")
                 } else if httpResponse.statusCode == 400 {
-                    message = "HTTP 400 Bad Request, the agent might be offline"
+                    message = L10n.key("agents.action.http400Offline")
                     DiagnosticLogger.shared.appendWarning("HTTP 400 encountered during \(action) command.")
                 } else {
-                    message = "HTTP Error: \(httpResponse.statusCode)"
+                    message = L10n.format("agents.error.http", httpResponse.statusCode)
                     DiagnosticLogger.shared.appendError("HTTP Error \(httpResponse.statusCode) during \(action) command.")
                 }
             } else {
-                message = "Unknown error"
+                message = L10n.key("agents.error.unknown")
                 DiagnosticLogger.shared.appendError("Unknown error during \(action) command.")
             }
         } catch {
-            message = "Error: \(error.localizedDescription)"
+            message = L10n.format("agents.error.generic", error.localizedDescription)
             DiagnosticLogger.shared.appendError("Error during \(action) command: \(error.localizedDescription)")
         }
     }
@@ -1904,19 +1923,25 @@ struct AgentDetailView: View {
         let hours   = (totalSeconds % daySeconds) / hourSeconds
         let minutes = (totalSeconds % hourSeconds) / minuteSeconds
 
+        func unitLabel(count: Int, singularKey: String, pluralKey: String) -> String {
+            count == 1
+                ? L10n.format(singularKey, count)
+                : L10n.format(pluralKey, count)
+        }
+
         var parts: [String] = []
         if months > 0 {
-            parts.append("\(months) month" + (months == 1 ? "" : "s"))
+            parts.append(unitLabel(count: months, singularKey: "agents.uptime.month.single", pluralKey: "agents.uptime.month.plural"))
         }
         if days > 0 {
-            parts.append("\(days) day" + (days == 1 ? "" : "s"))
+            parts.append(unitLabel(count: days, singularKey: "agents.uptime.day.single", pluralKey: "agents.uptime.day.plural"))
         }
         if hours > 0 {
-            parts.append("\(hours) hour" + (hours == 1 ? "" : "s"))
+            parts.append(unitLabel(count: hours, singularKey: "agents.uptime.hour.single", pluralKey: "agents.uptime.hour.plural"))
         }
         // always show minutes if nothing else, or if non-zero
         if minutes > 0 || parts.isEmpty {
-            parts.append("\(minutes) minute" + (minutes == 1 ? "" : "s"))
+            parts.append(unitLabel(count: minutes, singularKey: "agents.uptime.minute.single", pluralKey: "agents.uptime.minute.plural"))
         }
         return parts.joined(separator: " ")
     }
@@ -1935,22 +1960,22 @@ struct AgentDetailView: View {
 
         var title: String {
             switch self {
-            case .reboot: return "Confirm Reboot"
-            case .shutdown: return "Confirm Shutdown"
+            case .reboot: return L10n.key("agents.power.confirmRebootTitle")
+            case .shutdown: return L10n.key("agents.power.confirmShutdownTitle")
             }
         }
 
         var message: String {
             switch self {
-            case .reboot: return "Are you sure you want to reboot this agent?"
-            case .shutdown: return "Are you sure you want to shutdown this agent?"
+            case .reboot: return L10n.key("agents.power.confirmRebootMessage")
+            case .shutdown: return L10n.key("agents.power.confirmShutdownMessage")
             }
         }
 
         var confirmLabel: String {
             switch self {
-            case .reboot: return "Reboot"
-            case .shutdown: return "Shutdown"
+            case .reboot: return L10n.key("agents.power.reboot")
+            case .shutdown: return L10n.key("agents.power.shutdown")
             }
         }
     }
@@ -2004,7 +2029,7 @@ struct AgentDetailView: View {
     }
 
     private var statusLabel: String {
-        currentAgent.status.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? "Unknown"
+        currentAgent.statusDisplayLabel
     }
 
     private var statusColor: Color {
@@ -2045,7 +2070,7 @@ struct AgentDetailView: View {
                         .textSelection(.enabled)
                 }
 
-                infoRow("Site", value: siteDisplay, systemImage: "building.2")
+                infoRow(L10n.key("agents.info.site"), value: siteDisplay, systemImage: "building.2")
             }
         }
     }
@@ -2053,12 +2078,12 @@ struct AgentDetailView: View {
     private var hardwareCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Hardware", subtitle: "Key system specs", systemImage: "cpu")
-                infoRow("CPU", value: cpuDisplay, systemImage: "cpu")
-                infoRow("GPU", value: gpuDisplay, systemImage: "display")
-                infoRow("Model", value: modelDisplay, systemImage: "macmini.fill")
-                infoRow("Serial", value: serialDisplay, systemImage: "barcode")
-                infoRow("Physical Disks", value: disksDisplayText, systemImage: "internaldrive")
+                SectionHeader(L10n.key("agents.hardware.title"), subtitle: L10n.key("agents.hardware.subtitle"), systemImage: "cpu")
+                infoRow(L10n.key("agents.hardware.cpu"), value: cpuDisplay, systemImage: "cpu")
+                infoRow(L10n.key("agents.hardware.gpu"), value: gpuDisplay, systemImage: "display")
+                infoRow(L10n.key("agents.hardware.model"), value: modelDisplay, systemImage: "macmini.fill")
+                infoRow(L10n.key("agents.hardware.serial"), value: serialDisplay, systemImage: "barcode")
+                infoRow(L10n.key("agents.hardware.disks"), value: disksDisplayText, systemImage: "internaldrive")
             }
         }
     }
@@ -2066,9 +2091,9 @@ struct AgentDetailView: View {
     private var networkCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Network", subtitle: "Connectivity overview", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
-                infoRow("LAN IP", value: lanDisplay, systemImage: "network")
-                infoRow("Public IP", value: publicDisplay, systemImage: "globe")
+                SectionHeader(L10n.key("agents.network.title"), subtitle: L10n.key("agents.network.subtitle"), systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                infoRow(L10n.key("agents.network.lanIp"), value: lanDisplay, systemImage: "network")
+                infoRow(L10n.key("agents.network.publicIp"), value: publicDisplay, systemImage: "globe")
             }
         }
     }
@@ -2076,10 +2101,10 @@ struct AgentDetailView: View {
     private var insightCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Insight", subtitle: "Recent activity", systemImage: "clock")
-                infoRow("Status", value: statusLabel, systemImage: "dot.radiowaves.left.and.right", tint: statusColor)
-                infoRow("Last Seen", value: lastSeenDisplay, systemImage: "clock.arrow.circlepath")
-                infoRow("Uptime", value: uptimeDisplay, systemImage: "timer")
+                SectionHeader(L10n.key("agents.insight.title"), subtitle: L10n.key("agents.insight.subtitle"), systemImage: "clock")
+                infoRow(L10n.key("agents.insight.status"), value: statusLabel, systemImage: "dot.radiowaves.left.and.right", tint: statusColor)
+                infoRow(L10n.key("agents.insight.lastSeen"), value: lastSeenDisplay, systemImage: "clock.arrow.circlepath")
+                infoRow(L10n.key("agents.insight.uptime"), value: uptimeDisplay, systemImage: "timer")
             }
         }
     }
@@ -2087,15 +2112,15 @@ struct AgentDetailView: View {
     private var powerCard: some View {
         return GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Power Controls", subtitle: "Send remote power actions", systemImage: "bolt.fill")
+                SectionHeader(L10n.key("agents.power.sectionTitle"), subtitle: L10n.key("agents.power.sectionSubtitle"), systemImage: "bolt.fill")
                 VStack(spacing: 16) {
                     HStack(spacing: 16) {
                         Button {
                             pendingPowerAction = .reboot
                         } label: {
                             AgentActionTile(
-                                title: "Reboot",
-                                subtitle: "Graceful restart",
+                                title: L10n.key("agents.power.reboot"),
+                                subtitle: L10n.key("agents.power.rebootSubtitle"),
                                 systemImage: "arrow.clockwise.circle.fill",
                                 tint: Color.orange
                             )
@@ -2107,8 +2132,8 @@ struct AgentDetailView: View {
                             pendingPowerAction = .shutdown
                         } label: {
                             AgentActionTile(
-                                title: "Shutdown",
-                                subtitle: "Power down agent",
+                                title: L10n.key("agents.power.shutdown"),
+                                subtitle: L10n.key("agents.power.shutdownSubtitle"),
                                 systemImage: "power.circle.fill",
                                 tint: Color.red
                             )
@@ -2121,8 +2146,8 @@ struct AgentDetailView: View {
                         Task { await performWakeOnLan() }
                     } label: {
                         AgentActionTile(
-                            title: "Wake",
-                            subtitle: "Wake-on-LAN",
+                            title: L10n.key("agents.power.wake"),
+                            subtitle: L10n.key("agents.power.wakeSubtitle"),
                             systemImage: "dot.radiowaves.up.forward",
                             tint: Color.green
                         )
@@ -2142,7 +2167,7 @@ struct AgentDetailView: View {
         let columns = [GridItem(.flexible()), GridItem(.flexible())]
         return GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Management", subtitle: "Inspect or interact", systemImage: "rectangle.connected.to.line.below")
+                SectionHeader(L10n.key("agents.management.title"), subtitle: L10n.key("agents.management.subtitle"), systemImage: "rectangle.connected.to.line.below")
                 LazyVGrid(columns: columns, spacing: 16) {
                     NavigationLink {
                         AgentProcessesView(
@@ -2152,8 +2177,8 @@ struct AgentDetailView: View {
                         )
                     } label: {
                         AgentActionTile(
-                            title: "Processes",
-                            subtitle: "Running tasks",
+                            title: L10n.key("agents.management.processes.title"),
+                            subtitle: L10n.key("agents.management.processes.subtitle"),
                             systemImage: "chart.bar.doc.horizontal.fill",
                             tint: appTheme.accent
                         )
@@ -2169,8 +2194,8 @@ struct AgentDetailView: View {
                         )
                     } label: {
                         AgentActionTile(
-                            title: "Command",
-                            subtitle: "Run scripts",
+                            title: L10n.key("agents.management.command.title"),
+                            subtitle: L10n.key("agents.management.command.subtitle"),
                             systemImage: "terminal.fill",
                             tint: Color.purple
                         )
@@ -2185,8 +2210,8 @@ struct AgentDetailView: View {
                         )
                     } label: {
                         AgentActionTile(
-                            title: "Software",
-                            subtitle: "Installed apps",
+                            title: L10n.key("agents.management.software.title"),
+                            subtitle: L10n.key("agents.management.software.subtitle"),
                             systemImage: "macwindow.on.rectangle",
                             tint: Color.mint
                         )
@@ -2197,8 +2222,8 @@ struct AgentDetailView: View {
                         AgentCustomFieldsView(customFields: nonEmptyCustomFields)
                     } label: {
                         AgentActionTile(
-                            title: "Custom Fields",
-                            subtitle: "Metadata",
+                            title: L10n.key("agents.management.customFields.title"),
+                            subtitle: L10n.key("agents.management.customFields.subtitle"),
                             systemImage: "doc.text.fill",
                             tint: Color.indigo
                         )
@@ -2215,8 +2240,8 @@ struct AgentDetailView: View {
                         )
                     } label: {
                         AgentActionTile(
-                            title: "Notes",
-                            subtitle: "Technician notes",
+                            title: L10n.key("agents.management.notes.title"),
+                            subtitle: L10n.key("agents.management.notes.subtitle"),
                             systemImage: "note.text",
                             tint: Color.blue
                         )
@@ -2231,8 +2256,8 @@ struct AgentDetailView: View {
                         )
                     } label: {
                         AgentActionTile(
-                            title: "Tasks",
-                            subtitle: "Scheduled jobs",
+                            title: L10n.key("agents.management.tasks.title"),
+                            subtitle: L10n.key("agents.management.tasks.subtitle"),
                             systemImage: "checklist",
                             tint: Color.teal
                         )
@@ -2247,8 +2272,8 @@ struct AgentDetailView: View {
                         )
                     } label: {
                         AgentActionTile(
-                            title: "Checks",
-                            subtitle: "Agent checks",
+                            title: L10n.key("agents.management.checks.title"),
+                            subtitle: L10n.key("agents.management.checks.subtitle"),
                             systemImage: "waveform.path.ecg",
                             tint: Color.orange
                         )
@@ -2263,8 +2288,8 @@ struct AgentDetailView: View {
                         )
                     } label: {
                         AgentActionTile(
-                            title: "Run Script",
-                            subtitle: "Execute saved",
+                            title: L10n.key("agents.management.runScript.title"),
+                            subtitle: L10n.key("agents.management.runScript.subtitle"),
                             systemImage: "play.rectangle.on.rectangle.fill",
                             tint: Color.pink
                         )
@@ -2277,13 +2302,16 @@ struct AgentDetailView: View {
     }
 
     private var statusPill: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 8) {
             Circle()
                 .fill(statusColor)
                 .frame(width: 10, height: 10)
             Text(statusLabel)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(statusColor)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
@@ -2378,15 +2406,18 @@ struct AgentDetailView: View {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(Color.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 if let subtitle {
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.65))
-                        .lineLimit(2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
+            .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
+            .padding(14)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(tint.opacity(0.18))
@@ -2512,13 +2543,13 @@ struct SendCommandView: View {
             if isProcessing {
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
-                ProgressView("Sending Command…")
+                ProgressView(L10n.key("agents.command.sending"))
                     .padding()
                     .background(.ultraThinMaterial)
                     .cornerRadius(12)
             }
         }
-        .navigationTitle("Send Command")
+        .navigationTitle(L10n.key("agents.command.title"))
         .navigationBarTitleDisplayMode(.inline)
     }
     
@@ -2575,8 +2606,8 @@ struct SendCommandView: View {
     private var executionCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 18) {
-                SectionHeader("Execution", subtitle: "Configure remote command", systemImage: "terminal")
-                Picker("Shell", selection: $selectedShell) {
+                SectionHeader(L10n.key("agents.command.execution.title"), subtitle: L10n.key("agents.command.execution.subtitle"), systemImage: "terminal")
+                Picker(L10n.key("agents.command.shell"), selection: $selectedShell) {
                     ForEach(shellOptions) { option in
                         Text(option.label).tag(option.value)
                     }
@@ -2589,7 +2620,7 @@ struct SendCommandView: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(appTheme.accent)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("TIMEOUT (SECONDS)")
+                        Text(L10n.key("agents.command.timeout.label"))
                             .font(.caption2)
                             .foregroundStyle(Color.white.opacity(0.55))
                         TextField("30", text: $timeout)
@@ -2608,7 +2639,7 @@ struct SendCommandView: View {
                     }
                 }
 
-                Toggle("Run as logged-in user", isOn: $runAsUser)
+                Toggle(L10n.key("agents.command.runAsUser"), isOn: $runAsUser)
                     .toggleStyle(SwitchToggleStyle(tint: .cyan))
 
                 Button {
@@ -2617,7 +2648,7 @@ struct SendCommandView: View {
                     commandFocused = false
                     Task { await sendCommand() }
                 } label: {
-                    Label("Send Command", systemImage: "paperplane.fill")
+                    Label(L10n.key("agents.command.send"), systemImage: "paperplane.fill")
                 }
                 .primaryButton()
                 .disabled(trimmedCommand.isEmpty || isProcessing)
@@ -2632,7 +2663,7 @@ struct SendCommandView: View {
     private var commandCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Command", subtitle: "Enter the script to run", systemImage: "chevron.left.forwardslash.chevron.right")
+                SectionHeader(L10n.key("agents.command.editor.title"), subtitle: L10n.key("agents.command.editor.subtitle"), systemImage: "chevron.left.forwardslash.chevron.right")
                 TextEditor(text: $command)
                     .focused($commandFocused)
                     .frame(minHeight: 180)
@@ -2715,9 +2746,9 @@ struct SendCommandView: View {
         var body: some View {
             GlassCard {
                 VStack(alignment: .leading, spacing: 16) {
-                    SectionHeader("Output", subtitle: "Response from the agent", systemImage: "terminal")
+                    SectionHeader(L10n.key("agents.command.output.title"), subtitle: L10n.key("agents.command.output.subtitle"), systemImage: "terminal")
                     if text.isEmpty {
-                        Text("No output yet. Send a command to view the response here.")
+                        Text(L10n.key("agents.command.output.empty"))
                             .font(.footnote)
                             .foregroundStyle(Color.white.opacity(0.65))
                     } else {
@@ -2747,13 +2778,13 @@ struct SendCommandView: View {
     @MainActor
     func sendCommand() async {
         guard let timeoutInt = Int(timeout) else {
-            statusMessage = "Invalid timeout value"
+            statusMessage = L10n.key("agents.command.error.invalidTimeout")
             return
         }
 
         let sanitizedCommand = trimmedCommand
         guard !sanitizedCommand.isEmpty else {
-            statusMessage = "Enter a command before sending."
+            statusMessage = L10n.key("agents.command.error.emptyCommand")
             return
         }
 
@@ -2764,7 +2795,7 @@ struct SendCommandView: View {
 
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/\(agentId)/cmd/") else {
-            statusMessage = "Invalid URL"
+            statusMessage = L10n.key("common.invalidUrl")
             isProcessing = false
             return
         }
@@ -2785,7 +2816,7 @@ struct SendCommandView: View {
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
         } catch {
-            statusMessage = "Error preparing request: \(error.localizedDescription)"
+            statusMessage = L10n.format("agents.command.error.prepareRequestFormat", error.localizedDescription)
             isProcessing = false
             return
         }
@@ -2808,7 +2839,7 @@ struct SendCommandView: View {
                 )
 
                 if httpResponse.statusCode == 200 || httpResponse.statusCode == 204 {
-                    statusMessage = "Command sent successfully!"
+                    statusMessage = L10n.key("agents.command.success.sent")
                 } else {
                     let backendMessage = extractBackendMessage(from: data)
                     if httpResponse.statusCode == 400, let backendMessage {
@@ -2816,7 +2847,7 @@ struct SendCommandView: View {
                     } else if let backendMessage {
                         statusMessage = backendMessage
                     } else {
-                        statusMessage = "HTTP Error: \(httpResponse.statusCode)"
+                        statusMessage = L10n.format("common.httpErrorFormat", httpResponse.statusCode)
                     }
                 }
 
@@ -2832,7 +2863,7 @@ struct SendCommandView: View {
                 }
             }
         } catch {
-            statusMessage = "Error: \(error.localizedDescription)"
+            statusMessage = L10n.format("common.errorFormat", error.localizedDescription)
             DiagnosticLogger.shared.appendError("Error sending command: \(error.localizedDescription)")
         }
 
@@ -3037,7 +3068,7 @@ struct RunScriptView: View {
     private var selectionCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 18) {
-                SectionHeader("Scripts", subtitle: "Choose a saved automation", systemImage: "scroll")
+                SectionHeader(L10n.key("runScript.scripts.title"), subtitle: L10n.key("runScript.scripts.subtitle"), systemImage: "scroll")
 
                 if isLoadingScripts {
                     ProgressView("Loading scripts…")
@@ -3056,7 +3087,7 @@ struct RunScriptView: View {
                     } label: {
                         HStack(spacing: 14) {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(selectedScript?.name ?? "Choose a script")
+                                Text(selectedScript?.name ?? L10n.key("runScript.scripts.choose"))
                                     .font(.body.weight(.semibold))
                                     .foregroundStyle(Color.white)
                                 if let script = selectedScript {
@@ -3106,7 +3137,7 @@ struct RunScriptView: View {
     private var configurationCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 18) {
-                SectionHeader("Configuration", subtitle: "Adjust runtime options", systemImage: "slider.horizontal.3")
+                SectionHeader(L10n.key("runScript.configuration.title"), subtitle: L10n.key("runScript.configuration.subtitle"), systemImage: "slider.horizontal.3")
 
                 if let script = selectedScript {
                     if let description = script.description?.nonEmpty {
@@ -3408,7 +3439,7 @@ struct RunScriptView: View {
         var body: some View {
             GlassCard {
                 VStack(alignment: .leading, spacing: 16) {
-                    SectionHeader("Result", subtitle: "Output from the agent", systemImage: "doc.text")
+                    SectionHeader(L10n.key("runScript.result.title"), subtitle: L10n.key("runScript.result.subtitle"), systemImage: "doc.text")
                     if text.isEmpty {
                         Text("Run a script to view the response here.")
                             .font(.footnote)
@@ -4108,13 +4139,13 @@ struct AgentProcessesView: View {
             if isLoading {
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
-                ProgressView("Loading processes…")
+                ProgressView(L10n.key("agents.processes.loading"))
                     .padding()
                     .background(.ultraThinMaterial)
                     .cornerRadius(12)
             }
         }
-        .navigationTitle("Agent Processes")
+        .navigationTitle(L10n.key("agents.processes.title"))
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showKillSheet, onDismiss: { pidToKill = "" }) {
             killSheet
@@ -4130,8 +4161,8 @@ struct AgentProcessesView: View {
     private var searchCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Process Search", subtitle: "Filter by name", systemImage: "magnifyingglass")
-                TextField("Search process name", text: $searchQuery)
+                SectionHeader(L10n.key("agents.processes.search.title"), subtitle: L10n.key("agents.processes.search.subtitle"), systemImage: "magnifyingglass")
+                TextField(L10n.key("agents.processes.search.placeholder"), text: $searchQuery)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .focused($searchFocused)
@@ -4160,14 +4191,14 @@ struct AgentProcessesView: View {
     private var processListCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Processes", subtitle: listSubtitle, systemImage: "memorychip")
+                SectionHeader(L10n.key("agents.processes.list.title"), subtitle: listSubtitle, systemImage: "memorychip")
 
                 if processRecords.isEmpty && errorMessage == nil && !isLoading {
-                    Text("No processes found.")
+                    Text(L10n.key("agents.processes.empty"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else if displayedProcesses.isEmpty && !processRecords.isEmpty {
-                    Text("No processes match your search.")
+                    Text(L10n.key("agents.processes.emptyFiltered"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else {
@@ -4198,14 +4229,14 @@ struct AgentProcessesView: View {
 
     private var stickyKillBar: some View {
         VStack(alignment: .leading, spacing: 16) {
-            SectionHeader("Terminate Process", subtitle: "Select a process or enter PID", systemImage: "nosign")
+            SectionHeader(L10n.key("agents.processes.terminate.title"), subtitle: L10n.key("agents.processes.terminate.subtitle"), systemImage: "nosign")
 
             if let process = selectedProcess {
-                Text("Ready to kill \(process.name) (PID \(process.pid)).")
+                Text(L10n.format("agents.processes.terminate.ready", process.name, String(process.pid)))
                     .font(.caption)
                     .foregroundStyle(Color.white.opacity(0.85))
             } else {
-                Text("Tap a process above or enter a PID manually.")
+                Text(L10n.key("agents.processes.terminate.prompt"))
                     .font(.caption)
                     .foregroundStyle(Color.white.opacity(0.7))
             }
@@ -4243,16 +4274,16 @@ struct AgentProcessesView: View {
     }
 
     private var listSubtitle: String {
-        if isLoading { return "Loading…" }
-        if !appliedSearchQuery.isEmpty { return "Filtered: \(displayedProcesses.count)" }
-        return "Total: \(processRecords.count)"
+        if isLoading { return L10n.key("common.loading") }
+        if !appliedSearchQuery.isEmpty { return L10n.format("agents.processes.subtitle.filteredFormat", displayedProcesses.count) }
+        return L10n.format("agents.processes.subtitle.totalFormat", processRecords.count)
     }
 
     private var selectedProcessLabel: String {
         if let process = selectedProcess {
-            return "Kill \(process.name) (PID \(process.pid))"
+            return L10n.format("agents.processes.terminate.buttonSelected", process.name, String(process.pid))
         }
-        return "Kill Process by PID"
+        return L10n.key("agents.processes.terminate.buttonPid")
     }
 
     private var killSheet: some View {
@@ -4260,10 +4291,10 @@ struct AgentProcessesView: View {
             ZStack {
                 DarkGradientBackground()
                 VStack(spacing: 24) {
-                    Text("Enter PID to terminate")
+                    Text(L10n.key("agents.processes.killSheet.title"))
                         .font(.headline)
                         .foregroundStyle(Color.white)
-                    TextField("PID", text: $pidToKill)
+                    TextField(L10n.key("agents.processes.killSheet.pidPlaceholder"), text: $pidToKill)
                         .platformKeyboardType(.numberPad)
                         .padding(.vertical, 12)
                         .padding(.horizontal, 14)
@@ -4278,17 +4309,17 @@ struct AgentProcessesView: View {
                         .foregroundStyle(Color.white)
 
                     HStack(spacing: 16) {
-                        Button("Cancel") {
+                        Button(L10n.key("common.cancel")) {
                             showKillSheet = false
                         }
                         .secondaryButton()
 
-                        Button("Confirm", role: .destructive) {
+                        Button(L10n.key("agents.processes.killSheet.confirm"), role: .destructive) {
                             Task {
                                 if let pidInt = Int(pidToKill), pidInt > 0 {
                                     await killProcess(withPid: pidInt)
                                 } else {
-                                    killBannerMessage = "Invalid PID"
+                                    killBannerMessage = L10n.key("agents.processes.invalidPid")
                                 }
                                 showKillSheet = false
                             }
@@ -4582,7 +4613,7 @@ struct AgentSoftwareView: View {
                 if isLoading {
                     Color.black.opacity(0.35)
                         .ignoresSafeArea()
-                    ProgressView("Loading software…")
+                    ProgressView(L10n.key("agents.software.loading"))
                         .padding()
                         .background(.ultraThinMaterial)
                         .cornerRadius(12)
@@ -4591,7 +4622,7 @@ struct AgentSoftwareView: View {
                 unsupportedView
             }
         }
-        .navigationTitle("Installed Software")
+        .navigationTitle(L10n.key("agents.software.title"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             guard !hasLoadedOnce else { return }
@@ -4637,7 +4668,7 @@ struct AgentSoftwareView: View {
     @MainActor
     private func presentUninstallSheet(for software: InstalledSoftware) {
         guard let preset = software.uninstall.nonEmpty else {
-            errorMessage = "No uninstall command is available for \(software.name)."
+            errorMessage = L10n.format("agents.software.uninstall.unavailableFormat", software.name)
             statusMessage = nil
             return
         }
@@ -4652,8 +4683,8 @@ struct AgentSoftwareView: View {
     private var searchCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Filter Software", subtitle: "Search by name, publisher, or path", systemImage: "magnifyingglass")
-                TextField("Search installed software", text: $searchQuery)
+                SectionHeader(L10n.key("agents.software.filter.title"), subtitle: L10n.key("agents.software.filter.subtitle"), systemImage: "magnifyingglass")
+                TextField(L10n.key("agents.software.filter.placeholder"), text: $searchQuery)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .focused($searchFocused)
@@ -4689,14 +4720,14 @@ struct AgentSoftwareView: View {
     private var softwareListCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Installed Software", subtitle: listSubtitle, systemImage: "macwindow")
+                SectionHeader(L10n.key("agents.software.title"), subtitle: listSubtitle, systemImage: "macwindow")
 
                 if inventory.isEmpty && !isLoading && errorMessage == nil {
-                    Text("No software entries found.")
+                    Text(L10n.key("agents.software.empty"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else if filteredInventory.isEmpty && !inventory.isEmpty {
-                    Text("No software matches your search.")
+                    Text(L10n.key("agents.software.emptyFiltered"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else {
@@ -4723,25 +4754,25 @@ struct AgentSoftwareView: View {
 
         let trimmedCommand = uninstallCommandText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedCommand.isEmpty else {
-            uninstallSheetError = "Enter a command to run."
+            uninstallSheetError = L10n.key("agents.software.uninstall.commandRequired")
             return
         }
 
         let trimmedTimeoutText = uninstallTimeoutText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let timeout = Int(trimmedTimeoutText), timeout > 0 else {
-            uninstallSheetError = "Timeout must be a positive number."
+            uninstallSheetError = L10n.key("agents.software.uninstall.timeoutPositive")
             return
         }
 
         let trimmedAgent = agentId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedAgent.isEmpty else {
-            uninstallSheetError = "Missing agent identifier."
+            uninstallSheetError = L10n.key("agents.software.uninstall.missingAgent")
             return
         }
 
         let token = effectiveAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty else {
-            uninstallSheetError = "Add an API key in Settings before uninstalling."
+            uninstallSheetError = L10n.key("agents.software.uninstall.missingApiKey")
             return
         }
 
@@ -4927,8 +4958,8 @@ struct AgentSoftwareView: View {
         VStack(spacing: 24) {
             GlassCard {
                 VStack(alignment: .leading, spacing: 16) {
-                    SectionHeader("Installed Software", subtitle: nil, systemImage: "macwindow")
-                    Text("Only supported for Windows agents at this time.")
+                    SectionHeader(L10n.key("agents.software.title"), subtitle: nil, systemImage: "macwindow")
+                    Text(L10n.key("agents.software.unsupported"))
                         .font(.callout)
                         .foregroundStyle(Color.white.opacity(0.75))
                 }
@@ -4961,8 +4992,8 @@ struct AgentSoftwareView: View {
                         VStack(spacing: 24) {
                             GlassCard {
                                 VStack(alignment: .leading, spacing: 16) {
-                                    SectionHeader("Uninstall", systemImage: "trash.fill")
-                                    Text("Confirm or edit the uninstall command below.")
+                                    SectionHeader(L10n.key("agents.software.uninstall.sectionTitle"), systemImage: "trash.fill")
+                                    Text(L10n.key("agents.software.uninstall.instructions"))
                                         .font(.caption)
                                         .foregroundStyle(Color.white.opacity(0.7))
 
@@ -4984,7 +5015,7 @@ struct AgentSoftwareView: View {
                                         .disableAutocorrection(true)
 
                                     VStack(alignment: .leading, spacing: 8) {
-                                        Text("Timeout (seconds)")
+                                        Text(L10n.key("agents.software.uninstall.timeoutLabel"))
                                             .font(.caption2)
                                             .foregroundStyle(Color.white.opacity(0.65))
                                         TextField("1800", text: $timeout)
@@ -5003,7 +5034,7 @@ struct AgentSoftwareView: View {
                                     }
 
                                     Toggle(isOn: $runAsUser) {
-                                        Text("Run as user")
+                                        Text(L10n.key("agents.software.uninstall.runAsUser"))
                                             .font(.callout)
                                             .foregroundStyle(Color.white)
                                     }
@@ -5022,11 +5053,11 @@ struct AgentSoftwareView: View {
                         .padding(.vertical, 28)
                     }
                 }
-                .navigationTitle("Uninstall \(software.name)")
+                .navigationTitle(L10n.format("agents.software.uninstall.navigationTitleFormat", software.name))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { onCancel() }
+                        Button(L10n.key("common.cancel")) { onCancel() }
                             .disabled(isSubmitting)
                     }
                     ToolbarItem(placement: .confirmationAction) {
@@ -5036,7 +5067,7 @@ struct AgentSoftwareView: View {
                             if isSubmitting {
                                 ProgressView()
                             } else {
-                                Text("Uninstall")
+                                Text(L10n.key("agents.software.uninstall.action"))
                             }
                         }
                         .disabled(isSubmitting)
@@ -5059,7 +5090,7 @@ struct AgentSoftwareView: View {
         @Environment(\.appTheme) private var appTheme
 
         private var softwareName: String {
-            software.name.nonEmpty ?? "Unnamed Software"
+            software.name.nonEmpty ?? L10n.key("agents.software.unnamed")
         }
 
         private var versionLabel: String? {
@@ -5133,14 +5164,14 @@ struct AgentSoftwareView: View {
                     Button {
                         UIPasteboard.general.string = uninstall
                     } label: {
-                        Label("Copy Uninstall Command", systemImage: "doc.on.doc")
+                        Label(L10n.key("agents.software.copyUninstallCommand"), systemImage: "doc.on.doc")
                     }
                 }
                 if let location = software.location.nonEmpty {
                     Button {
                         UIPasteboard.general.string = location
                     } label: {
-                        Label("Copy Install Path", systemImage: "folder")
+                        Label(L10n.key("agents.software.copyInstallPath"), systemImage: "folder")
                     }
                 }
             }
@@ -5221,7 +5252,7 @@ struct AgentSoftwareView: View {
             .foregroundStyle(Color.red)
             .disabled(!hasCommand || isUninstalling)
             .opacity(hasCommand ? 1 : 0.35)
-            .accessibilityLabel("Uninstall \(softwareName)")
+            .accessibilityLabel(L10n.format("agents.software.uninstall.accessibilityLabelFormat", softwareName))
         }
     }
 }
@@ -5283,13 +5314,13 @@ struct AgentNotesView: View {
             if isLoading {
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
-                ProgressView("Loading notes…")
+                ProgressView(L10n.key("agents.notes.loading"))
                     .padding()
                     .background(.ultraThinMaterial)
                     .cornerRadius(12)
             }
         }
-        .navigationTitle("Agent Notes")
+        .navigationTitle(L10n.key("agents.notes.title"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             Task { await fetchNotes() }
@@ -5312,7 +5343,7 @@ struct AgentNotesView: View {
     private var notesHeaderCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                SectionHeader("Technician Notes", subtitle: headerSubtitle, systemImage: "note.text")
+                SectionHeader(L10n.key("agents.notes.header.title"), subtitle: headerSubtitle, systemImage: "note.text")
                 HStack {
                     Spacer()
                     Button {
@@ -5320,7 +5351,7 @@ struct AgentNotesView: View {
                         statusMessage = nil
                         isComposerPresented = true
                     } label: {
-                        Label("Add Note", systemImage: "square.and.pencil")
+                        Label(L10n.key("agents.notes.add"), systemImage: "square.and.pencil")
                     }
                     .secondaryButton()
                     .disabled(isSubmittingNote)
@@ -5339,7 +5370,7 @@ struct AgentNotesView: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
                 if notes.isEmpty && !isLoading && errorMessage == nil {
-                    Text("No notes available for this agent.")
+                    Text(L10n.key("agents.notes.empty"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else {
@@ -5361,13 +5392,15 @@ struct AgentNotesView: View {
     }
 
     private var headerSubtitle: String {
-        if isLoading { return "Loading…" }
-        return notes.count == 1 ? "1 note" : "\(notes.count) notes"
+        if isLoading { return L10n.key("common.loading") }
+        return notes.count == 1
+            ? L10n.format("agents.notes.count.single", notes.count)
+            : L10n.format("agents.notes.count.multipleFormat", notes.count)
     }
 
     private func formattedNoteDate(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "N/A" }
+        guard !trimmed.isEmpty else { return L10n.key("common.notAvailable") }
 
         if let parsed = AgentNotesView.noteISOFormatterWithFractional.date(from: trimmed)
             ?? AgentNotesView.noteISOFormatter.date(from: trimmed)
@@ -5379,10 +5412,12 @@ struct AgentNotesView: View {
     }
 
     private func noteResponseMessage(from data: Data) -> String {
-        if data.isEmpty { return "Note added!" }
+        if data.isEmpty { return L10n.key("agents.notes.added") }
         if let decoded = try? JSONDecoder().decode(String.self, from: data) {
             let trimmed = decoded.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed.isEmpty ? "Note added!" : trimmed
+            if trimmed.isEmpty { return L10n.key("agents.notes.added") }
+            if trimmed.lowercased().hasPrefix("note added") { return L10n.key("agents.notes.added") }
+            return trimmed
         }
 
         var raw = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -5391,7 +5426,9 @@ struct AgentNotesView: View {
             raw.removeLast()
             raw = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        return raw.isEmpty ? "Note added!" : raw
+        if raw.isEmpty { return L10n.key("agents.notes.added") }
+        if raw.lowercased().hasPrefix("note added") { return L10n.key("agents.notes.added") }
+        return raw
     }
 
     private struct AddAgentNoteSheet: View {
@@ -5416,7 +5453,7 @@ struct AgentNotesView: View {
                         VStack(spacing: 24) {
                             GlassCard {
                                 VStack(alignment: .leading, spacing: 16) {
-                                    Text("NOTE")
+                                    Text(L10n.key("agents.notes.editor.label"))
                                         .font(.caption2.weight(.semibold))
                                         .foregroundStyle(Color.white.opacity(0.65))
 
@@ -5438,7 +5475,7 @@ struct AgentNotesView: View {
 
                                     HStack {
                                         Spacer()
-                                        Text("\(noteText.count) chars")
+                                        Text(L10n.format("agents.notes.editor.charCountFormat", noteText.count))
                                             .font(.caption2)
                                             .foregroundStyle(Color.white.opacity(0.55))
                                     }
@@ -5449,11 +5486,11 @@ struct AgentNotesView: View {
                         .padding(.vertical, 28)
                     }
                 }
-                .navigationTitle("New Note")
+                .navigationTitle(L10n.key("agents.notes.new.title"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { onCancel() }
+                        Button(L10n.key("common.cancel")) { onCancel() }
                             .disabled(isSubmitting)
                     }
                     ToolbarItem(placement: .confirmationAction) {
@@ -5463,7 +5500,7 @@ struct AgentNotesView: View {
                             if isSubmitting {
                                 ProgressView()
                             } else {
-                                Text("Save")
+                                Text(L10n.key("common.save"))
                             }
                         }
                         .disabled(isSubmitting || trimmedNote.isEmpty)
@@ -5483,7 +5520,7 @@ struct AgentNotesView: View {
     @MainActor
     func createNote(with note: String) async {
         guard !note.isEmpty else {
-            errorMessage = "Enter a note before submitting."
+            errorMessage = L10n.key("agents.notes.error.empty")
             statusMessage = nil
             return
         }
@@ -5496,7 +5533,7 @@ struct AgentNotesView: View {
 
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/notes/") else {
-            errorMessage = "Invalid URL"
+            errorMessage = L10n.key("common.invalidUrl")
             DiagnosticLogger.shared.appendError("Invalid URL when creating agent note.")
             return
         }
@@ -5557,7 +5594,7 @@ struct AgentNotesView: View {
 
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/notes/\(note.id)/") else {
-            errorMessage = "Invalid URL"
+            errorMessage = L10n.key("common.invalidUrl")
             DiagnosticLogger.shared.appendError("Invalid URL when deleting agent note.")
             return
         }
@@ -5573,7 +5610,7 @@ struct AgentNotesView: View {
             if let httpResponse = response as? HTTPURLResponse {
                 DiagnosticLogger.shared.logHTTPResponse(method: "DELETE", url: url.absoluteString, status: httpResponse.statusCode, data: Data())
                 guard (200...299).contains(httpResponse.statusCode) else {
-                    errorMessage = "HTTP Error: \(httpResponse.statusCode)"
+                    errorMessage = L10n.format("common.httpErrorFormat", httpResponse.statusCode)
                     DiagnosticLogger.shared.appendError("HTTP Error \(httpResponse.statusCode) when deleting note.")
                     return
                 }
@@ -5581,10 +5618,10 @@ struct AgentNotesView: View {
 
             await fetchNotes()
             if errorMessage == nil {
-                statusMessage = "Note deleted."
+                statusMessage = L10n.key("agents.notes.deleted")
             }
         } catch {
-            errorMessage = "Error deleting note: \(error.localizedDescription)"
+            errorMessage = L10n.format("agents.notes.error.deleteFormat", error.localizedDescription)
             DiagnosticLogger.shared.appendError("Error deleting note: \(error.localizedDescription)")
         }
     }
@@ -5775,7 +5812,7 @@ struct AgentTasksView: View {
         let words = result.split(separator: " ")
         if words.count > 800 {
             let truncated = words.prefix(800).joined(separator: " ")
-            return "\(truncated)... \nFull result available on the RMM Server."
+            return L10n.format("agents.tasks.result.truncatedFormat", truncated)
         }
         return result
     }
@@ -5796,13 +5833,13 @@ struct AgentTasksView: View {
             if isLoading {
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
-                ProgressView("Loading tasks…")
+                ProgressView(L10n.key("agents.tasks.loading"))
                     .padding()
                     .background(.ultraThinMaterial)
                     .cornerRadius(12)
             }
         }
-        .navigationTitle("Agent Tasks")
+        .navigationTitle(L10n.key("agents.tasks.title"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             Task { await fetchTasks() }
@@ -5812,7 +5849,7 @@ struct AgentTasksView: View {
     private var tasksHeaderCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                SectionHeader("Scheduled Tasks", subtitle: headerSubtitle, systemImage: "checklist")
+                SectionHeader(L10n.key("agents.tasks.header.title"), subtitle: headerSubtitle, systemImage: "checklist")
                 if let errorMessage {
                     banner(message: errorMessage, isError: true)
                 }
@@ -5824,7 +5861,7 @@ struct AgentTasksView: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
                 if tasks.isEmpty && !isLoading && errorMessage == nil {
-                    Text("No tasks found for this agent.")
+                    Text(L10n.key("agents.tasks.empty"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else {
@@ -5839,13 +5876,15 @@ struct AgentTasksView: View {
     }
 
     private var headerSubtitle: String {
-        if isLoading { return "Loading…" }
-        return tasks.count == 1 ? "1 task" : "\(tasks.count) tasks"
+        if isLoading { return L10n.key("common.loading") }
+        return tasks.count == 1
+            ? L10n.format("agents.tasks.count.single", tasks.count)
+            : L10n.format("agents.tasks.count.multipleFormat", tasks.count)
     }
 
     private func formattedDate(_ raw: String) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "N/A" }
+        guard !trimmed.isEmpty else { return L10n.key("common.notAvailable") }
         if let date = isoFormatter.date(from: trimmed)
             ?? isoNoFractionFormatter.date(from: trimmed)
             ?? noTZDateParser.date(from: trimmed) {
@@ -5891,13 +5930,13 @@ struct AgentTasksView: View {
                     .font(.headline)
                     .foregroundStyle(Color.white)
 
-                detailRow(title: "Schedule", value: task.schedule, system: "calendar")
-                detailRow(title: "Next Run", value: formattedRunTime, system: "clock")
-                detailRow(title: "Created", value: "\(task.created_by) • \(formattedCreated)", system: "person")
+                detailRow(title: L10n.key("agents.tasks.detail.schedule"), value: task.schedule, system: "calendar")
+                detailRow(title: L10n.key("agents.tasks.detail.nextRun"), value: formattedRunTime, system: "clock")
+                detailRow(title: L10n.key("agents.tasks.detail.created"), value: "\(task.created_by) • \(formattedCreated)", system: "person")
 
                 if let result = task.task_result {
                     VStack(alignment: .leading, spacing: 6) {
-                        SectionHeader("Result", subtitle: result.status.capitalized, systemImage: "text.justify")
+                        SectionHeader(L10n.key("agents.tasks.result.title"), subtitle: result.status.capitalized, systemImage: "text.justify")
                         Text(truncate(result.stdout))
                             .font(.caption.monospaced())
                             .foregroundStyle(Color.white.opacity(0.85))
@@ -5907,7 +5946,7 @@ struct AgentTasksView: View {
 
                 if let actions = task.actions, !actions.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        SectionHeader("Actions", subtitle: "\(actions.count) defined", systemImage: "bolt.badge.clock")
+                        SectionHeader(L10n.key("agents.tasks.actions.title"), subtitle: L10n.format("agents.tasks.actions.subtitleFormat", actions.count), systemImage: "bolt.badge.clock")
                         ForEach(actions, id: \.name) { action in
                             HStack(spacing: 8) {
                                 Image(systemName: "arrowtriangle.forward.fill")
@@ -6141,13 +6180,13 @@ struct AgentChecksView: View {
             if isLoading {
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
-                ProgressView("Loading checks…")
+                ProgressView(L10n.key("agents.checks.loading"))
                     .padding()
                     .background(.ultraThinMaterial)
                     .cornerRadius(12)
             }
         }
-        .navigationTitle("Agent Checks")
+        .navigationTitle(L10n.key("agents.checks.title"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             Task { await fetchChecks() }
@@ -6157,7 +6196,7 @@ struct AgentChecksView: View {
     private var headerCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 12) {
-                SectionHeader("Health Checks", subtitle: headerSubtitle, systemImage: "waveform.path.ecg")
+                SectionHeader(L10n.key("agents.checks.header.title"), subtitle: headerSubtitle, systemImage: "waveform.path.ecg")
                 if let errorMessage {
                     banner(message: errorMessage, isError: true)
                 }
@@ -6169,7 +6208,7 @@ struct AgentChecksView: View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
                 if checks.isEmpty && !isLoading && errorMessage == nil {
-                    Text("No checks returned for this agent.")
+                    Text(L10n.key("agents.checks.empty"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else {
@@ -6190,14 +6229,16 @@ struct AgentChecksView: View {
     }
 
     private var headerSubtitle: String {
-        if isLoading { return "Loading…" }
-        return checks.count == 1 ? "1 check" : "\(checks.count) checks"
+        if isLoading { return L10n.key("common.loading") }
+        return checks.count == 1
+            ? L10n.format("agents.checks.count.single", checks.count)
+            : L10n.format("agents.checks.count.multipleFormat", checks.count)
     }
 
     private func formattedDate(_ raw: String?) -> String {
-        guard let raw else { return "Unknown" }
+        guard let raw else { return L10n.key("common.unknown") }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "Unknown" }
+        guard !trimmed.isEmpty else { return L10n.key("common.unknown") }
         if let date = Self.iso8601Formatter.date(from: trimmed)
             ?? Self.iso8601NoFractionFormatter.date(from: trimmed)
             ?? Self.noTimeZoneFormatter.date(from: trimmed) {
@@ -6210,13 +6251,13 @@ struct AgentChecksView: View {
         let normalized = status?.lowercased() ?? "unknown"
         switch normalized {
         case let value where value.contains("pass"):
-            return (text: status?.capitalized ?? "Passing", color: Color.green, icon: "checkmark.circle.fill")
+            return (text: status?.capitalized ?? L10n.key("agents.checks.status.passing"), color: Color.green, icon: "checkmark.circle.fill")
         case let value where value.contains("warn"):
-            return (text: status?.capitalized ?? "Warning", color: Color.orange, icon: "exclamationmark.triangle.fill")
+            return (text: status?.capitalized ?? L10n.key("agents.checks.status.warning"), color: Color.orange, icon: "exclamationmark.triangle.fill")
         case let value where value.contains("fail") || value.contains("error"):
-            return (text: status?.capitalized ?? "Failing", color: Color.red, icon: "xmark.octagon.fill")
+            return (text: status?.capitalized ?? L10n.key("agents.checks.status.failing"), color: Color.red, icon: "xmark.octagon.fill")
         default:
-            return (text: status?.capitalized ?? "Unknown", color: Color.gray, icon: "questionmark.circle.fill")
+            return (text: status?.capitalized ?? L10n.key("agents.checks.status.unknown"), color: Color.gray, icon: "questionmark.circle.fill")
         }
     }
 
@@ -6273,21 +6314,21 @@ struct AgentChecksView: View {
                     Spacer(minLength: 0)
                 }
 
-                infoRow(title: "Last Run", value: formattedLastRun)
-                infoRow(title: "Created", value: "\(check.created_by) • \(formattedCreated)")
+                infoRow(title: L10n.key("agents.checks.detail.lastRun"), value: formattedLastRun)
+                infoRow(title: L10n.key("agents.checks.detail.created"), value: "\(check.created_by) • \(formattedCreated)")
 
                 if let severity = check.check_result?.alert_severity?.capitalized, !severity.isEmpty {
-                    infoRow(title: "Alert Severity", value: severity)
+                    infoRow(title: L10n.key("agents.checks.detail.alertSeverity"), value: severity)
                 }
 
                 if let stdout = check.check_result?.stdout?.nonEmpty {
-                    outputSection(title: "Output", value: truncatedOutput(stdout))
+                    outputSection(title: L10n.key("agents.checks.output.title"), value: truncatedOutput(stdout))
                 } else if let info = check.check_result?.more_info?.nonEmpty {
-                    outputSection(title: "Details", value: truncatedOutput(info))
+                    outputSection(title: L10n.key("agents.checks.output.details"), value: truncatedOutput(info))
                 }
 
                 if let stderr = check.check_result?.stderr?.nonEmpty {
-                    outputSection(title: "Errors", value: truncatedOutput(stderr), isError: true)
+                    outputSection(title: L10n.key("agents.checks.output.errors"), value: truncatedOutput(stderr), isError: true)
                 }
             }
             .padding(18)

@@ -1682,6 +1682,24 @@
         }
       }
     },
+    "agents.action.http400Offline" : {
+      "comment" : "Message shown when a command returns HTTP 400 because the agent is offline.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent is offline."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agenten er frakoblet."
+          }
+        }
+      }
+    },
     "agents.power.rebootSubtitle" : {
       "comment" : "Subtitle for reboot action.",
       "extractionState" : "manual",

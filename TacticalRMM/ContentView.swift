@@ -4218,6 +4218,7 @@ struct AgentProcessesView: View {
                             .opacity(deletedPIDs.contains(process.pid) ? 0.2 : 1)
                         }
                     }
+                    .animation(.easeInOut(duration: 0.25), value: displayedProcesses.count)
                 }
 
                 if let killBannerMessage {
@@ -4438,8 +4439,13 @@ struct AgentProcessesView: View {
             if let httpResponse = response as? HTTPURLResponse {
                 DiagnosticLogger.shared.logHTTPResponse(method: "GET", url: url.absoluteString, status: httpResponse.statusCode, data: data)
                 if httpResponse.statusCode != 200 {
-                    errorMessage = "HTTP Error: \(httpResponse.statusCode)"
-                    DiagnosticLogger.shared.appendError("HTTP Error \(httpResponse.statusCode) in fetching processes.")
+                    if httpResponse.statusCode == 400 {
+                        errorMessage = L10n.key("agents.action.http400Offline")
+                        DiagnosticLogger.shared.appendWarning("HTTP 400 encountered while fetching processes. Agent may be offline.")
+                    } else {
+                        errorMessage = "HTTP Error: \(httpResponse.statusCode)"
+                        DiagnosticLogger.shared.appendError("HTTP Error \(httpResponse.statusCode) in fetching processes.")
+                    }
                     return
                 }
             }
@@ -4448,8 +4454,10 @@ struct AgentProcessesView: View {
                 DiagnosticLogger.shared.append("Discarded stale process fetch (id: \(fetchID))")
                 return
             }
-            processRecords = decodedProcesses
-            deletedPIDs.removeAll()
+            withAnimation(.easeInOut(duration: 0.25)) {
+                processRecords = decodedProcesses
+                deletedPIDs.removeAll()
+            }
         } catch {
             guard fetchID == processFetchSequence else {
                 DiagnosticLogger.shared.append("Discarded stale process fetch error (id: \(fetchID))")
@@ -4487,9 +4495,14 @@ struct AgentProcessesView: View {
                 if (200...299).contains(httpResponse.statusCode) {
                     killBannerMessage = "Process \(pid) killed successfully!"
                     selectedProcess = nil
-                    processRecords.removeAll { $0.pid == pid }
-                    deletedPIDs.insert(pid)
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        processRecords.removeAll { $0.pid == pid }
+                        deletedPIDs.insert(pid)
+                    }
                     pidToKill = ""
+                } else if httpResponse.statusCode == 400 {
+                    killBannerMessage = L10n.key("agents.action.http400Offline")
+                    DiagnosticLogger.shared.appendWarning("HTTP 400 encountered while killing process \(pid). Agent may be offline.")
                 } else {
                     killBannerMessage = "Failed to kill process \(pid)."
                     DiagnosticLogger.shared.appendError("Failed to kill process \(pid), HTTP status \(httpResponse.statusCode).")
@@ -4743,6 +4756,7 @@ struct AgentSoftwareView: View {
                             )
                         }
                     }
+                    .animation(.easeInOut(duration: 0.25), value: filteredInventory.count)
                 }
             }
         }
@@ -4944,7 +4958,9 @@ struct AgentSoftwareView: View {
                 return items.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             }.value
 
-            inventory = sortedInventory
+            withAnimation(.easeInOut(duration: 0.25)) {
+                inventory = sortedInventory
+            }
         } catch {
             if let urlError = error as? URLError, urlError.code == .cancelled {
                 return
@@ -5386,6 +5402,7 @@ struct AgentNotesView: View {
                             )
                         }
                     }
+                    .animation(.easeInOut(duration: 0.25), value: notes.count)
                 }
             }
         }
@@ -5763,7 +5780,9 @@ struct AgentNotesView: View {
                 }
             }
             let decodedNotes = try JSONDecoder().decode([Note].self, from: data)
-            notes = decodedNotes
+            withAnimation(.easeInOut(duration: 0.25)) {
+                notes = decodedNotes
+            }
         } catch {
             errorMessage = error.localizedDescription
             DiagnosticLogger.shared.appendError("Error fetching notes: \(error.localizedDescription)")
@@ -5870,6 +5889,7 @@ struct AgentTasksView: View {
                             TaskTile(task: task, formattedRunTime: formattedDate(task.run_time_date), formattedCreated: formattedDate(task.created_time), truncate: truncatedResult)
                         }
                     }
+                    .animation(.easeInOut(duration: 0.25), value: tasks.count)
                 }
             }
         }
@@ -6021,7 +6041,9 @@ struct AgentTasksView: View {
             // Print raw data for debugging
             print("Raw data received: \(String(data: data, encoding: .utf8) ?? "nil")")
             let decodedTasks = try JSONDecoder().decode([AgentTask].self, from: data)
-            tasks = decodedTasks
+            withAnimation(.easeInOut(duration: 0.25)) {
+                tasks = decodedTasks
+            }
         } catch {
             errorMessage = error.localizedDescription
             DiagnosticLogger.shared.appendError("Error fetching tasks: \(error.localizedDescription)")
@@ -6223,6 +6245,7 @@ struct AgentChecksView: View {
                             )
                         }
                     }
+                    .animation(.easeInOut(duration: 0.25), value: checks.count)
                 }
             }
         }
@@ -6409,7 +6432,9 @@ struct AgentChecksView: View {
             print("Raw data received: \(String(data: data, encoding: .utf8) ?? "nil")")
             // Decode the JSON array of checks directly
             let decoded = try JSONDecoder().decode([AgentCheck].self, from: data)
-            checks = decoded
+            withAnimation(.easeInOut(duration: 0.25)) {
+                checks = decoded
+            }
         } catch {
             errorMessage = error.localizedDescription
             DiagnosticLogger.shared.appendError("Error fetching checks: \(error.localizedDescription)")

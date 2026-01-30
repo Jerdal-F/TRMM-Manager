@@ -5623,6 +5623,24 @@
         }
       }
     },
+    "keystore.empty" : {
+      "comment" : "Empty state message when no keys are stored.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No keys saved yet."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen nøkler lagret ennå."
+          }
+        }
+      }
+    },
     "keystore.showValues" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6780,6 +6798,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bla gjennom og administrer skript"
+          }
+        }
+      }
+    },
+    "scripts.loading" : {
+      "comment" : "Loading label for scripts.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading scripts…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laster skript…"
           }
         }
       }

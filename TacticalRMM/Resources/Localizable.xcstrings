@@ -81,6 +81,42 @@
         }
       }
     },
+    "agents.action.http400Offline" : {
+      "comment" : "Message shown when a command returns HTTP 400 because the agent is offline.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent is offline."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agenten er frakoblet."
+          }
+        }
+      }
+    },
+    "agents.action.successFormat" : {
+      "comment" : "Success message after issuing an agent action. Argument is the action label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ command sent."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@-kommando sendt."
+          }
+        }
+      }
+    },
     "agents.checks.count.multipleFormat" : {
       "comment" : "Pluralized count label for checks.",
       "extractionState" : "manual",
@@ -675,6 +711,24 @@
         }
       }
     },
+    "agents.customFields.empty" : {
+      "comment" : "Empty state message when an agent has no custom fields.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No custom fields available for this agent."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen egendefinerte felter tilgjengelig for denne agenten."
+          }
+        }
+      }
+    },
     "agents.fetch" : {
       "comment" : "Button label to fetch agents initially",
       "extractionState" : "manual",
@@ -1042,13 +1096,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Technician notes"
+            "value" : "Agent notes"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Teknikernotater"
+            "value" : "Agentnotater"
           }
         }
       }
@@ -1528,13 +1582,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Technician Notes"
+            "value" : "Agent Notes"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Teknikernotater"
+            "value" : "Agentnotater"
           }
         }
       }
@@ -1606,7 +1660,7 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dette vil starte enheten på nytt."
+            "value" : "Er du sikker at du vil starte enheten på nytt?"
           }
         }
       }
@@ -1642,7 +1696,7 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dette vil slå av enheten."
+            "value" : "Er du sikker at du vil slå av enheten?"
           }
         }
       }
@@ -1678,24 +1732,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Start på nytt"
-          }
-        }
-      }
-    },
-    "agents.action.http400Offline" : {
-      "comment" : "Message shown when a command returns HTTP 400 because the agent is offline.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agent is offline."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agenten er frakoblet."
           }
         }
       }
@@ -2618,6 +2654,150 @@
         }
       }
     },
+    "agents.sort.chipFormat" : {
+      "comment" : "Chip label for the current agent sort option. Argument is the sort label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sort: %1$@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorter: %1$@"
+          }
+        }
+      }
+    },
+    "agents.sort.linux" : {
+      "comment" : "Sort option for Linux agents.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linux"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linux"
+          }
+        }
+      }
+    },
+    "agents.sort.mac" : {
+      "comment" : "Sort option for macOS agents.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac"
+          }
+        }
+      }
+    },
+    "agents.sort.none" : {
+      "comment" : "Sort option for no filtering.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen"
+          }
+        }
+      }
+    },
+    "agents.sort.online" : {
+      "comment" : "Sort option for online agents.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Online Agents"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Online-agenter"
+          }
+        }
+      }
+    },
+    "agents.sort.picker" : {
+      "comment" : "Picker label for sorting agents.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sort agents"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorter agenter"
+          }
+        }
+      }
+    },
+    "agents.sort.publicIP" : {
+      "comment" : "Sort option for agents with public IPs.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Public IP"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offentlig IP"
+          }
+        }
+      }
+    },
+    "agents.sort.windows" : {
+      "comment" : "Sort option for Windows agents.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Windows"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Windows"
+          }
+        }
+      }
+    },
     "agents.status.dormant" : {
       "comment" : "Status label for dormant agents.",
       "extractionState" : "manual",
@@ -3272,22 +3452,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sjekker signeringstoken…"
-          }
-        }
-      }
-    },
-    "Clear App Data" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear App Data"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tøm appdata"
           }
         }
       }
@@ -4457,7 +4621,15 @@
       }
     },
     "CPU: %@" : {
+      "comment" : "CPU label with value.",
+      "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CPU: %@"
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4513,24 +4685,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gjeldende utgivelse"
-          }
-        }
-      }
-    },
-    "Custom Fields" : {
-      "comment" : "The title of the view.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Custom Fields"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Egendefinerte felt"
           }
         }
       }
@@ -5042,7 +5196,15 @@
       }
     },
     "Error: %@" : {
+      "comment" : "Generic error message with detail.",
+      "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error: %@"
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5140,6 +5302,60 @@
         }
       }
     },
+    "faceid.recovery.clearButton" : {
+      "comment" : "Button title to clear app data when Face ID recovery is required.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear App Data"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slett appdata"
+          }
+        }
+      }
+    },
+    "faceid.recovery.message" : {
+      "comment" : "Alert message shown when Face ID and passcode are disabled while app lock is enabled.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You've disabled both Face ID and device passcode while having the FaceID app lock enabled.\nFor security, you must clear all saved settings and API keys.\nTap \"Clear App Data\" to reset."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du har deaktivert både Face ID og enhetskode mens app-lås med FaceID er aktiv.\nAv sikkerhetsgrunner må du slette alle lagrede innstillinger og API-nøkler.\nTrykk \"Slett appdata\" for å tilbakestille."
+          }
+        }
+      }
+    },
+    "faceid.recovery.title" : {
+      "comment" : "Alert title shown when Face ID recovery is required.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Security Reset Required"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sikkerhetstilbakestilling kreves"
+          }
+        }
+      }
+    },
     "General" : {
       "comment" : "A button that navigates to the general settings section of the server settings view.",
       "extractionState" : "manual",
@@ -5176,7 +5392,15 @@
       }
     },
     "Installer ready: %@" : {
+      "comment" : "Installer ready label with filename.",
+      "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installer ready: %@"
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5451,7 +5675,15 @@
       }
     },
     "LAN: %@" : {
+      "comment" : "LAN label with IP value.",
+      "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LAN: %@"
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5461,7 +5693,15 @@
       }
     },
     "Last Seen: %@" : {
+      "comment" : "Last seen label with timestamp.",
+      "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last Seen: %@"
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5723,22 +5963,6 @@
         }
       }
     },
-    "No custom fields available for this agent." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No custom fields available for this agent."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ingen egendefinerte felt tilgjengelig for denne agenten."
-          }
-        }
-      }
-    },
     "No diagnostics log available." : {
       "comment" : "A message displayed when there is no diagnostics log to share.",
       "isCommentAutoGenerated" : true,
@@ -5822,7 +6046,15 @@
       }
     },
     "No scripts available. Create scripts in Tactical RMM first." : {
+      "comment" : "Empty state when no scripts exist.",
+      "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No scripts available. Create scripts in Tactical RMM first."
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5832,7 +6064,15 @@
       }
     },
     "No scripts match your search." : {
+      "comment" : "Empty state when script search has no results.",
+      "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No scripts match your search."
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5874,7 +6114,15 @@
       }
     },
     "Package URL: %@" : {
+      "comment" : "Package URL label with URL value.",
+      "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Package URL: %@"
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5918,7 +6166,22 @@
       }
     },
     "PID %lld" : {
-      "shouldTranslate" : false
+      "comment" : "Process ID label with integer value.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PID %lld"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PID %lld"
+          }
+        }
+      }
     },
     "Platform" : {
       "localizations" : {
@@ -5937,7 +6200,15 @@
       }
     },
     "Platforms: %@" : {
+      "comment" : "Platforms label with list value.",
+      "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Platforms: %@"
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5963,7 +6234,15 @@
       }
     },
     "Public: %@" : {
+      "comment" : "Public IP label with value.",
+      "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Public: %@"
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6469,6 +6748,78 @@
         }
       }
     },
+    "scripts.search.placeholder" : {
+      "comment" : "Placeholder text for searching scripts.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search scripts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk i skript"
+          }
+        }
+      }
+    },
+    "scripts.subtitle" : {
+      "comment" : "Subtitle for scripts list.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Browse and manage scripts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bla gjennom og administrer skript"
+          }
+        }
+      }
+    },
+    "scripts.title" : {
+      "comment" : "Title for scripts list.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scripts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skript"
+          }
+        }
+      }
+    },
+    "scripts.viewDetails" : {
+      "comment" : "Button label to view script details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View details"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis detaljer"
+          }
+        }
+      }
+    },
     "Search hostname, OS, or description" : {
       "localizations" : {
         "en" : {
@@ -6481,40 +6832,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Søk etter vertsnavn, OS eller beskrivelse"
-          }
-        }
-      }
-    },
-    "Search scripts" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search scripts"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Søk skript"
-          }
-        }
-      }
-    },
-    "Security Reset Required" : {
-      "comment" : "A title for an alert that appears when the user disables both Face ID and the device passcode while having the FaceID app lock enabled",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Security Reset Required"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sikkerhetstilbakestilling kreves"
           }
         }
       }
@@ -6850,7 +7167,7 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dette vil fjerne alle lagrede instanser og preferanser. Dette kan ikke angres."
+            "value" : "Er du sikker at du vil fjerne alle lagrede instanser og preferanser? Dette kan ikke angres."
           }
         }
       }
@@ -8865,13 +9182,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose how the app looks"
+            "value" : "Choose how the buttons looks"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Velg hvordan appen ser ut"
+            "value" : "Velg hvordan knappene ser ut"
           }
         }
       }
@@ -9073,27 +9390,19 @@
       }
     },
     "Site: %@" : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sted: %@"
-          }
-        }
-      }
-    },
-    "Sort agents" : {
+      "comment" : "Site label with value.",
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sort agents"
+            "value" : "Site: %@"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sorter agenter"
+            "value" : "Sted: %@"
           }
         }
       }
@@ -9172,7 +9481,22 @@
       }
     },
     "UID: %@" : {
-      "shouldTranslate" : false
+      "comment" : "Deployment UID label with value.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UID: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UID: %@"
+          }
+        }
+      }
     },
     "User Administration" : {
       "comment" : "A navigation link to the user administration section of the server settings.",
@@ -9193,7 +9517,15 @@
       }
     },
     "User: %@" : {
+      "comment" : "User label with value.",
+      "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "User: %@"
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9541,16 +9873,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Arbeidsstasjon"
-          }
-        }
-      }
-    },
-    "You've disabled both Face ID and device passcode while having the FaceID app lock enabled.\nFor security, you must clear all saved settings and API keys.\nTap \"Clear App Data\" to reset." : {
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Du har deaktivert både Face ID og enhetskode mens Face ID-app-lås er aktivert.\nAv sikkerhetshensyn må du slette alle lagrede innstillinger og API-nøkler.\nTrykk på «Tøm appdata» for å tilbakestille."
           }
         }
       }

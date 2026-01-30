@@ -185,10 +185,10 @@ struct ContentView: View {
                 }
                 .alert(isPresented: $showRecoveryAlert) {
                     Alert(
-                        title: Text("Security Reset Required"),
-                        message: Text("You've disabled both Face ID and device passcode while having the FaceID app lock enabled.\nFor security, you must clear all saved settings and API keys.\nTap \"Clear App Data\" to reset."),
+                        title: Text(L10n.key("faceid.recovery.title")),
+                        message: Text(L10n.key("faceid.recovery.message")),
                         dismissButton: .destructive(
-                            Text("Clear App Data"),
+                            Text(L10n.key("faceid.recovery.clearButton")),
                             action: clearAppData
                         )
                     )
@@ -401,7 +401,7 @@ struct ContentView: View {
                             .foregroundStyle(Color.white.opacity(0.7))
                         Spacer()
                         Menu {
-                            Picker("Sort agents", selection: $sortOption) {
+                            Picker(L10n.key("agents.sort.picker"), selection: $sortOption) {
                                 ForEach(AgentSortOption.allCases) { option in
                                     Text(option.title).tag(option)
                                 }
@@ -485,7 +485,7 @@ struct ContentView: View {
                         .progressViewStyle(.circular)
                         .tint(appTheme.accent)
                 } else if let error = errorMessage {
-                    Text("Error: \(error)")
+                    Text(L10n.format("Error: %@", error))
                         .foregroundStyle(Color.red)
                         .font(.footnote)
                 } else if filteredAgents.isEmpty {
@@ -1355,7 +1355,7 @@ struct InstallAgentView: View {
                 SectionHeader("Generate Installer", subtitle: "Download and share the agent", systemImage: "square.and.arrow.down")
 
                 if platform.responseType == .file, let installerURL {
-                    Text("Installer ready: \(installerURL.lastPathComponent)")
+                    Text(L10n.format("Installer ready: %@", installerURL.lastPathComponent))
                         .font(.footnote)
                         .foregroundStyle(Color.green)
                         .textSelection(.enabled)
@@ -1381,7 +1381,7 @@ struct InstallAgentView: View {
                     .frame(maxHeight: 180)
 
                     if let urlString = macDownloadURL, !urlString.isEmpty {
-                        Text("Package URL: \(urlString)")
+                        Text(L10n.format("Package URL: %@", urlString))
                             .font(.caption2)
                             .foregroundStyle(Color.white.opacity(0.65))
                             .textSelection(.enabled)
@@ -2205,6 +2205,7 @@ struct AgentDetailView: View {
                     NavigationLink {
                         AgentSoftwareView(
                             agentId: agent.agent_id,
+                            baseURL: baseURL,
                             apiKey: effectiveAPIKey,
                             operatingSystem: agent.operating_system
                         )
@@ -3074,11 +3075,11 @@ struct RunScriptView: View {
                     ProgressView("Loading scripts…")
                         .tint(appTheme.accent)
                 } else if let error = scriptsError {
-                    Text("Error: \(error)")
+                    Text(L10n.format("Error: %@", error))
                         .font(.footnote)
                         .foregroundStyle(Color.red)
                 } else if scripts.isEmpty {
-                    Text("No scripts available. Create scripts in Tactical RMM first.")
+                    Text(L10n.key("No scripts available. Create scripts in Tactical RMM first."))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else {
@@ -3329,7 +3330,7 @@ struct RunScriptView: View {
             Text("Shell: \(script.shell.uppercased()) • Timeout: \(script.defaultTimeout)s")
                 .font(.caption2)
                 .foregroundStyle(Color.white.opacity(0.55))
-            Text("Platforms: \(platformsLabel(for: script))")
+            Text(L10n.format("Platforms: %@", platformsLabel(for: script)))
                 .font(.caption2)
                 .foregroundStyle(Color.white.opacity(0.55))
         }
@@ -3815,7 +3816,7 @@ struct RunScriptView: View {
                 }
             }
         } catch {
-            statusMessage = "Error: \(error.localizedDescription)"
+            statusMessage = L10n.format("Error: %@", error.localizedDescription)
             DiagnosticLogger.shared.appendError("RunScript error: \(error.localizedDescription)")
         }
 
@@ -3983,7 +3984,7 @@ struct RunScriptView: View {
                         }
                         .scrollContentBackground(.hidden)
                         .listStyle(.insetGrouped)
-                        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search scripts")
+                        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: L10n.key("scripts.search.placeholder"))
                         .background(DarkGradientBackground().ignoresSafeArea())
                         .overlay {
                             if filteredScripts.isEmpty {
@@ -3991,7 +3992,7 @@ struct RunScriptView: View {
                                     Image(systemName: "magnifyingglass")
                                         .font(.title2)
                                         .foregroundStyle(appTheme.accent)
-                                    Text("No scripts match your search.")
+                                    Text(L10n.key("No scripts match your search."))
                                         .font(.footnote)
                                         .foregroundStyle(Color.white.opacity(0.7))
                                 }
@@ -4371,11 +4372,11 @@ struct AgentProcessesView: View {
                     Text(process.name)
                         .font(.headline)
                     Spacer()
-                    Text("PID \(process.pid)")
+                    Text(L10n.format("PID %lld", process.pid))
                         .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.7))
                 }
-                Text("User: \(process.username)")
+                Text(L10n.format("User: %@", process.username))
                     .font(.caption)
                     .foregroundStyle(Color.white.opacity(0.7))
                 HStack(spacing: 12) {
@@ -4509,7 +4510,7 @@ struct AgentProcessesView: View {
                 }
             }
         } catch {
-            killBannerMessage = "Error: \(error.localizedDescription)"
+            killBannerMessage = L10n.format("Error: %@", error.localizedDescription)
             DiagnosticLogger.shared.appendError("Error in kill process: \(error.localizedDescription)")
         }
     }
@@ -4518,7 +4519,6 @@ struct AgentProcessesView: View {
 // MARK: - AgentSoftwareView
 
 struct AgentSoftwareView: View {
-    private static let endpointRoot = "https://api.jerdal.no/software"
     private static let invalidDates: Set<String> = ["01-1-01", "0001-01-01", "1900-01-01"]
 
     private static let isoDateFormatterWithFractional: ISO8601DateFormatter = {
@@ -4560,6 +4560,7 @@ struct AgentSoftwareView: View {
     }()
 
     let agentId: String
+    let baseURL: String
     let apiKey: String
     let operatingSystem: String
 
@@ -4582,6 +4583,10 @@ struct AgentSoftwareView: View {
 
     private var isWindowsAgent: Bool {
         operatingSystem.lowercased().contains("windows")
+    }
+
+    private var softwareEndpointRoot: String {
+        baseURL.removingTrailingSlash() + "/software"
     }
 
     var effectiveAPIKey: String {
@@ -4790,7 +4795,7 @@ struct AgentSoftwareView: View {
             return
         }
 
-        guard let url = URL(string: "\(Self.endpointRoot)/\(trimmedAgent)/uninstall/") else {
+        guard let url = URL(string: "\(softwareEndpointRoot)/\(trimmedAgent)/uninstall/") else {
             uninstallSheetError = "Invalid uninstall endpoint."
             DiagnosticLogger.shared.appendError("Invalid uninstall URL constructed for agent \(trimmedAgent).")
             return
@@ -4917,7 +4922,7 @@ struct AgentSoftwareView: View {
             return
         }
 
-        guard let url = URL(string: "\(Self.endpointRoot)/\(trimmedAgent)/") else {
+        guard let url = URL(string: "\(softwareEndpointRoot)/\(trimmedAgent)/") else {
             errorMessage = "Invalid endpoint."
             DiagnosticLogger.shared.appendError("Invalid software inventory URL constructed for agent \(trimmedAgent).")
             return
@@ -5136,15 +5141,13 @@ struct AgentSoftwareView: View {
                         }
                     }
                     Spacer()
-                    HStack(spacing: 8) {
-                        if let versionLabel {
-                            pill(text: versionLabel, color: appTheme.accent)
-                        }
-                        uninstallButton
-                    }
+                    uninstallButton
                 }
 
                 HStack(spacing: 10) {
+                    if let versionLabel {
+                        pill(text: versionLabel, color: appTheme.accent)
+                    }
                     if let sizeLabel {
                         pill(text: sizeLabel, color: Color.orange)
                     }
@@ -5217,6 +5220,7 @@ struct AgentSoftwareView: View {
                     .multilineTextAlignment(.leading)
             }
             .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color.white.opacity(0.06))
@@ -6069,20 +6073,20 @@ struct AgentCustomFieldsView: View {
                 .padding(.vertical, 28)
             }
         }
-        .navigationTitle("Custom Fields")
+        .navigationTitle(L10n.key("agents.management.customFields.title"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
     private var headerCard: some View {
         GlassCard {
-            SectionHeader("Custom Fields", subtitle: headerSubtitle, systemImage: "slider.horizontal.3")
+            SectionHeader(L10n.key("agents.management.customFields.title"), subtitle: headerSubtitle, systemImage: "slider.horizontal.3")
         }
     }
 
     private var fieldsCard: some View {
         GlassCard {
             if customFields.isEmpty {
-                Text("No custom fields available for this agent.")
+                Text(L10n.key("agents.customFields.empty"))
                     .font(.footnote)
                     .foregroundStyle(Color.white.opacity(0.65))
                     .frame(maxWidth: .infinity, alignment: .leading)

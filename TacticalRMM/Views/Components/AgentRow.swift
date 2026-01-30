@@ -65,26 +65,26 @@ struct AgentRow: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 if !agent.cpu_model.isEmpty {
-                    Text("CPU: \(agent.cpu_model.joined(separator: ", "))")
+                    Text(L10n.format("CPU: %@", agent.cpu_model.joined(separator: ", ")))
                         .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.7))
                 }
 
-                Text("Site: \(hideSensitiveInfo ? "••••••" : (agent.site_name ?? "Not available"))")
+                Text(L10n.format("Site: %@", hideSensitiveInfo ? "••••••" : (agent.site_name ?? "Not available")))
                     .font(.caption)
                     .foregroundStyle(Color.white.opacity(0.7))
 
-                Text("LAN: \(lanIPText)")
+                Text(L10n.format("LAN: %@", lanIPText))
                     .font(.caption)
                     .foregroundStyle(Color.white.opacity(0.7))
 
-                Text("Public: \(publicIPText)")
+                Text(L10n.format("Public: %@", publicIPText))
                     .font(.caption)
                     .foregroundStyle(Color.white.opacity(0.7))
             }
 
             if let lastSeen = agent.last_seen, !lastSeen.isEmpty {
-                Text("Last Seen: \(lastSeenDisplay)")
+                Text(L10n.format("Last Seen: %@", lastSeenDisplay))
                     .font(.caption2)
                     .foregroundStyle(Color.white.opacity(0.55))
             }

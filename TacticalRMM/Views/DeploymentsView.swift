@@ -422,7 +422,7 @@ struct DeploymentsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(deployment.displayTitle)
                         .font(.headline)
-                    Text("UID: \(deployment.uid)")
+                    Text(L10n.format("UID: %@", deployment.uid))
                         .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.65))
                 }

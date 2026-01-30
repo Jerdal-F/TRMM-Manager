@@ -12,6 +12,7 @@ struct DonationSheet: View {
     ]
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appTheme) private var appTheme
     @State private var products: [Product] = []
     @State private var isLoading = false
     @State private var statusMessage: String?
@@ -33,7 +34,7 @@ struct DonationSheet: View {
 
                     if isLoading {
                         ProgressView("Loading donation options…")
-                            .tint(.cyan)
+                            .tint(appTheme.accent)
                     } else if products.isEmpty {
                         Text("Donation options are currently unavailable. Check back soon.")
                             .font(.footnote)
@@ -57,7 +58,7 @@ struct DonationSheet: View {
                                     .padding(.vertical, 18)
                                 }
                                 .buttonStyle(.borderedProminent)
-                                .tint(.cyan)
+                                .tint(appTheme.accent)
                                 .buttonBorderShape(.roundedRectangle(radius: 14))
                                 .disabled(isPurchasing)
                             }

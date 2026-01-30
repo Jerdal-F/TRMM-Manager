@@ -12,26 +12,17 @@ enum AgentSortOption: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .none: return "None"
-        case .windows: return "Windows"
-        case .linux: return "Linux"
-        case .mac: return "Mac"
-        case .publicIP: return "Public IP"
-        case .online: return "Online Agents"
+        case .none: return L10n.key("agents.sort.none")
+        case .windows: return L10n.key("agents.sort.windows")
+        case .linux: return L10n.key("agents.sort.linux")
+        case .mac: return L10n.key("agents.sort.mac")
+        case .publicIP: return L10n.key("agents.sort.publicIP")
+        case .online: return L10n.key("agents.sort.online")
         }
     }
 
     var chipLabel: String {
-        switch self {
-        case .none:
-            return "Sort: None"
-        case .windows, .linux, .mac:
-            return "Sort: \(title)"
-        case .publicIP:
-            return "Sort: Public IP"
-        case .online:
-            return "Sort: Online"
-        }
+        L10n.format("agents.sort.chipFormat", title)
     }
 
     func matches(_ agent: Agent) -> Bool {

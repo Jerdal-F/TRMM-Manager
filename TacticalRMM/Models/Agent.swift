@@ -112,4 +112,21 @@ extension Agent {
     var isOfflineStatus: Bool {
         ["offline", "overdue", "dormant"].contains(normalizedStatus)
     }
+
+    var statusDisplayLabel: String {
+        switch normalizedStatus {
+        case "online":
+            return L10n.key("agents.status.online")
+        case "offline":
+            return L10n.key("agents.status.offline")
+        case "overdue":
+            return L10n.key("agents.status.overdue")
+        case "dormant":
+            return L10n.key("agents.status.dormant")
+        case "", "unknown":
+            return L10n.key("agents.status.unknown")
+        default:
+            return status.trimmingCharacters(in: .whitespacesAndNewlines).capitalized
+        }
+    }
 }

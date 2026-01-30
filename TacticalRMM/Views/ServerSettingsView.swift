@@ -19,12 +19,12 @@ struct ServerSettingsView: View {
                 VStack(spacing: 24) {
                     GlassCard {
                         VStack(alignment: .leading, spacing: 18) {
-                            SectionHeader("Administration", subtitle: "Server level tools", systemImage: "person.3.sequence.fill")
+                            SectionHeader(L10n.key("serverSettings.administration.title"), subtitle: L10n.key("serverSettings.administration.subtitle"), systemImage: "person.3.sequence.fill")
 
                             Button {
                                 showUserAdministration = true
                             } label: {
-                                Label("User Administration", systemImage: "person.3.fill")
+                                Label(L10n.key("User Administration"), systemImage: "person.3.fill")
                                     .frame(maxWidth: .infinity)
                             }
                             .primaryButton()
@@ -33,12 +33,12 @@ struct ServerSettingsView: View {
 
                     GlassCard {
                         VStack(alignment: .leading, spacing: 18) {
-                            SectionHeader("Agents", subtitle: "Manage installers and tooling", systemImage: "desktopcomputer")
+                            SectionHeader(L10n.key("serverSettings.agents.title"), subtitle: L10n.key("serverSettings.agents.subtitle"), systemImage: "desktopcomputer")
 
                             Button {
                                 showDeployments = true
                             } label: {
-                                Label("Deployments", systemImage: "shippingbox.fill")
+                                Label(L10n.key("Deployments"), systemImage: "shippingbox.fill")
                                     .frame(maxWidth: .infinity)
                             }
                             .primaryButton()
@@ -49,7 +49,7 @@ struct ServerSettingsView: View {
                                     apiKey: installAPIKey
                                 )
                             } label: {
-                                Label("Install Agent", systemImage: "square.and.arrow.down")
+                                Label(L10n.key("Install Agent"), systemImage: "square.and.arrow.down")
                                     .frame(maxWidth: .infinity)
                             }
                             .primaryButton()
@@ -58,12 +58,12 @@ struct ServerSettingsView: View {
 
                     GlassCard {
                         VStack(alignment: .leading, spacing: 18) {
-                            SectionHeader("Global Settings", subtitle: "Server-wide configuration", systemImage: "globe")
+                            SectionHeader(L10n.key("serverSettings.global.title"), subtitle: L10n.key("serverSettings.global.subtitle"), systemImage: "globe")
 
                             Button {
                                 showGeneralSettings = true
                             } label: {
-                                Label("General", systemImage: "gearshape")
+                                Label(L10n.key("General"), systemImage: "gearshape")
                                     .frame(maxWidth: .infinity)
                             }
                             .primaryButton()
@@ -71,7 +71,7 @@ struct ServerSettingsView: View {
                             Button {
                                 showEmailSettings = true
                             } label: {
-                                Label("Email Alerts", systemImage: "envelope")
+                                Label(L10n.key("Email Alerts"), systemImage: "envelope")
                                     .frame(maxWidth: .infinity)
                             }
                             .primaryButton()
@@ -79,7 +79,7 @@ struct ServerSettingsView: View {
                             Button {
                                 showSMSSettings = true
                             } label: {
-                                Label("SMS Alerts", systemImage: "message")
+                                Label(L10n.key("SMS Alerts"), systemImage: "message")
                                     .frame(maxWidth: .infinity)
                             }
                             .primaryButton()
@@ -87,7 +87,7 @@ struct ServerSettingsView: View {
                             Button {
                                 showKeyStore = true
                             } label: {
-                                Label("Key Store", systemImage: "key.fill")
+                                Label(L10n.key("Key Store"), systemImage: "key.fill")
                                     .frame(maxWidth: .infinity)
                             }
                             .primaryButton()
@@ -95,7 +95,7 @@ struct ServerSettingsView: View {
                             Button {
                                 showCodeSigning = true
                             } label: {
-                                Label("Code Signing", systemImage: "checkmark.seal")
+                                Label(L10n.key("Code Signing"), systemImage: "checkmark.seal")
                                     .frame(maxWidth: .infinity)
                             }
                             .primaryButton()
@@ -103,7 +103,7 @@ struct ServerSettingsView: View {
                             Button {
                                 showScriptManager = true
                             } label: {
-                                Label("Script Manager", systemImage: "terminal")
+                                Label(L10n.key("Script Manager"), systemImage: "terminal")
                                     .frame(maxWidth: .infinity)
                             }
                             .primaryButton()

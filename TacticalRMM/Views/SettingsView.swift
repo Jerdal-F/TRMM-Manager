@@ -53,9 +53,9 @@ struct SettingsView: View {
     }
 
     private var instanceSubtitle: String {
-        if settingsList.isEmpty { return "No active instance" }
-        if let active = activeSettings { return "Active: \(active.displayName)" }
-        return "Select an instance"
+        if settingsList.isEmpty { return L10n.key("settings.instances.subtitle.none") }
+        if let active = activeSettings { return L10n.format("settings.instances.subtitle.active", active.displayName) }
+        return L10n.key("settings.instances.subtitle.select")
     }
 
     private var selectedTheme: AppTheme {
@@ -80,9 +80,9 @@ struct SettingsView: View {
     private var timestampFormatChoices: [TimestampFormatChoice] {
         let devicePattern = DateConstants.devicePreferredLastSeenFormat()
         return [
-            TimestampFormatChoice(id: "device", title: "Match Device Locale", storedValue: "", detail: devicePattern),
-            TimestampFormatChoice(id: "fallback", title: "24-hour · Day/Month", storedValue: DateConstants.fallbackLastSeenFormat, detail: DateConstants.fallbackLastSeenFormat),
-            TimestampFormatChoice(id: "us12", title: "12-hour · Month/Day", storedValue: "hh:mm a MM/dd/yyyy", detail: "HH:MM a MM/dd/yyyy")
+            TimestampFormatChoice(id: "device", title: L10n.key("settings.timestamp.choice.device"), storedValue: "", detail: devicePattern),
+            TimestampFormatChoice(id: "fallback", title: L10n.key("settings.timestamp.choice.fallback"), storedValue: DateConstants.fallbackLastSeenFormat, detail: DateConstants.fallbackLastSeenFormat),
+            TimestampFormatChoice(id: "us12", title: L10n.key("settings.timestamp.choice.us12"), storedValue: "hh:mm a MM/dd/yyyy", detail: "HH:MM a MM/dd/yyyy")
         ]
     }
     
@@ -128,10 +128,10 @@ struct SettingsView: View {
                     .padding(.vertical, 28)
                 }
             }
-            .navigationTitle("Settings")
+            .navigationTitle(L10n.key("settings.title"))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L10n.key("common.done")) { dismiss() }
                         .foregroundStyle(appTheme.accent)
                 }
             }
@@ -152,31 +152,31 @@ struct SettingsView: View {
             .sheet(isPresented: $showReleaseNotes) {
                 ReleaseNotesView()
             }
-            .alert("Delete All App Data?", isPresented: $showResetConfirmation) {
-                Button("Delete", role: .destructive) {
+            .alert(L10n.key("settings.alert.deleteAllTitle"), isPresented: $showResetConfirmation) {
+                Button(L10n.key("common.delete"), role: .destructive) {
                     NotificationCenter.default.post(name: .init("clearAppData"), object: nil)
                     dismiss()
                 }
-                Button("Cancel", role: .cancel) {}
+                Button(L10n.key("common.cancel"), role: .cancel) {}
             } message: {
-                Text("This will delete all saved settings, API keys, and diagnostics logs. This action cannot be undone.")
+                Text(L10n.key("settings.alert.deleteAllMessage"))
             }
-            .alert("Delete Instance?", isPresented: Binding(
+            .alert(L10n.key("settings.alert.deleteInstanceTitle"), isPresented: Binding(
                 get: { pendingDeleteInstance != nil },
                 set: { if !$0 { pendingDeleteInstance = nil } }
             )) {
-                Button("Delete", role: .destructive) {
+                Button(L10n.key("common.delete"), role: .destructive) {
                     if let instance = pendingDeleteInstance {
                         deleteInstance(instance)
                     }
                     pendingDeleteInstance = nil
                 }
-                Button("Cancel", role: .cancel) {
+                Button(L10n.key("common.cancel"), role: .cancel) {
                     pendingDeleteInstance = nil
                 }
             } message: {
                 if let instance = pendingDeleteInstance {
-                    Text("Remove \(instance.displayName) from TacticalRMM Manager? This will delete the stored API key.")
+                    Text(L10n.format("settings.alert.deleteInstanceMessage", instance.displayName))
                 }
             }
         }
@@ -185,10 +185,10 @@ struct SettingsView: View {
     private var instancesCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 18) {
-                SectionHeader("Instances", subtitle: instanceSubtitle, systemImage: "server.rack")
+                SectionHeader(L10n.key("settings.instances.title"), subtitle: instanceSubtitle, systemImage: "server.rack")
 
                 if settingsList.isEmpty {
-                    Text("No instances configured yet. Add one below to get started.")
+                    Text(L10n.key("settings.instances.empty"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else {
@@ -206,7 +206,7 @@ struct SettingsView: View {
                     addInstanceError = nil
                     showAddInstanceSheet = true
                 } label: {
-                    Label("Add Instance", systemImage: "plus.circle.fill")
+                    Label(L10n.key("settings.instances.add"), systemImage: "plus.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .primaryButton()
@@ -217,12 +217,12 @@ struct SettingsView: View {
     private var preferencesCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 18) {
-                SectionHeader("Preferences", subtitle: "Applies to this device", systemImage: "gearshape")
+                SectionHeader(L10n.key("settings.preferences.title"), subtitle: L10n.key("settings.preferences.subtitle"), systemImage: "gearshape")
 
-                settingsToggle(title: "Hide Sensitive Information", isOn: $hideSensitiveInfo)
+                settingsToggle(title: L10n.key("settings.hideSensitive"), isOn: $hideSensitiveInfo)
 
                 Toggle(isOn: $useFaceID) {
-                    Text("Face ID App Lock")
+                    Text(L10n.key("settings.faceIDLock"))
                         .font(.callout)
                         .foregroundStyle(Color.white)
                 }
@@ -231,13 +231,13 @@ struct SettingsView: View {
                 .opacity(authAvailable ? 1 : 0.4)
 
                 if !authAvailable {
-                    Text("Requires a device passcode or biometrics enabling.")
+                    Text(L10n.key("settings.faceIDRequirement"))
                         .font(.caption2)
                         .foregroundStyle(Color.white.opacity(0.6))
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Accent Theme")
+                    Text(L10n.key("settings.theme.title"))
                         .font(.callout)
                         .foregroundStyle(Color.white)
 
@@ -264,7 +264,7 @@ struct SettingsView: View {
                                 Text(selectedTheme.displayName)
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(Color.white)
-                                Text("Applies across the app")
+                                Text(L10n.key("settings.theme.detail"))
                                     .font(.caption)
                                     .foregroundStyle(Color.white.opacity(0.6))
                             }
@@ -290,7 +290,7 @@ struct SettingsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Background Style")
+                    Text(L10n.key("settings.background.title"))
                         .font(.callout)
                         .foregroundStyle(Color.white)
 
@@ -330,7 +330,7 @@ struct SettingsView: View {
                                 Text(selectedBackground.displayName)
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(Color.white)
-                                Text("Applies across all screens")
+                                Text(L10n.key("settings.background.detail"))
                                     .font(.caption)
                                     .foregroundStyle(Color.white.opacity(0.6))
                             }
@@ -356,7 +356,7 @@ struct SettingsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Timestamp Format")
+                    Text(L10n.key("settings.timestamp.title"))
                         .font(.callout)
                         .foregroundStyle(Color.white)
 
@@ -429,14 +429,14 @@ struct SettingsView: View {
     private var resourcesCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Resources", subtitle: "Helpful references", systemImage: "book")
+                SectionHeader(L10n.key("settings.resources.title"), subtitle: L10n.key("settings.resources.subtitle"), systemImage: "book")
 
                 Button {
                     if let url = URL(string: "https://trmm-manager.jerdal.no") {
                         UIApplication.shared.open(url)
                     }
                 } label: {
-                    Label("Open Project Guide", systemImage: "globe")
+                    Label(L10n.key("settings.resources.guide"), systemImage: "globe")
                         .frame(maxWidth: .infinity)
                 }
                 .secondaryButton()
@@ -444,7 +444,7 @@ struct SettingsView: View {
                 Button {
                     showReleaseNotes = true
                 } label: {
-                    Label("What's New", systemImage: "sparkles")
+                    Label(L10n.key("settings.resources.whatsNew"), systemImage: "sparkles")
                         .frame(maxWidth: .infinity)
                 }
                 .secondaryButton()
@@ -452,7 +452,7 @@ struct SettingsView: View {
                 Button {
                     showDonationSheet = true
                 } label: {
-                    Label("Donation", systemImage: "heart.fill")
+                    Label(L10n.key("settings.resources.donation"), systemImage: "heart.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .secondaryButton()
@@ -463,12 +463,12 @@ struct SettingsView: View {
     private var dangerCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader("Danger Zone", subtitle: "Irreversible actions", systemImage: "exclamationmark.triangle")
+                SectionHeader(L10n.key("settings.danger.title"), subtitle: L10n.key("settings.danger.subtitle"), systemImage: "exclamationmark.triangle")
 
                 Button(role: .destructive) {
                     showResetConfirmation = true
                 } label: {
-                    Label("Delete App Data", systemImage: "trash")
+                    Label(L10n.key("settings.danger.deleteData"), systemImage: "trash")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -479,7 +479,7 @@ struct SettingsView: View {
     }
 
     private var footer: some View {
-        Text("This app is an independent project and is not affiliated with Tactical RMM or AmidaWare.")
+        Text(L10n.key("settings.footer"))
             .font(.footnote)
             .foregroundStyle(Color.white.opacity(0.55))
             .multilineTextAlignment(.center)
@@ -496,7 +496,7 @@ struct SettingsView: View {
                     Text(resolved.displayName)
                         .font(.headline)
                     if isActive {
-                        Text("ACTIVE")
+                        Text(L10n.key("settings.instances.activeBadge"))
                             .font(.caption2.weight(.bold))
                             .padding(.vertical, 4)
                             .padding(.horizontal, 8)
@@ -519,11 +519,11 @@ struct SettingsView: View {
                     Button {
                         setActiveInstance(resolved, triggerReload: true)
                     } label: {
-                        Label("Set Active", systemImage: "checkmark.circle")
+                        Label(L10n.key("settings.instances.setActive"), systemImage: "checkmark.circle")
                     }
                 }
 
-                Button("Edit", systemImage: "pencil") {
+                Button(L10n.key("common.edit"), systemImage: "pencil") {
                     beginEditing(resolved)
                 }
 
@@ -531,7 +531,7 @@ struct SettingsView: View {
                     Button(role: .destructive) {
                         pendingDeleteInstance = resolved
                     } label: {
-                        Label("Delete Instance", systemImage: "trash")
+                        Label(L10n.key("settings.instances.delete"), systemImage: "trash")
                     }
                 }
             } label: {
@@ -558,17 +558,17 @@ struct SettingsView: View {
                 DarkGradientBackground()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        SectionHeader("New Instance", subtitle: "Enter connection details", systemImage: "server.rack")
+                        SectionHeader(L10n.key("settings.add.title"), subtitle: L10n.key("settings.add.subtitle"), systemImage: "server.rack")
 
-                        inputField(title: "Display Name", placeholder: "Server Name", text: $newInstanceName)
+                        inputField(title: L10n.key("settings.field.displayName"), placeholder: L10n.key("settings.placeholder.serverName"), text: $newInstanceName)
                             .focused($addInstanceField, equals: .name)
 
-                        inputField(title: "Base URL", placeholder: "https://api.example.com", text: $newInstanceURL)
+                        inputField(title: L10n.key("settings.field.baseURL"), placeholder: L10n.key("settings.placeholder.exampleURL"), text: $newInstanceURL)
                             .platformKeyboardType(.URL)
                             .textInputAutocapitalization(.never)
                             .focused($addInstanceField, equals: .url)
 
-                        inputField(title: "API Key", placeholder: "Paste API key", text: $newInstanceKey, isSecure: true)
+                        inputField(title: L10n.key("settings.field.apiKey"), placeholder: L10n.key("settings.placeholder.apiKey"), text: $newInstanceKey, isSecure: true)
                             .focused($addInstanceField, equals: .key)
 
                         if let addInstanceError {
@@ -580,14 +580,14 @@ struct SettingsView: View {
                     .padding(24)
                 }
             }
-            .navigationTitle("Add Instance")
+            .navigationTitle(L10n.key("settings.add.navigationTitle", comment: "Add instance navigation title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showAddInstanceSheet = false }
+                    Button(L10n.key("common.cancel")) { showAddInstanceSheet = false }
                         .foregroundStyle(appTheme.accent)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { createInstance() }
+                    Button(L10n.key("common.save")) { createInstance() }
                         .foregroundStyle(appTheme.accent)
                         .disabled(newInstanceName.trimmingCharacters(in: .whitespaces).isEmpty ||
                                   newInstanceURL.trimmingCharacters(in: .whitespaces).isEmpty ||
@@ -598,7 +598,7 @@ struct SettingsView: View {
                 addInstanceField = .name
             }
             .alert(addInstanceAlertTitle, isPresented: $showAddInstanceAlert) {
-                Button("OK", role: .cancel) {
+                Button(L10n.key("common.ok"), role: .cancel) {
                     DispatchQueue.main.async {
                         addInstanceField = .url
                     }
@@ -617,17 +617,17 @@ struct SettingsView: View {
                 DarkGradientBackground()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        SectionHeader("Edit Instance", subtitle: settings.displayName, systemImage: "pencil" )
+                        SectionHeader(L10n.key("settings.edit.title"), subtitle: settings.displayName, systemImage: "pencil" )
 
-                        inputField(title: "Display Name", placeholder: settings.displayName, text: $editInstanceName)
+                        inputField(title: L10n.key("settings.field.displayName"), placeholder: settings.displayName, text: $editInstanceName)
                             .focused($editInstanceField, equals: .name)
 
-                        inputField(title: "Base URL", placeholder: "https://api.example.com", text: $editInstanceURL)
+                        inputField(title: L10n.key("settings.field.baseURL"), placeholder: L10n.key("settings.placeholder.exampleURL"), text: $editInstanceURL)
                             .platformKeyboardType(.URL)
                             .textInputAutocapitalization(.never)
                             .focused($editInstanceField, equals: .url)
 
-                        inputField(title: "API Key", placeholder: "Paste API key", text: $editInstanceKey, isSecure: true)
+                        inputField(title: L10n.key("settings.field.apiKey"), placeholder: L10n.key("settings.placeholder.apiKey"), text: $editInstanceKey, isSecure: true)
                             .focused($editInstanceField, equals: .key)
 
                         if let editInstanceError {
@@ -639,14 +639,14 @@ struct SettingsView: View {
                     .padding(24)
                 }
             }
-            .navigationTitle("Edit Instance")
+            .navigationTitle(L10n.key("settings.edit.navigationTitle", comment: "Edit instance navigation title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { cancelEditInstance() }
+                    Button(L10n.key("common.cancel")) { cancelEditInstance() }
                         .foregroundStyle(appTheme.accent)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { saveEditedInstance() }
+                    Button(L10n.key("common.save")) { saveEditedInstance() }
                         .foregroundStyle(appTheme.accent)
                         .disabled(editInstanceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                                   editInstanceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
@@ -744,27 +744,27 @@ struct SettingsView: View {
         let trimmedKey = newInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmedName.isEmpty else {
-            addInstanceError = "Provide a display name."
+            addInstanceError = L10n.key("settings.validation.displayName")
             addInstanceField = .name
             return
         }
         guard !trimmedURL.isEmpty else {
-            addInstanceError = "Provide the base URL."
+            addInstanceError = L10n.key("settings.validation.baseURL")
             addInstanceField = .url
             return
         }
         let lowerURL = trimmedURL.lowercased()
         if lowerURL.contains("http://") {
             addInstanceError = nil
-            addInstanceAlertTitle = "Secure Connection Required"
-            addInstanceAlertMessage = "For security reasons TacticalRMM Manager only supports HTTPS instances. Update the URL to use https:// before saving."
+            addInstanceAlertTitle = L10n.key("settings.add.alert.secureTitle")
+            addInstanceAlertMessage = L10n.key("settings.add.alert.secureMessage")
             addInstanceField = nil
             UIApplication.shared.dismissKeyboard()
             showAddInstanceAlert = true
             return
         }
         guard !trimmedKey.isEmpty else {
-            addInstanceError = "Provide the API key."
+            addInstanceError = L10n.key("settings.validation.apiKey")
             addInstanceField = .key
             return
         }
@@ -773,8 +773,8 @@ struct SettingsView: View {
         if !trimmedURL.isDemoEntry {
             guard let components = URLComponents(string: normalizedURL), let host = components.host, host.isValidDomainName else {
                 addInstanceError = nil
-                addInstanceAlertTitle = "Invalid Domain"
-                addInstanceAlertMessage = "Enter a valid domain such as api.example.com."
+                addInstanceAlertTitle = L10n.key("settings.add.alert.invalidDomainTitle")
+                addInstanceAlertMessage = L10n.key("settings.add.alert.invalidDomainMessage")
                 addInstanceField = nil
                 UIApplication.shared.dismissKeyboard()
                 showAddInstanceAlert = true
@@ -794,7 +794,7 @@ struct SettingsView: View {
             showAddInstanceSheet = false
             NotificationCenter.default.post(name: .init("reloadAgents"), object: newSettings)
         } catch {
-            addInstanceError = "Failed to save: \(error.localizedDescription)"
+            addInstanceError = L10n.format("common.failedToSaveFormat", error.localizedDescription)
         }
     }
 
@@ -840,17 +840,17 @@ struct SettingsView: View {
         let trimmedKey = editInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmedName.isEmpty else {
-            editInstanceError = "Provide a display name."
+            editInstanceError = L10n.key("settings.validation.displayName")
             editInstanceField = .name
             return
         }
         guard !trimmedURL.isEmpty else {
-            editInstanceError = "Provide the base URL."
+            editInstanceError = L10n.key("settings.validation.baseURL")
             editInstanceField = .url
             return
         }
         guard !trimmedKey.isEmpty else {
-            editInstanceError = "Provide the API key."
+            editInstanceError = L10n.key("settings.validation.apiKey")
             editInstanceField = .key
             return
         }
@@ -858,7 +858,7 @@ struct SettingsView: View {
         let normalizedURL = normalizeBaseURL(trimmedURL)
         if !trimmedURL.isDemoEntry {
             guard let components = URLComponents(string: normalizedURL), let host = components.host, host.isValidDomainName else {
-                editInstanceError = "Enter a valid domain (example.com)."
+                editInstanceError = L10n.key("settings.validation.invalidDomain")
                 editInstanceField = .url
                 return
             }
@@ -878,7 +878,7 @@ struct SettingsView: View {
             NotificationCenter.default.post(name: .init("reloadAgents"), object: resolved)
             cancelEditInstance()
         } catch {
-            editInstanceError = "Failed to save: \(error.localizedDescription)"
+            editInstanceError = L10n.format("common.failedToSaveFormat", error.localizedDescription)
         }
     }
 }

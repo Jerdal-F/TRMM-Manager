@@ -47,7 +47,7 @@ struct UserAdministrationView: View {
 
                     GlassCard {
                         VStack(alignment: .leading, spacing: 18) {
-                            SectionHeader("Users", subtitle: "Manage accounts for this instance", systemImage: "person.3.fill")
+                            SectionHeader(L10n.key("users.section.title"), subtitle: L10n.key("users.section.subtitle"), systemImage: "person.3.fill")
 
                             if isLoading && users.isEmpty {
                                 HStack {
@@ -181,26 +181,26 @@ struct UserAdministrationView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        SectionHeader("Edit User", subtitle: user.displayName, systemImage: "pencil")
+                        SectionHeader(L10n.key("users.edit.title"), subtitle: user.displayName, systemImage: "pencil")
 
-                        editInput(title: "Username", text: $editUsername)
+                        editInput(title: L10n.key("users.field.username"), text: $editUsername)
 
-                        editInput(title: "First Name", text: $editFirstName, capitalization: .words)
+                        editInput(title: L10n.key("users.field.firstName"), text: $editFirstName, capitalization: .words)
 
-                        editInput(title: "Last Name", text: $editLastName, capitalization: .words)
+                        editInput(title: L10n.key("users.field.lastName"), text: $editLastName, capitalization: .words)
 
-                        editInput(title: "Email", text: $editEmail, keyboard: .emailAddress)
+                        editInput(title: L10n.key("users.field.email"), text: $editEmail, keyboard: .emailAddress)
 
                         VStack(alignment: .leading, spacing: 12) {
                             Toggle(isOn: $editIsActive) {
-                                Text("Active User")
+                                Text(L10n.key("users.toggle.activeUser"))
                                     .font(.callout)
                                     .foregroundStyle(Color.white)
                             }
                             .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
 
                             Toggle(isOn: $editBlockDashboard) {
-                                Text("Block Dashboard Login")
+                                Text(L10n.key("users.toggle.blockDashboard"))
                                     .font(.callout)
                                     .foregroundStyle(Color.white)
                             }
@@ -225,7 +225,7 @@ struct UserAdministrationView: View {
                         .cornerRadius(12)
                 }
             }
-            .navigationTitle("Edit User")
+            .navigationTitle(L10n.key("users.edit.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -293,7 +293,7 @@ struct UserAdministrationView: View {
                     .font(.system(size: 48, weight: .semibold))
                     .foregroundStyle(isError ? Color.red : Color.green)
 
-                Text(isError ? "Reset Failed" : "Reset Complete")
+                Text(isError ? L10n.key("Reset Failed") : L10n.key("Reset Complete"))
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.white)
 
@@ -309,7 +309,7 @@ struct UserAdministrationView: View {
                         reset2FAMessage = nil
                     }
                 } label: {
-                    Text("Got it")
+                    Text(L10n.key("Got it"))
                         .frame(maxWidth: .infinity)
                 }
                 .primaryButton()
@@ -335,7 +335,7 @@ struct UserAdministrationView: View {
                 DarkGradientBackground()
 
                 VStack(alignment: .leading, spacing: 20) {
-                    SectionHeader("Reset Password", subtitle: user.displayName, systemImage: "key")
+                    SectionHeader(L10n.key("Reset Password"), subtitle: user.displayName, systemImage: "key")
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("NEW PASSWORD")
@@ -374,7 +374,7 @@ struct UserAdministrationView: View {
                         .cornerRadius(12)
                 }
             }
-            .navigationTitle("Reset Password")
+            .navigationTitle(L10n.key("Reset Password"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -407,7 +407,7 @@ struct UserAdministrationView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        SectionHeader("Active Sessions", subtitle: user.displayName, systemImage: "person.badge.clock")
+                        SectionHeader(L10n.key("Active Sessions"), subtitle: user.displayName, systemImage: "person.badge.clock")
 
                         Button {
                             Task { await logoutAllSessions(for: user) }
@@ -459,7 +459,7 @@ struct UserAdministrationView: View {
                     .padding(24)
                 }
             }
-            .navigationTitle("Active Sessions")
+            .navigationTitle(L10n.key("Active Sessions"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -646,10 +646,10 @@ struct UserAdministrationView: View {
                       Button("Active User Sessions", systemImage: "person.badge.clock") {
                           beginViewingSessions(user)
                       }
-                      Button("Reset Password", systemImage: "key") {
+                      Button(L10n.key("Reset Password"), systemImage: "key") {
                           beginResettingPassword(user)
                       }
-                      Button("Reset 2FA", systemImage: "lock.rotation") {
+                      Button(L10n.key("Reset 2FA"), systemImage: "lock.rotation") {
                           Task { await resetUser2FA(user) }
                       }
                   } label: {
@@ -660,18 +660,18 @@ struct UserAdministrationView: View {
             }
 
             if let email = user.email, !email.isEmpty {
-                infoRow(title: "Email", value: email)
+                infoRow(title: L10n.key("users.field.email"), value: email)
             }
 
-            infoRow(title: "Last Login", value: lastLoginText)
+            infoRow(title: L10n.key("users.field.lastLogin"), value: lastLoginText)
 
             if let ip = user.lastLoginIP, !ip.isEmpty {
-                infoRow(title: "Last Login IP", value: ip)
+                infoRow(title: L10n.key("users.field.lastLoginIp"), value: ip)
             }
 
             HStack(spacing: 8) {
                 badge(text: roleDisplayName(for: user), tint: Color.white.opacity(0.12))
-                badge(text: user.canAccessDashboard ? "Dashboard Access" : "Dashboard Blocked", tint: user.canAccessDashboard ? appTheme.accent.opacity(0.18) : Color.red.opacity(0.22))
+                badge(text: user.canAccessDashboard ? L10n.key("users.dashboard.access") : L10n.key("users.dashboard.blocked"), tint: user.canAccessDashboard ? appTheme.accent.opacity(0.18) : Color.red.opacity(0.22))
             }
         }
         .padding(16)
@@ -708,7 +708,7 @@ struct UserAdministrationView: View {
     }
 
     private func statusBadge(isActive: Bool) -> some View {
-        badge(text: isActive ? "Active" : "Disabled", tint: isActive ? appTheme.accent.opacity(0.2) : Color.red.opacity(0.25))
+        badge(text: isActive ? L10n.key("users.status.active") : L10n.key("users.status.disabled"), tint: isActive ? appTheme.accent.opacity(0.2) : Color.red.opacity(0.25))
     }
 
     private func roleDisplayName(for user: RMMUser) -> String {
@@ -1021,7 +1021,7 @@ struct UserAdministrationView: View {
                 } else {
                     DiagnosticLogger.shared.append("Reset 2FA for user \(user.username)")
                     showReset2FAOverlay = true
-                    reset2FAMessage = "Two-factor reset completed."
+                    reset2FAMessage = L10n.key("users.reset2fa.completed")
                 }
             case 400:
                 reset2FAIsError = true
@@ -1210,7 +1210,7 @@ struct UserAdministrationView: View {
         }
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-            let message = "Missing API key for this instance. Update credentials in Settings."
+            let message = L10n.key("connection.apiKeyMissingUpdate")
             errorMessage = message
             roleErrorMessage = message
             users = []

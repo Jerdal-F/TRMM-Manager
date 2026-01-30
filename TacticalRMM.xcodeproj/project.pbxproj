@@ -219,7 +219,9 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				nb,
 				Base,
+				pl,
 			);
 			mainGroup = 5A0248992D71D5780052F3A8;
 			minimizedProjectReferenceProxies = 1;
@@ -358,6 +360,7 @@
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -416,6 +419,7 @@
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -445,7 +449,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.1;
+				MARKETING_VERSION = 0.7.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "jerdal.TacticalRMM-Manager";
 				PRODUCT_NAME = "TRMM Manager";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -483,7 +487,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.1;
+				MARKETING_VERSION = 0.7.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "jerdal.TacticalRMM-Manager";
 				PRODUCT_NAME = "TRMM Manager";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

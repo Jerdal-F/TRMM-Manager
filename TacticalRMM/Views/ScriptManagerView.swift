@@ -34,7 +34,7 @@ struct ScriptManagerView: View {
                 VStack(spacing: 24) {
                     GlassCard {
                         VStack(alignment: .leading, spacing: 18) {
-                            SectionHeader("Script Manager", subtitle: "Browse and inspect automation scripts", systemImage: "terminal.fill")
+                            SectionHeader(L10n.key("scripts.title"), subtitle: L10n.key("scripts.subtitle"), systemImage: "terminal.fill")
 
                             searchField()
 
@@ -46,7 +46,7 @@ struct ScriptManagerView: View {
                 .padding(.vertical, 28)
             }
         }
-        .navigationTitle("Script Manager")
+        .navigationTitle(L10n.key("scripts.title"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadScripts(force: true) }
         .refreshable { await loadScripts(force: true) }
@@ -106,50 +106,50 @@ struct ScriptManagerView: View {
                 )
             }
         }
-        .alert("Error", isPresented: Binding(
+        .alert(L10n.key("common.error"), isPresented: Binding(
             get: { loadError != nil && scripts.isEmpty },
             set: { if !$0 { loadError = nil } }
         )) {
-            Button("Dismiss", role: .cancel) { }
+            Button(L10n.key("common.dismiss"), role: .cancel) { }
         } message: {
             if let loadError {
                 Text(loadError)
             }
         }
-        .alert("Notice", isPresented: Binding(
+        .alert(L10n.key("common.notice"), isPresented: Binding(
             get: { actionAlertMessage != nil },
             set: { if !$0 { actionAlertMessage = nil } }
         )) {
-            Button("OK", role: .cancel) { }
+            Button(L10n.key("common.ok"), role: .cancel) { }
         } message: {
             if let actionAlertMessage {
                 Text(actionAlertMessage)
             }
         }
         .confirmationDialog(
-            "Delete Script",
+            L10n.key("scripts.delete.title"),
             isPresented: Binding(
                 get: { pendingDeleteScript != nil },
                 set: { if !$0 { pendingDeleteScript = nil } }
             ),
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
+            Button(L10n.key("common.delete"), role: .destructive) {
                 if let script = pendingDeleteScript {
                     Task { await deleteScript(script) }
                 }
             }
-            Button("Cancel", role: .cancel) { pendingDeleteScript = nil }
+            Button(L10n.key("common.cancel"), role: .cancel) { pendingDeleteScript = nil }
         } message: {
             if let script = pendingDeleteScript {
-                Text("Delete \(script.name)? This cannot be undone.")
+                Text(L10n.format("scripts.delete.message", script.name))
             }
         }
     }
 
     @ViewBuilder
     private func searchField() -> some View {
-        TextField("Search scripts", text: $searchText)
+        TextField(L10n.key("scripts.search.placeholder"), text: $searchText)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled(true)
             .padding(.vertical, 10)
@@ -170,7 +170,7 @@ struct ScriptManagerView: View {
         if isLoading && scripts.isEmpty {
             HStack(spacing: 12) {
                 ProgressView()
-                Text("Loading scripts…")
+                Text(L10n.key("scripts.loading"))
                     .font(.footnote)
                     .foregroundStyle(Color.white.opacity(0.7))
             }
@@ -182,13 +182,13 @@ struct ScriptManagerView: View {
                 Button {
                     Task { await loadScripts(force: true) }
                 } label: {
-                    Label("Retry", systemImage: "arrow.clockwise")
+                    Label(L10n.key("common.retry"), systemImage: "arrow.clockwise")
                         .frame(maxWidth: .infinity)
                 }
                 .primaryButton()
             }
         } else if filteredScripts.isEmpty {
-            Text("No scripts match your search.")
+            Text(L10n.key("scripts.empty.filtered"))
                 .font(.footnote)
                 .foregroundStyle(Color.white.opacity(0.7))
         } else {
@@ -254,7 +254,7 @@ struct ScriptManagerView: View {
                     Button {
                         presentDetail(for: summary)
                     } label: {
-                        Label("View Details", systemImage: "doc.text.magnifyingglass")
+                        Label(L10n.key("scripts.viewDetails"), systemImage: "doc.text.magnifyingglass")
                             .frame(maxWidth: .infinity)
                     }
                     .secondaryButton()
@@ -292,12 +292,12 @@ struct ScriptManagerView: View {
         }
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-            await MainActor.run { loadError = "Missing API key for this instance." }
+            await MainActor.run { loadError = L10n.key("scripts.error.missingApiKey") }
             return
         }
 
         guard let request = makeRequest(path: "/scripts/", method: "GET", apiKey: apiKey) else {
-            await MainActor.run { loadError = "Invalid base URL." }
+            await MainActor.run { loadError = L10n.key("scripts.error.invalidBaseUrl") }
             return
         }
 
@@ -327,9 +327,9 @@ struct ScriptManagerView: View {
                     loadError = nil
                 }
             case 401:
-                throw ScriptManagerError.message("Invalid API key or insufficient permissions.")
+                throw ScriptManagerError.message(L10n.key("scripts.error.invalidApiKey"))
             default:
-                throw ScriptManagerError.message("HTTP \(http.statusCode) while loading scripts.")
+                throw ScriptManagerError.message(L10n.format("scripts.error.httpLoad", http.statusCode))
             }
         } catch ScriptManagerError.message(let message) {
             await MainActor.run { loadError = message }
@@ -356,12 +356,12 @@ struct ScriptManagerView: View {
         }
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-            await MainActor.run { detailError = "Missing API key for this instance." }
+            await MainActor.run { detailError = L10n.key("scripts.error.missingApiKey") }
             return
         }
 
         guard let request = makeRequest(path: "/scripts/\(summary.id)/", method: "GET", apiKey: apiKey) else {
-            await MainActor.run { detailError = "Invalid base URL." }
+            await MainActor.run { detailError = L10n.key("scripts.error.invalidBaseUrl") }
             return
         }
 
@@ -394,9 +394,9 @@ struct ScriptManagerView: View {
                     }
                 }
             case 401:
-                throw ScriptManagerError.message("Invalid API key or insufficient permissions.")
+                throw ScriptManagerError.message(L10n.key("scripts.error.invalidApiKey"))
             default:
-                throw ScriptManagerError.message("HTTP \(http.statusCode) while loading script details.")
+                throw ScriptManagerError.message(L10n.format("scripts.error.httpLoadDetail", http.statusCode))
             }
         } catch ScriptManagerError.message(let message) {
             if selectedScript?.id == summary.id {
@@ -415,7 +415,7 @@ struct ScriptManagerView: View {
     private func prepareEditDraft(summary: ScriptSummary, detail: ScriptDetail) {
         let isBuiltIn = (detail.scriptType ?? summary.scriptType)?.lowercased() == "builtin"
         if isBuiltIn {
-            actionAlertMessage = "Built-in scripts cannot be edited."
+            actionAlertMessage = L10n.key("scripts.error.builtinNoEdit")
             return
         }
 
@@ -429,7 +429,7 @@ struct ScriptManagerView: View {
 
     private func prepareTestContext(summary: ScriptSummary, detail: ScriptDetail) {
         guard !agentCache.agents.isEmpty else {
-            actionAlertMessage = "No cached agents available. Load agents from the dashboard first."
+            actionAlertMessage = L10n.key("scripts.error.noAgentsShort")
             return
         }
         testError = nil
@@ -460,18 +460,18 @@ struct ScriptManagerView: View {
                     selectedScript = nil
                     scriptDetail = nil
                 }
-                actionAlertMessage = "Script deleted (demo mode)."
+                actionAlertMessage = L10n.key("scripts.status.deletedDemo")
             }
             return
         }
 
         guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-            await MainActor.run { actionAlertMessage = "Missing API key for this instance." }
+            await MainActor.run { actionAlertMessage = L10n.key("scripts.error.missingApiKey") }
             return
         }
 
         guard let request = makeRequest(path: "/scripts/\(summary.id)/", method: "DELETE", apiKey: apiKey) else {
-            await MainActor.run { actionAlertMessage = "Invalid base URL." }
+            await MainActor.run { actionAlertMessage = L10n.key("scripts.error.invalidBaseUrl") }
             return
         }
 
@@ -495,13 +495,13 @@ struct ScriptManagerView: View {
                         selectedScript = nil
                         scriptDetail = nil
                     }
-                    actionAlertMessage = message?.nonEmpty ?? "Script deleted."
+                    actionAlertMessage = message?.nonEmpty ?? L10n.key("scripts.status.deleted")
                 }
             case 401:
-                throw ScriptManagerError.message("Invalid API key or insufficient permissions.")
+                throw ScriptManagerError.message(L10n.key("scripts.error.invalidApiKey"))
             default:
                 let responseText = String(data: data, encoding: .utf8) ?? ""
-                throw ScriptManagerError.message("HTTP \(http.statusCode) while deleting script. \(responseText)")
+                throw ScriptManagerError.message(L10n.format("scripts.error.httpDelete", http.statusCode, responseText))
             }
         } catch ScriptManagerError.message(let message) {
             await MainActor.run { actionAlertMessage = message }
@@ -539,18 +539,18 @@ struct ScriptManagerView: View {
                         scriptHash: detail.scriptHash
                     )
                     isEditingScript = false
-                    actionAlertMessage = "Script updated (demo mode)."
+                    actionAlertMessage = L10n.key("scripts.status.updatedDemo")
                 }
                 return
             }
 
             guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-                await MainActor.run { editError = "Missing API key for this instance." }
+                await MainActor.run { editError = L10n.key("scripts.error.missingApiKey") }
                 return
             }
 
             guard var request = makeRequest(path: "/scripts/\(detail.id)/", method: "PUT", apiKey: apiKey) else {
-                await MainActor.run { editError = "Invalid base URL." }
+                await MainActor.run { editError = L10n.key("scripts.error.invalidBaseUrl") }
                 return
             }
 
@@ -587,18 +587,18 @@ struct ScriptManagerView: View {
                 }
                 await MainActor.run {
                     isEditingScript = false
-                    actionAlertMessage = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? "Script updated."
+                    actionAlertMessage = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? L10n.key("scripts.status.updated")
                 }
             case 400:
                 let message = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
                 await MainActor.run {
-                    editError = message?.nonEmpty ?? "Server rejected the update."
+                    editError = message?.nonEmpty ?? L10n.key("scripts.error.serverRejectedUpdate")
                 }
             case 401:
-                throw ScriptManagerError.message("Invalid API key or insufficient permissions.")
+                throw ScriptManagerError.message(L10n.key("scripts.error.invalidApiKey"))
             default:
                 let message = String(data: data, encoding: .utf8) ?? ""
-                throw ScriptManagerError.message("HTTP \(http.statusCode) while updating script. \(message)")
+                throw ScriptManagerError.message(L10n.format("scripts.error.httpUpdate", http.statusCode, message))
             }
         } catch ScriptDraftError.message(let message) {
             await MainActor.run { editError = message }
@@ -625,12 +625,12 @@ struct ScriptManagerView: View {
             }
 
             guard let apiKey = KeychainHelper.shared.getAPIKey(identifier: settings.keychainKey), !apiKey.isEmpty else {
-                await MainActor.run { testError = "Missing API key for this instance." }
+                await MainActor.run { testError = L10n.key("scripts.error.missingApiKey") }
                 return
             }
 
             guard var request = makeRequest(path: "/scripts/\(agentID)/test/", method: "POST", apiKey: apiKey) else {
-                await MainActor.run { testError = "Invalid base URL." }
+                await MainActor.run { testError = L10n.key("scripts.error.invalidBaseUrl") }
                 return
             }
 
@@ -673,16 +673,16 @@ struct ScriptManagerView: View {
                     DiagnosticLogger.shared.appendWarning("Unexpected test response payload: \(message ?? "<empty>")")
                     await MainActor.run {
                         testResult = nil
-                        testError = message?.nonEmpty ?? "Test completed but response could not be parsed."
+                        testError = message?.nonEmpty ?? L10n.key("scripts.test.error.responseParse")
                     }
                 }
             case 400:
                 let message = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
-                await MainActor.run { testError = message?.nonEmpty ?? "Test execution failed." }
+                await MainActor.run { testError = message?.nonEmpty ?? L10n.key("scripts.test.error.executionFailed") }
             case 401:
-                throw ScriptManagerError.message("Invalid API key or insufficient permissions.")
+                throw ScriptManagerError.message(L10n.key("scripts.error.invalidApiKey"))
             default:
-                throw ScriptManagerError.message("HTTP \(http.statusCode) during test execution.")
+                throw ScriptManagerError.message(L10n.format("scripts.test.error.http", http.statusCode))
             }
         } catch ScriptDraftError.message(let message) {
             await MainActor.run { testError = message }
@@ -949,22 +949,22 @@ private struct ScriptEditDraft {
     func makePayload(existing detail: ScriptDetail) throws -> ScriptUpdatePayload {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
-            throw ScriptDraftError.message("Name cannot be empty.")
+            throw ScriptDraftError.message(L10n.key("scripts.error.nameEmpty"))
         }
 
         let trimmedShell = shell.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedShell.isEmpty else {
-            throw ScriptDraftError.message("Shell cannot be empty.")
+            throw ScriptDraftError.message(L10n.key("scripts.error.shellEmpty"))
         }
 
         let trimmedType = scriptType.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedType.isEmpty else {
-            throw ScriptDraftError.message("Script type cannot be empty.")
+            throw ScriptDraftError.message(L10n.key("scripts.error.scriptTypeEmpty"))
         }
 
         let trimmedBody = scriptBody.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedBody.isEmpty else {
-            throw ScriptDraftError.message("Script body cannot be empty.")
+            throw ScriptDraftError.message(L10n.key("scripts.error.scriptBodyEmpty"))
         }
 
         let timeoutValue: Int
@@ -973,7 +973,7 @@ private struct ScriptEditDraft {
         } else if let parsed = Int(defaultTimeout.trimmingCharacters(in: .whitespacesAndNewlines)), parsed > 0 {
             timeoutValue = parsed
         } else {
-            throw ScriptDraftError.message("Timeout must be a positive integer.")
+            throw ScriptDraftError.message(L10n.key("scripts.error.timeoutInvalid"))
         }
 
         let argsArray = argsText
@@ -1068,21 +1068,21 @@ private struct ScriptTestDraft {
     func makePayload() throws -> (String, ScriptTestPayload) {
         let trimmedAgent = agentID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedAgent.isEmpty else {
-            throw ScriptDraftError.message("Provide an agent ID to test against.")
+            throw ScriptDraftError.message(L10n.key("scripts.error.agentRequired"))
         }
 
         let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedCode.isEmpty else {
-            throw ScriptDraftError.message("Script code cannot be empty.")
+            throw ScriptDraftError.message(L10n.key("scripts.error.scriptCodeEmpty"))
         }
 
         let trimmedShell = shell.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedShell.isEmpty else {
-            throw ScriptDraftError.message("Shell cannot be empty.")
+            throw ScriptDraftError.message(L10n.key("scripts.error.shellEmpty"))
         }
 
         guard let timeoutValue = Int(timeout.trimmingCharacters(in: .whitespacesAndNewlines)), timeoutValue > 0 else {
-            throw ScriptDraftError.message("Timeout must be a positive integer.")
+            throw ScriptDraftError.message(L10n.key("scripts.error.timeoutInvalid"))
         }
 
         let argsArray = argsText
@@ -1162,12 +1162,12 @@ private struct ScriptTestSheet: View {
             Form {
                 Section {
                     if agents.isEmpty {
-                        Text("No cached agents available. Open the dashboard to sync agents, then return to run tests.")
+                        Text(L10n.key("scripts.test.noAgents"))
                             .font(.footnote)
                             .foregroundStyle(Color.secondary)
                             .padding(.vertical, 4)
                     } else {
-                        Picker("Agent", selection: $draft.agentID) {
+                        Picker(L10n.key("scripts.test.agent"), selection: $draft.agentID) {
                             ForEach(agents) { agent in
                                 Text(agentDisplayTitle(for: agent))
                                     .tag(agent.agent_id)
@@ -1176,14 +1176,14 @@ private struct ScriptTestSheet: View {
                         .pickerStyle(.menu)
                     }
                 } header: {
-                    Text("Agent")
+                    Text(L10n.key("scripts.test.agent"))
                 }
 
                 Section {
-                    TextField("Timeout (seconds)", text: $draft.timeout)
+                    TextField(L10n.key("scripts.test.timeout"), text: $draft.timeout)
                         .keyboardType(.numberPad)
-                    Toggle("Run As User", isOn: $draft.runAsUser)
-                    Picker("Shell", selection: Binding(
+                    Toggle(L10n.key("scripts.test.runAsUser"), isOn: $draft.runAsUser)
+                    Picker(L10n.key("scripts.test.shell"), selection: Binding(
                         get: { shellSelection },
                         set: { newValue in
                             shellSelection = newValue
@@ -1198,42 +1198,42 @@ private struct ScriptTestSheet: View {
                         }
                     )) {
                         ForEach(ScriptShellOptions.optionsIncludingCustom(), id: \.self) { option in
-                            Text(option == ScriptShellOptions.customTag ? "Custom" : ScriptShellOptions.displayName(for: option))
+                            Text(option == ScriptShellOptions.customTag ? L10n.key("scripts.test.shell.custom") : ScriptShellOptions.displayName(for: option))
                                 .tag(option)
                         }
                     }
                     .pickerStyle(.menu)
 
                     if shellSelection == ScriptShellOptions.customTag {
-                        TextField("Custom Shell", text: $customShellText)
+                        TextField(L10n.key("scripts.test.shell.customField"), text: $customShellText)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled(true)
                         if customShellText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("Enter a shell name when using a custom option.")
+                            Text(L10n.key("scripts.test.shell.customHelp"))
                                 .font(.caption2)
                                 .foregroundStyle(Color.red)
                         }
                     }
                 } header: {
-                    Text("Execution")
+                    Text(L10n.key("scripts.test.execution"))
                 }
 
                 Section {
                     TextEditor(text: $draft.argsText)
                         .frame(minHeight: 80)
                 } header: {
-                    Text("Args")
+                    Text(L10n.key("scripts.test.args"))
                 } footer: {
-                    Text("Enter one argument per line.")
+                    Text(L10n.key("scripts.test.argsHelp"))
                 }
 
                 Section {
                     TextEditor(text: $draft.envVarsText)
                         .frame(minHeight: 80)
                 } header: {
-                    Text("Environment Variables")
+                    Text(L10n.key("scripts.test.envVars"))
                 } footer: {
-                    Text("Use KEY=VALUE per line.")
+                    Text(L10n.key("scripts.test.envVarsHelp"))
                 }
 
                 Section {
@@ -1241,33 +1241,33 @@ private struct ScriptTestSheet: View {
                         .font(.system(.body, design: .monospaced))
                         .frame(minHeight: 220)
                 } header: {
-                    Text("Code")
+                    Text(L10n.key("scripts.test.code"))
                 }
 
                 if let result {
                     Section {
-                        Text("Return code: \(result.retcode)")
+                        Text(L10n.format("scripts.test.returnCodeFormat", result.retcode))
                             .font(.caption)
                         if let executionTime = result.executionTime {
-                            Text("Elapsed: \(String(format: "%.2fs", executionTime))")
+                            Text(L10n.format("scripts.test.elapsedFormat", String(format: "%.2fs", executionTime)))
                                 .font(.caption)
                         }
                         if !result.stdout.isEmpty {
-                            DetailSection(title: "Stdout") {
+                            DetailSection(title: L10n.key("scripts.test.stdout")) {
                                 Text(result.stdout)
                                     .font(.caption.monospaced())
                                     .textSelection(.enabled)
                             }
                         }
                         if !result.stderr.isEmpty {
-                            DetailSection(title: "Stderr") {
+                            DetailSection(title: L10n.key("scripts.test.stderr")) {
                                 Text(result.stderr)
                                     .font(.caption.monospaced())
                                     .textSelection(.enabled)
                             }
                         }
                     } header: {
-                        Text("Result")
+                        Text(L10n.key("scripts.test.result"))
                     }
                 }
 
@@ -1293,10 +1293,10 @@ private struct ScriptTestSheet: View {
                     draft.shell = newValue
                 }
             }
-            .navigationTitle("Test Script")
+            .navigationTitle(L10n.key("scripts.test.title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button(L10n.key("common.close")) { dismiss() }
                         .foregroundStyle(appTheme.accent)
                         .disabled(isTesting)
                 }
@@ -1307,7 +1307,7 @@ private struct ScriptTestSheet: View {
                         if isTesting {
                             ProgressView()
                         } else {
-                            Text("Run")
+                            Text(L10n.key("common.run"))
                         }
                     }
                     .disabled(isTesting || agents.isEmpty || draft.agentID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !shellIsValid)
@@ -1359,23 +1359,23 @@ private struct ScriptEditSheet: View {
         return NavigationStack {
             Form {
                 Section {
-                    TextField("Name", text: $draft.name)
+                    TextField(L10n.key("common.name"), text: $draft.name)
                         .textInputAutocapitalization(.words)
-                    TextField("Description", text: $draft.description, axis: .vertical)
+                    TextField(L10n.key("scripts.edit.description"), text: $draft.description, axis: .vertical)
                         .lineLimit(1...4)
-                    TextField("Category", text: $draft.category)
+                    TextField(L10n.key("scripts.edit.category"), text: $draft.category)
                         .textInputAutocapitalization(.words)
-                    Toggle("Favorite", isOn: $draft.favorite)
-                    Toggle("Hidden", isOn: $draft.hidden)
+                    Toggle(L10n.key("scripts.edit.favorite"), isOn: $draft.favorite)
+                    Toggle(L10n.key("scripts.edit.hidden"), isOn: $draft.hidden)
                 } header: {
-                    Text("Basics")
+                    Text(L10n.key("scripts.edit.basics"))
                 }
 
                 Section {
-                    TextField("Script Type", text: $draft.scriptType)
+                    TextField(L10n.key("scripts.edit.scriptType"), text: $draft.scriptType)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
-                    Picker("Shell", selection: Binding(
+                    Picker(L10n.key("scripts.test.shell"), selection: Binding(
                         get: { shellSelection },
                         set: { newValue in
                             shellSelection = newValue
@@ -1390,53 +1390,53 @@ private struct ScriptEditSheet: View {
                         }
                     )) {
                         ForEach(ScriptShellOptions.optionsIncludingCustom(), id: \.self) { option in
-                            Text(option == ScriptShellOptions.customTag ? "Custom" : ScriptShellOptions.displayName(for: option))
+                            Text(option == ScriptShellOptions.customTag ? L10n.key("scripts.test.shell.custom") : ScriptShellOptions.displayName(for: option))
                                 .tag(option)
                         }
                     }
                     .pickerStyle(.menu)
                     if shellSelection == ScriptShellOptions.customTag {
-                        TextField("Custom Shell", text: $customShellText)
+                        TextField(L10n.key("scripts.test.shell.customField"), text: $customShellText)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled(true)
                         if customShellText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("Enter a shell name when using a custom option.")
+                            Text(L10n.key("scripts.test.shell.customHelp"))
                                 .font(.caption2)
                                 .foregroundStyle(Color.red)
                         }
                     }
-                    TextField("Timeout (seconds)", text: $draft.defaultTimeout)
+                    TextField(L10n.key("scripts.test.timeout"), text: $draft.defaultTimeout)
                         .keyboardType(.numberPad)
-                    Toggle("Run As User", isOn: $draft.runAsUser)
+                    Toggle(L10n.key("scripts.test.runAsUser"), isOn: $draft.runAsUser)
                 } header: {
-                    Text("Execution")
+                    Text(L10n.key("scripts.test.execution"))
                 }
 
                 Section {
                     TextEditor(text: $draft.argsText)
                         .frame(minHeight: 80)
                 } header: {
-                    Text("Arguments")
+                    Text(L10n.key("scripts.edit.arguments"))
                 } footer: {
-                    Text("Enter one argument per line.")
+                    Text(L10n.key("scripts.test.argsHelp"))
                 }
 
                 Section {
                     TextEditor(text: $draft.supportedPlatformsText)
                         .frame(minHeight: 80)
                 } header: {
-                    Text("Supported Platforms")
+                    Text(L10n.key("scripts.edit.supportedPlatforms"))
                 } footer: {
-                    Text("One platform per line (e.g. windows, linux, darwin).")
+                    Text(L10n.key("scripts.edit.supportedPlatformsHelp"))
                 }
 
                 Section {
                     TextEditor(text: $draft.envVarsText)
                         .frame(minHeight: 80)
                 } header: {
-                    Text("Environment Variables")
+                    Text(L10n.key("scripts.test.envVars"))
                 } footer: {
-                    Text("Use KEY=VALUE per line.")
+                    Text(L10n.key("scripts.test.envVarsHelp"))
                 }
 
                 Section {
@@ -1444,17 +1444,17 @@ private struct ScriptEditSheet: View {
                         .font(.system(.body, design: .monospaced))
                         .frame(minHeight: 240)
                 } header: {
-                    Text("Script Body")
+                    Text(L10n.key("scripts.edit.scriptBody"))
                 }
 
                 Section {
-                    TextField("Syntax", text: $draft.syntax, axis: .vertical)
+                    TextField(L10n.key("scripts.edit.syntax"), text: $draft.syntax, axis: .vertical)
                         .lineLimit(1...4)
-                    TextField("Filename", text: $draft.filename)
+                    TextField(L10n.key("scripts.edit.filename"), text: $draft.filename)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
                 } header: {
-                    Text("Metadata")
+                    Text(L10n.key("scripts.edit.metadata"))
                 }
 
                 if let errorMessage {
@@ -1470,10 +1470,10 @@ private struct ScriptEditSheet: View {
                     draft.shell = newValue
                 }
             }
-            .navigationTitle("Edit Script")
+            .navigationTitle(L10n.key("scripts.edit.title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(L10n.key("common.cancel")) { dismiss() }
                         .foregroundStyle(appTheme.accent)
                         .disabled(isSaving)
                 }
@@ -1484,7 +1484,7 @@ private struct ScriptEditSheet: View {
                         if isSaving {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text(L10n.key("common.save"))
                         }
                     }
                     .disabled(isSaving || !shellIsValid)
@@ -1504,7 +1504,7 @@ private struct ScriptMetaRow: View {
                 iconText("gear", summary.scriptTypeLabel)
                 iconText("timer", summary.timeoutLabel)
                 if summary.runAsUser == true {
-                    iconText("person.fill", "Runs as user")
+                    iconText("person.fill", L10n.key("scripts.meta.runAsUser"))
                 }
             }
 
@@ -1540,12 +1540,12 @@ private extension ScriptMetaRow {
 
 private extension ScriptSummary {
     var scriptTypeLabel: String {
-        scriptType?.uppercased() ?? "UNKNOWN"
+        scriptType?.uppercased() ?? L10n.key("scripts.meta.unknown")
     }
 
     var timeoutLabel: String {
-        if let defaultTimeout { return "Timeout: \(defaultTimeout)s" }
-        return "Timeout: default"
+        if let defaultTimeout { return L10n.format("scripts.meta.timeoutFormat", defaultTimeout) }
+        return L10n.key("scripts.meta.timeoutDefault")
     }
 
     var isBuiltIn: Bool {
@@ -1577,10 +1577,10 @@ private struct ScriptDetailSheet: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        SectionHeader(summary.name, subtitle: summary.category ?? "Script details", systemImage: "terminal")
+                        SectionHeader(summary.name, subtitle: summary.category ?? L10n.key("scripts.detail.subtitle"), systemImage: "terminal")
 
                         if let fetchedAt {
-                            Text("Last refreshed: \(fetchedAt.formatted(date: .omitted, time: .shortened))")
+                            Text(L10n.format("scripts.detail.lastRefreshedFormat", fetchedAt.formatted(date: .omitted, time: .shortened)))
                                 .font(.caption2)
                                 .foregroundStyle(Color.white.opacity(0.6))
                         }
@@ -1597,7 +1597,7 @@ private struct ScriptDetailSheet: View {
                         if isLoading {
                             HStack(spacing: 12) {
                                 ProgressView()
-                                Text("Loading script body…")
+                                Text(L10n.key("scripts.detail.loadingBody"))
                                     .font(.footnote)
                                     .foregroundStyle(Color.white.opacity(0.7))
                             }
@@ -1609,7 +1609,7 @@ private struct ScriptDetailSheet: View {
                                 Button {
                                     onRetry()
                                 } label: {
-                                    Label("Retry", systemImage: "arrow.clockwise")
+                                    Label(L10n.key("common.retry"), systemImage: "arrow.clockwise")
                                         .frame(maxWidth: .infinity)
                                 }
                                 .primaryButton()
@@ -1625,7 +1625,7 @@ private struct ScriptDetailSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L10n.key("common.done")) { dismiss() }
                         .foregroundStyle(appTheme.accent)
                 }
             }
@@ -1637,7 +1637,7 @@ private struct ScriptDetailSheet: View {
     private func detailContent(summary: ScriptSummary, detail: ScriptDetail, canTest: Bool) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             if let syntax = detail.syntax, !syntax.isEmpty {
-                DetailSection(title: "Syntax") {
+                DetailSection(title: L10n.key("scripts.detail.syntax")) {
                     Text(syntax)
                         .font(.caption.monospaced())
                         .foregroundStyle(Color.white.opacity(0.85))
@@ -1646,7 +1646,7 @@ private struct ScriptDetailSheet: View {
             }
 
             if let args = detail.args, !args.isEmpty {
-                DetailSection(title: "Arguments") {
+                DetailSection(title: L10n.key("scripts.edit.arguments")) {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(args, id: \.self) { arg in
                             Text(arg)
@@ -1659,7 +1659,7 @@ private struct ScriptDetailSheet: View {
             }
 
             if let envVars = detail.envVars, !envVars.isEmpty {
-                DetailSection(title: "Environment Variables") {
+                DetailSection(title: L10n.key("scripts.test.envVars")) {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(envVars, id: \.self) { variable in
                             Text(variableLabel(variable))
@@ -1672,7 +1672,7 @@ private struct ScriptDetailSheet: View {
             }
 
             if let body = detail.scriptBody, !body.isEmpty {
-                DetailSection(title: "Script Body") {
+                DetailSection(title: L10n.key("scripts.edit.scriptBody")) {
                     ScrollView(.horizontal, showsIndicators: true) {
                         Text(body)
                             .font(.system(.body, design: .monospaced))
@@ -1685,7 +1685,7 @@ private struct ScriptDetailSheet: View {
             }
 
             if let filename = detail.filename, !filename.isEmpty {
-                DetailSection(title: "Filename") {
+                DetailSection(title: L10n.key("scripts.edit.filename")) {
                     Text(filename)
                         .font(.caption)
                         .foregroundStyle(Color.white.opacity(0.8))
@@ -1694,7 +1694,7 @@ private struct ScriptDetailSheet: View {
             }
 
             if let hash = detail.scriptHash, !hash.isEmpty {
-                DetailSection(title: "Script Hash") {
+                DetailSection(title: L10n.key("scripts.detail.hash")) {
                     Text(hash)
                         .font(.caption2.monospaced())
                         .foregroundStyle(Color.white.opacity(0.85))
@@ -1717,7 +1717,7 @@ private struct ScriptDetailSheet: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "play.fill")
-                        Text("Test")
+                        Text(L10n.key("scripts.detail.test"))
                             .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity)
@@ -1732,7 +1732,7 @@ private struct ScriptDetailSheet: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "square.and.pencil")
-                        Text("Edit")
+                        Text(L10n.key("common.edit"))
                             .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity)
@@ -1745,7 +1745,7 @@ private struct ScriptDetailSheet: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "trash")
-                        Text("Delete")
+                        Text(L10n.key("common.delete"))
                             .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity)
@@ -1756,14 +1756,14 @@ private struct ScriptDetailSheet: View {
             }
 
             if isBuiltIn {
-                Text("Built-in scripts cannot be edited or deleted.")
+                Text(L10n.key("scripts.detail.builtinNoEditDelete"))
                     .font(.caption)
                     .foregroundStyle(Color.white.opacity(0.65))
                     .padding(.top, 4)
             }
 
             if !canTest {
-                Text("Testing requires cached agents. Open the dashboard to sync agents.")
+                Text(L10n.key("scripts.detail.testingRequiresAgents"))
                     .font(.caption)
                     .foregroundStyle(Color.white.opacity(0.65))
                     .padding(.top, isBuiltIn ? 2 : 4)
@@ -1773,7 +1773,7 @@ private struct ScriptDetailSheet: View {
 
 
     private func variableLabel(_ variable: ScriptEnvironmentVariable) -> String {
-        let name = variable.name ?? "Variable"
+        let name = variable.name ?? L10n.key("scripts.detail.variable")
         if let value = variable.value, !value.isEmpty {
             return "\(name): \(value)"
         }

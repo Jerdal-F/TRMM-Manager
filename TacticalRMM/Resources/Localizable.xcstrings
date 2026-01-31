@@ -2942,6 +2942,114 @@
         }
       }
     },
+    "agents.count.filteredFormat" : {
+      "comment" : "Agent count when filters are applied. Arguments: displayed count, total count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of %2$lld agents"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld av %2$lld agenter"
+          }
+        }
+      }
+    },
+    "agents.count.multipleFormat" : {
+      "comment" : "Plural agent count label. Argument is total count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Agents"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld agenter"
+          }
+        }
+      }
+    },
+    "agents.count.single" : {
+      "comment" : "Singular agent count label. Argument is total count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Agent"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld agent"
+          }
+        }
+      }
+    },
+    "Agents will be code signed shortly" : {
+      "comment" : "Status message indicating agents will be code signed soon.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents will be code signed shortly"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agenter blir snart kodesignert"
+          }
+        }
+      }
+    },
+    "Email Alerts" : {
+      "comment" : "Email alerts label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email Alerts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-postvarsler"
+          }
+        }
+      }
+    },
+    "SMS Alerts" : {
+      "comment" : "SMS alerts label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SMS Alerts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SMS-varsler"
+          }
+        }
+      }
+    },
     "agents.tasks.actions.subtitleFormat" : {
       "comment" : "Subtitle showing number of actions.",
       "extractionState" : "manual",

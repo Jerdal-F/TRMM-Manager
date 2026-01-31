@@ -98,6 +98,7 @@ struct ContentView: View {
             }
             .onChange(of: activeSettingsUUID) { _, _ in
                 applyActiveSettings()
+                resetAgentsForInstanceChange()
             }
             .onChange(of: settingsList.map { $0.uuid }) { _, _ in
                 if settingsList.isEmpty {
@@ -106,15 +107,12 @@ struct ContentView: View {
                     activeSettingsUUID = settingsList.first?.uuid.uuidString ?? ""
                 }
                 applyActiveSettings()
+                resetAgentsForInstanceChange()
             }
             .onReceive(NotificationCenter.default.publisher(for: .init("reloadAgents"))) { notification in
                 guard !(useFaceID && !didAuthenticate) else { return }
                 applyActiveSettings()
-                if let settings = notification.object as? RMMSettings {
-                    Task { await fetchAgents(using: settings) }
-                } else if let settings = activeSettings {
-                    Task { await fetchAgents(using: settings) }
-                }
+                resetAgentsForInstanceChange()
             }
             .onDisappear {
                 transactionUpdatesTask?.cancel()
@@ -387,61 +385,60 @@ struct ContentView: View {
 
     private var agentsCard: some View {
         GlassCard {
-            VStack(alignment: .leading, spacing: 20) {
-                SectionHeader(
-                    String(localized: "agents.title"),
-                    subtitle: agents.isEmpty ? String(localized: "agents.subtitle.connectEstate") : agentCountText,
-                    systemImage: "list.bullet.rectangle"
-                )
+            VStack(alignment: .leading, spacing: 14) {
+                ZStack(alignment: .topTrailing) {
+                    SectionHeader(
+                        String(localized: "agents.title"),
+                        subtitle: agents.isEmpty ? String(localized: "agents.subtitle.connectEstate") : agentCountText,
+                        systemImage: "list.bullet.rectangle"
+                    )
 
-                if !agents.isEmpty || isLoading {
-                    HStack {
-                        Text(agentCountText)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Color.white.opacity(0.7))
-                        Spacer()
-                        Menu {
-                            Picker(L10n.key("agents.sort.picker"), selection: $sortOption) {
-                                ForEach(AgentSortOption.allCases) { option in
-                                    Text(option.title).tag(option)
+                    if !agents.isEmpty || isLoading {
+                        HStack(spacing: 10) {
+                            Menu {
+                                Picker(L10n.key("agents.sort.picker"), selection: $sortOption) {
+                                    ForEach(AgentSortOption.allCases) { option in
+                                        Text(option.title).tag(option)
+                                    }
                                 }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "arrow.up.arrow.down")
+                                    Text(sortOption.chipLabel)
+                                }
+                                .font(.caption.weight(.semibold))
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(Color.white.opacity(0.08))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                                        )
+                                )
                             }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "arrow.up.arrow.down")
-                                Text(sortOption.chipLabel)
-                            }
-                            .font(.caption.weight(.semibold))
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.white.opacity(0.08))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                                    )
-                            )
-                        }
-                        .foregroundStyle(appTheme.accent)
-                        .menuStyle(.automatic)
+                            .foregroundStyle(appTheme.accent)
+                            .menuStyle(.automatic)
 
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                showSearch.toggle()
-                                if showSearch {
-                                    searchFieldIsFocused = true
-                                } else {
-                                    searchText = ""
-                                    appliedSearchText = ""
-                                    searchFieldIsFocused = false
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    showSearch.toggle()
+                                    if showSearch {
+                                        searchFieldIsFocused = true
+                                    } else {
+                                        searchText = ""
+                                        appliedSearchText = ""
+                                        searchFieldIsFocused = false
+                                    }
                                 }
+                            } label: {
+                                Image(systemName: showSearch ? "magnifyingglass.circle.fill" : "magnifyingglass")
+                                    .font(.title3)
                             }
-                        } label: {
-                            Image(systemName: showSearch ? "magnifyingglass.circle.fill" : "magnifyingglass")
-                                .font(.title3)
+                            .foregroundStyle(appTheme.accent)
                         }
-                        .foregroundStyle(appTheme.accent)
+                        .padding(.top, 2)
                     }
                 }
 
@@ -576,9 +573,11 @@ struct ContentView: View {
         guard total > 0 else { return "No agents yet" }
         let displayed = sortedAgentsForDisplay.count
         if displayed == total && appliedSearchText.isEmpty && sortOption == .none {
-            return "\(total) \(total == 1 ? "Agent" : "Agents")"
+            return total == 1
+                ? L10n.format("agents.count.single", total)
+                : L10n.format("agents.count.multipleFormat", total)
         }
-        return "\(displayed) of \(total) agents"
+        return L10n.format("agents.count.filteredFormat", displayed, total)
     }
 
     private var filteredAgents: [Agent] {
@@ -628,6 +627,16 @@ struct ContentView: View {
     }
 
     // MARK: – Helper Methods
+
+    private func resetAgentsForInstanceChange() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            agents.removeAll()
+            errorMessage = nil
+            isLoading = false
+            searchText = ""
+            appliedSearchText = ""
+        }
+    }
 
     private func enforceHTTPSPrefix(_ input: String) -> String {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)

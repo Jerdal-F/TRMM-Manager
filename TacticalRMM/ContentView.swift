@@ -1361,7 +1361,7 @@ struct InstallAgentView: View {
     private var downloadCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 18) {
-                SectionHeader("Generate Installer", subtitle: "Download and share the agent", systemImage: "square.and.arrow.down")
+                SectionHeader("Generate Installer", subtitle: L10n.key("installer.download.subtitle"), systemImage: "square.and.arrow.down")
 
                 if platform.responseType == .file, let installerURL {
                     Text(L10n.format("Installer ready: %@", installerURL.lastPathComponent))
@@ -1622,9 +1622,9 @@ private enum InstallPlatform: String, CaseIterable {
 
     var downloadButtonLabel: String {
         switch self {
-        case .windows: return "Download Windows Installer"
-        case .linux: return "Download Linux Install Script"
-        case .mac: return "Generate macOS Install Command"
+        case .windows: return L10n.key("installer.download.windows")
+        case .linux: return L10n.key("installer.download.linux")
+        case .mac: return L10n.key("installer.download.mac")
         }
     }
 
@@ -1647,9 +1647,9 @@ private enum InstallPlatform: String, CaseIterable {
     var footerNote: String {
         switch self {
         case .windows, .linux:
-            return "Installer expires after the specified duration. Share directly from the completion prompt."
+            return L10n.key("installer.download.expiry")
         case .mac:
-            return "Command expires after the specified duration. Run it on the target Mac before it expires."
+            return L10n.key("installer.download.expiryMac")
         }
     }
 

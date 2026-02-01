@@ -538,7 +538,14 @@ struct CodeSigningView: View {
         let trimmed = raw
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
-        return trimmed.isEmpty ? fallback : trimmed
+        if trimmed.isEmpty {
+            return fallback
+        }
+        // Normalize well-known server messages to localized strings.
+        if trimmed == "Agents will be code signed shortly" {
+            return L10n.key("codesigning.sucsess")
+        }
+        return trimmed
     }
 }
 

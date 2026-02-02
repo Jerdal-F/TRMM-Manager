@@ -81,6 +81,24 @@
         }
       }
     },
+    "Agents will be code signed shortly" : {
+      "comment" : "Status message indicating agents will be code signed soon.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents will be code signed shortly"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agenter blir snart kodesignert"
+          }
+        }
+      }
+    },
     "agents.action.http400Offline" : {
       "comment" : "Message shown when a command returns HTTP 400 because the agent is offline.",
       "extractionState" : "manual",
@@ -707,6 +725,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Send kommando"
+          }
+        }
+      }
+    },
+    "agents.count.filteredFormat" : {
+      "comment" : "Agent count when filters are applied. Arguments: displayed count, total count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of %2$lld agents"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld av %2$lld agenter"
+          }
+        }
+      }
+    },
+    "agents.count.multipleFormat" : {
+      "comment" : "Plural agent count label. Argument is total count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Agents"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld agenter"
+          }
+        }
+      }
+    },
+    "agents.count.single" : {
+      "comment" : "Singular agent count label. Argument is total count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Agent"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld agent"
           }
         }
       }
@@ -2942,114 +3014,6 @@
         }
       }
     },
-    "agents.count.filteredFormat" : {
-      "comment" : "Agent count when filters are applied. Arguments: displayed count, total count.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld of %2$lld agents"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld av %2$lld agenter"
-          }
-        }
-      }
-    },
-    "agents.count.multipleFormat" : {
-      "comment" : "Plural agent count label. Argument is total count.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Agents"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld agenter"
-          }
-        }
-      }
-    },
-    "agents.count.single" : {
-      "comment" : "Singular agent count label. Argument is total count.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Agent"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld agent"
-          }
-        }
-      }
-    },
-    "Agents will be code signed shortly" : {
-      "comment" : "Status message indicating agents will be code signed soon.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agents will be code signed shortly"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agenter blir snart kodesignert"
-          }
-        }
-      }
-    },
-    "Email Alerts" : {
-      "comment" : "Email alerts label.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Email Alerts"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "E-postvarsler"
-          }
-        }
-      }
-    },
-    "SMS Alerts" : {
-      "comment" : "SMS alerts label.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "SMS Alerts"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "SMS-varsler"
-          }
-        }
-      }
-    },
     "agents.tasks.actions.subtitleFormat" : {
       "comment" : "Subtitle showing number of actions.",
       "extractionState" : "manual",
@@ -3615,24 +3579,6 @@
         }
       }
     },
-    "codesigning.sucsess" : {
-      "comment" : "Status message indicating agents will be code signed soon.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agents will be code signed shortly"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agenter blir snart kodesignert"
-          }
-        }
-      }
-    },
     "codesigning.addToken" : {
       "comment" : "Button label to add a code signing token.",
       "extractionState" : "manual",
@@ -4097,6 +4043,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Administrer signeringstoken for installere"
+          }
+        }
+      }
+    },
+    "codesigning.sucsess" : {
+      "comment" : "Status message indicating agents will be code signed soon.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents will be code signed shortly"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agenter blir snart kodesignert"
           }
         }
       }
@@ -5220,6 +5184,24 @@
         }
       }
     },
+    "Email Alerts" : {
+      "comment" : "Email alerts label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email Alerts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-postvarsler"
+          }
+        }
+      }
+    },
     "Email results" : {
       "localizations" : {
         "en" : {
@@ -5643,74 +5625,20 @@
         }
       }
     },
-    "installer.download.subtitle" : {
-      "comment" : "Subtitle under Generate Installer section.",
+    "installer.destination.title" : {
+      "comment" : "Title for the installer destination section.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Download and share the agent"
+            "value" : "Destination"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Last ned og del agenten"
-          }
-        }
-      }
-    },
-    "installer.download.windows" : {
-      "comment" : "Download button label for Windows installer.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Download Windows Installer"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last ned Windows-installer"
-          }
-        }
-      }
-    },
-    "installer.download.linux" : {
-      "comment" : "Download button label for Linux install script.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Download Linux Install Script"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last ned Linux-installasjonsskript"
-          }
-        }
-      }
-    },
-    "installer.download.mac" : {
-      "comment" : "Download button label for macOS install command.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Generate macOS Install Command"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Generer macOS-installasjonskommando"
+            "value" : "Destinasjon"
           }
         }
       }
@@ -5751,20 +5679,74 @@
         }
       }
     },
-    "installer.destination.title" : {
-      "comment" : "Title for the installer destination section.",
+    "installer.download.linux" : {
+      "comment" : "Download button label for Linux install script.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Destination"
+            "value" : "Download Linux Install Script"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Destinasjon"
+            "value" : "Last ned Linux-installasjonsskript"
+          }
+        }
+      }
+    },
+    "installer.download.mac" : {
+      "comment" : "Download button label for macOS install command.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generate macOS Install Command"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generer macOS-installasjonskommando"
+          }
+        }
+      }
+    },
+    "installer.download.subtitle" : {
+      "comment" : "Subtitle under Generate Installer section.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download and share the agent"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last ned og del agenten"
+          }
+        }
+      }
+    },
+    "installer.download.windows" : {
+      "comment" : "Download button label for Windows installer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download Windows Installer"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last ned Windows-installer"
           }
         }
       }
@@ -6655,22 +6637,6 @@
         }
       }
     },
-    "Role" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Role"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rolle"
-          }
-        }
-      }
-    },
     "ROLE" : {
       "comment" : "A label displayed above the role selection menu in the user administration view.",
       "isCommentAutoGenerated" : true,
@@ -7000,42 +6966,6 @@
         }
       }
     },
-    "scripts.search.placeholder" : {
-      "comment" : "Placeholder text for searching scripts.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search scripts"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Søk i skript"
-          }
-        }
-      }
-    },
-    "scripts.subtitle" : {
-      "comment" : "Subtitle for scripts list.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Browse and manage scripts"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bla gjennom og administrer skript"
-          }
-        }
-      }
-    },
     "scripts.detail.builtinNoEditDelete" : {
       "comment" : "Notice that built-in scripts cannot be edited or deleted.",
       "extractionState" : "manual",
@@ -7086,6 +7016,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Laster skript…"
+          }
+        }
+      }
+    },
+    "scripts.search.placeholder" : {
+      "comment" : "Placeholder text for searching scripts.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search scripts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk i skript"
+          }
+        }
+      }
+    },
+    "scripts.subtitle" : {
+      "comment" : "Subtitle for scripts list.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Browse and manage scripts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bla gjennom og administrer skript"
           }
         }
       }
@@ -7165,13 +7131,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Select a donation amount to support ongoing work on TacticalRMM Manager."
+            "value" : "Select a donation amount to support ongoing work on TacticalRMM Agent Manager."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Velg et donasjonsbeløp for å støtte videre arbeid med TacticalRMM Manager."
+            "value" : "Velg et donasjonsbeløp for å støtte videre arbeid med TacticalRMM Agent Manager."
           }
         }
       }
@@ -9709,6 +9675,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sted: %@"
+          }
+        }
+      }
+    },
+    "SMS Alerts" : {
+      "comment" : "SMS alerts label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SMS Alerts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SMS-varsler"
           }
         }
       }

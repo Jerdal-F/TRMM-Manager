@@ -80,6 +80,7 @@ struct DonationSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
+                        .foregroundStyle(appTheme.accent)
                 }
             }
         }

@@ -3,6 +3,7 @@ import SwiftUI
 struct UserAdministrationView: View {
     let settings: RMMSettings
     @Environment(\.appTheme) private var appTheme
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
 
     @State private var users: [RMMUser] = []
@@ -17,6 +18,9 @@ struct UserAdministrationView: View {
     @State private var editEmail: String = ""
     @State private var editRoleID: Int?
     @State private var editRoleText: String = ""
+    @State private var editRoleName: String = ""
+    @State private var roleSelectionVersion = UUID()
+    @State private var rolesVersion = 0
     @State private var editIsActive = false
     @State private var editBlockDashboard = false
     @State private var editErrorMessage: String?
@@ -101,8 +105,12 @@ struct UserAdministrationView: View {
         }
         .navigationTitle("User Administration")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
+        .task(id: settings.uuid) {
             await loadInitialData(force: true)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            Task { await loadInitialData(force: true) }
         }
         .refreshable {
             await loadInitialData(force: true)
@@ -123,8 +131,8 @@ struct UserAdministrationView: View {
         editFirstName = user.firstName ?? ""
         editLastName = user.lastName ?? ""
         editEmail = user.email ?? ""
-        editRoleID = user.role
-        editRoleText = user.role.map { String($0) } ?? ""
+        syncEditRoleState(with: user)
+        roleSelectionVersion = UUID()
         editIsActive = user.isActive
         editBlockDashboard = user.blockDashboardLogin ?? false
         editErrorMessage = nil
@@ -140,10 +148,26 @@ struct UserAdministrationView: View {
         editEmail = ""
         editRoleID = nil
         editRoleText = ""
+        editRoleName = ""
         editIsActive = false
         editBlockDashboard = false
         editErrorMessage = nil
         isSavingUser = false
+    }
+
+    private func refreshEditRoleName() {
+        let fallbackID = editRoleID ?? editingUser?.role ?? roles.values.sorted { $0.displayName.lowercased() < $1.displayName.lowercased() }.first?.id
+        guard let roleID = fallbackID else {
+            editRoleName = ""
+            return
+        }
+        editRoleName = selectedRoleName(for: roleID)
+    }
+
+    private func syncEditRoleState(with user: RMMUser) {
+        editRoleID = user.role
+        editRoleText = user.role.map { String($0) } ?? ""
+        editRoleName = user.role.map { selectedRoleName(for: $0) } ?? ""
     }
 
     private func beginResettingPassword(_ user: RMMUser) {
@@ -246,6 +270,10 @@ struct UserAdministrationView: View {
                     .foregroundStyle(appTheme.accent)
                     .disabled(isSavingUser || editUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+            }
+            .onAppear {
+                syncEditRoleState(with: user)
+                roleSelectionVersion = UUID()
             }
         }
     }
@@ -552,14 +580,7 @@ struct UserAdministrationView: View {
     private func roleSelector() -> some View {
         let sortedRoles = roles.values.sorted { $0.displayName.lowercased() < $1.displayName.lowercased() }
         if !sortedRoles.isEmpty {
-            let fallbackRoleID = editRoleID ?? sortedRoles.first!.id
-            let selection = Binding<Int>(
-                get: { editRoleID ?? fallbackRoleID },
-                set: { newValue in
-                    editRoleID = newValue
-                    editRoleText = String(newValue)
-                }
-            )
+            let currentRoleID = editRoleID ?? editingUser?.role ?? sortedRoles.first!.id
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("ROLE")
@@ -568,15 +589,24 @@ struct UserAdministrationView: View {
                     .kerning(1.1)
 
                 Menu {
-                    Picker("Role", selection: selection) {
-                        ForEach(sortedRoles) { role in
-                            Text(role.displayName).tag(role.id)
+                    ForEach(sortedRoles) { role in
+                        Button {
+                            editRoleID = role.id
+                            editRoleText = String(role.id)
+                            editRoleName = role.displayName
+                            roleSelectionVersion = UUID()
+                        } label: {
+                            if role.id == (editRoleID ?? editingUser?.role ?? sortedRoles.first!.id) {
+                                Label(role.displayName, systemImage: "checkmark")
+                            } else {
+                                Text(role.displayName)
+                            }
                         }
                     }
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(selectedRoleName(for: selection.wrappedValue))
+                            Text(editRoleName.isEmpty ? selectedRoleName(for: editRoleID ?? currentRoleID) : editRoleName)
                                 .font(.callout)
                                 .foregroundStyle(Color.white)
                             Text("Tap to change")
@@ -598,6 +628,17 @@ struct UserAdministrationView: View {
                                     .stroke(Color.white.opacity(0.08), lineWidth: 1)
                             )
                     )
+                }
+                // Force menu label refresh when selection changes
+                .id(roleSelectionVersion)
+                .onAppear {
+                    refreshEditRoleName()
+                }
+                .onChange(of: editRoleID) { _, _ in
+                    refreshEditRoleName()
+                }
+                .onChange(of: rolesVersion) { _, _ in
+                    refreshEditRoleName()
                 }
             }
         } else {
@@ -742,6 +783,8 @@ struct UserAdministrationView: View {
         } else {
             if let editRoleID {
                 finalRole = editRoleID
+            } else if let existingRole = original.role {
+                finalRole = existingRole
             } else {
                 finalRole = roles.values.min(by: { $0.displayName.lowercased() < $1.displayName.lowercased() })?.id
             }
@@ -1159,6 +1202,8 @@ struct UserAdministrationView: View {
                 roleErrorMessage = "Unexpected response while loading roles."
                 DiagnosticLogger.shared.appendError("Roles response missing HTTPURLResponse.")
                 roles = [:]
+                rolesVersion += 1
+                refreshEditRoleName()
                 return
             }
 
@@ -1176,20 +1221,30 @@ struct UserAdministrationView: View {
                     let decoded = try decoder.decode([RMMRole].self, from: data)
                     roles = Dictionary(uniqueKeysWithValues: decoded.map { ($0.id, $0) })
                     roleErrorMessage = nil
+                    rolesVersion += 1
+                    refreshEditRoleName()
                 } catch {
                     roleErrorMessage = "Failed to decode roles."
                     roles = [:]
+                    rolesVersion += 1
+                    refreshEditRoleName()
                     DiagnosticLogger.shared.appendError("Failed to decode roles: \(error.localizedDescription)")
                 }
             case 403:
                 roleErrorMessage = "Role information restricted; showing role IDs."
                 roles = [:]
+                rolesVersion += 1
+                refreshEditRoleName()
             case 401:
                 roleErrorMessage = "Invalid API key or insufficient permissions to load roles."
                 roles = [:]
+                rolesVersion += 1
+                refreshEditRoleName()
             default:
                 roleErrorMessage = "HTTP \(http.statusCode) while loading roles."
                 roles = [:]
+                rolesVersion += 1
+                refreshEditRoleName()
             }
         } catch {
             if error.isCancelledRequest {
@@ -1197,6 +1252,8 @@ struct UserAdministrationView: View {
             }
             roleErrorMessage = error.localizedDescription
             roles = [:]
+            rolesVersion += 1
+            refreshEditRoleName()
             DiagnosticLogger.shared.appendError("Failed to load roles: \(error.localizedDescription)")
         }
     }

@@ -81,6 +81,24 @@
         }
       }
     },
+    "Agents will be code signed shortly" : {
+      "comment" : "Status message indicating agents will be code signed soon.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents will be code signed shortly"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agenter blir snart kodesignert"
+          }
+        }
+      }
+    },
     "agents.action.http400Offline" : {
       "comment" : "Message shown when a command returns HTTP 400 because the agent is offline.",
       "extractionState" : "manual",
@@ -707,6 +725,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Send kommando"
+          }
+        }
+      }
+    },
+    "agents.count.filteredFormat" : {
+      "comment" : "Agent count when filters are applied. Arguments: displayed count, total count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of %2$lld agents"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld av %2$lld agenter"
+          }
+        }
+      }
+    },
+    "agents.count.multipleFormat" : {
+      "comment" : "Plural agent count label. Argument is total count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Agents"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld agenter"
+          }
+        }
+      }
+    },
+    "agents.count.single" : {
+      "comment" : "Singular agent count label. Argument is total count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Agent"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld agent"
           }
         }
       }
@@ -3975,6 +4047,24 @@
         }
       }
     },
+    "codesigning.sucsess" : {
+      "comment" : "Status message indicating agents will be code signed soon.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agents will be code signed shortly"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agenter blir snart kodesignert"
+          }
+        }
+      }
+    },
     "codesigning.title" : {
       "comment" : "Title for code signing screen.",
       "extractionState" : "manual",
@@ -5094,6 +5184,24 @@
         }
       }
     },
+    "Email Alerts" : {
+      "comment" : "Email alerts label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email Alerts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-postvarsler"
+          }
+        }
+      }
+    },
     "Email results" : {
       "localizations" : {
         "en" : {
@@ -5531,6 +5639,114 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Destinasjon"
+          }
+        }
+      }
+    },
+    "installer.download.expiry" : {
+      "comment" : "Footer note for installer expiry (Windows/Linux).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installer expires after the specified duration. Share directly from the completion prompt."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installasjonsfilen utløper etter angitt varighet. Del direkte fra fullføringsmeldingen."
+          }
+        }
+      }
+    },
+    "installer.download.expiryMac" : {
+      "comment" : "Footer note for macOS install command expiry.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command expires after the specified duration. Run it on the target Mac before it expires."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kommandoen utløper etter angitt varighet. Kjør den på mål-Macen før den utløper."
+          }
+        }
+      }
+    },
+    "installer.download.linux" : {
+      "comment" : "Download button label for Linux install script.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download Linux Install Script"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last ned Linux-installasjonsskript"
+          }
+        }
+      }
+    },
+    "installer.download.mac" : {
+      "comment" : "Download button label for macOS install command.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generate macOS Install Command"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generer macOS-installasjonskommando"
+          }
+        }
+      }
+    },
+    "installer.download.subtitle" : {
+      "comment" : "Subtitle under Generate Installer section.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download and share the agent"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last ned og del agenten"
+          }
+        }
+      }
+    },
+    "installer.download.windows" : {
+      "comment" : "Download button label for Windows installer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download Windows Installer"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last ned Windows-installer"
           }
         }
       }
@@ -6421,22 +6637,6 @@
         }
       }
     },
-    "Role" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Role"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rolle"
-          }
-        }
-      }
-    },
     "ROLE" : {
       "comment" : "A label displayed above the role selection menu in the user administration view.",
       "isCommentAutoGenerated" : true,
@@ -6766,6 +6966,60 @@
         }
       }
     },
+    "scripts.detail.builtinNoEditDelete" : {
+      "comment" : "Notice that built-in scripts cannot be edited or deleted.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Built-in scripts cannot be edited or deleted."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innebygde skript kan ikke redigeres eller slettes."
+          }
+        }
+      }
+    },
+    "scripts.detail.testingRequiresAgents" : {
+      "comment" : "Notice that testing scripts requires available agents.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testing scripts requires available agents."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testing av skript krever tilgjengelige agenter."
+          }
+        }
+      }
+    },
+    "scripts.loading" : {
+      "comment" : "Loading label for scripts.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading scripts…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laster skript…"
+          }
+        }
+      }
+    },
     "scripts.search.placeholder" : {
       "comment" : "Placeholder text for searching scripts.",
       "extractionState" : "manual",
@@ -6798,24 +7052,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bla gjennom og administrer skript"
-          }
-        }
-      }
-    },
-    "scripts.loading" : {
-      "comment" : "Loading label for scripts.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loading scripts…"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Laster skript…"
           }
         }
       }
@@ -6895,13 +7131,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Select a donation amount to support ongoing work on TacticalRMM Manager."
+            "value" : "Select a donation amount to support ongoing work on TacticalRMM Agent Manager."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Velg et donasjonsbeløp for å støtte videre arbeid med TacticalRMM Manager."
+            "value" : "Velg et donasjonsbeløp for å støtte videre arbeid med TacticalRMM Agent Manager."
           }
         }
       }
@@ -9439,6 +9675,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sted: %@"
+          }
+        }
+      }
+    },
+    "SMS Alerts" : {
+      "comment" : "SMS alerts label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SMS Alerts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SMS-varsler"
           }
         }
       }

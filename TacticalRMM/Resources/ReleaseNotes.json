@@ -1,9 +1,12 @@
 [  
   {
-    "version": "0.5.9",
-    "description": "Fixed incorrect role display in user administration.",
+    "version": "0.6.0-dev",
+    "description": "Loading improvements.",
     "isCurrent": true
   },
+  {
+    "version": "0.5.9",
+    "description": "Fixed incorrect role display in user administration."  },
   {
     "version": "0.5.8",
     "description": "Added missing localization strings.\nSwitching Instances now clears the agents list.\nMinor UI changes to agent view."

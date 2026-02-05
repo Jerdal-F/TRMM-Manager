@@ -12,6 +12,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.appTheme) private var appTheme
     @Query private var settingsList: [RMMSettings]
+    @ObservedObject private var agentCache = AgentCache.shared
 
     @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
     @AppStorage("useFaceID") private var useFaceID: Bool = false
@@ -30,6 +31,7 @@ struct ContentView: View {
     @State private var selectedServerSettings: RMMSettings?
 
     @State private var agents: [Agent] = []
+    @State private var displayedAgents: [Agent] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showSearch = false
@@ -43,6 +45,8 @@ struct ContentView: View {
 
     @FocusState private var searchFieldIsFocused: Bool
     @State private var transactionUpdatesTask: Task<Void, Never>?
+    @State private var agentFilterTask: Task<Void, Never>?
+    @State private var searchDebounceTask: Task<Void, Never>?
 
     var body: some View {
         ZStack {
@@ -91,6 +95,10 @@ struct ContentView: View {
             }
             .onAppear {
                 DiagnosticLogger.shared.append("ContentView onAppear")
+                if agents.isEmpty, !agentCache.agents.isEmpty {
+                    agents = agentCache.agents
+                    updateDisplayedAgents()
+                }
                 if !useFaceID {
                     loadInitialSettings()
                 }
@@ -109,6 +117,12 @@ struct ContentView: View {
                 applyActiveSettings()
                 resetAgentsForInstanceChange()
             }
+            .onChange(of: appliedSearchText) { _, _ in
+                updateDisplayedAgents()
+            }
+            .onChange(of: sortOption) { _, _ in
+                updateDisplayedAgents()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .init("reloadAgents"))) { notification in
                 guard !(useFaceID && !didAuthenticate) else { return }
                 applyActiveSettings()
@@ -117,11 +131,16 @@ struct ContentView: View {
             .onDisappear {
                 transactionUpdatesTask?.cancel()
                 transactionUpdatesTask = nil
+                agentFilterTask?.cancel()
+                agentFilterTask = nil
+                searchDebounceTask?.cancel()
+                searchDebounceTask = nil
             }
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
                 case .background:
                     didAuthenticate = false
+                    KeychainHelper.shared.clearCachedKeys()
 
                 case .inactive:
                     // Keep authentication alive during transient system overlays (e.g. StoreKit purchase sheet).
@@ -389,7 +408,7 @@ struct ContentView: View {
                 ZStack(alignment: .topTrailing) {
                     SectionHeader(
                         String(localized: "agents.title"),
-                        subtitle: agents.isEmpty ? String(localized: "agents.subtitle.connectEstate") : agentCountText,
+                        subtitle: agentsSubtitle,
                         systemImage: "list.bullet.rectangle"
                     )
 
@@ -459,7 +478,15 @@ struct ContentView: View {
                             )
                             .focused($searchFieldIsFocused)
                             .onChange(of: searchText) { _, newValue in
-                                appliedSearchText = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                searchDebounceTask?.cancel()
+                                let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                searchDebounceTask = Task { [trimmed] in
+                                    try? await Task.sleep(nanoseconds: 200_000_000)
+                                    if Task.isCancelled { return }
+                                    await MainActor.run {
+                                        appliedSearchText = trimmed
+                                    }
+                                }
                             }
 
                         Button {
@@ -468,6 +495,8 @@ struct ContentView: View {
                                 searchText = ""
                                 appliedSearchText = ""
                                 searchFieldIsFocused = false
+                                searchDebounceTask?.cancel()
+                                searchDebounceTask = nil
                             }
                         } label: {
                             Image(systemName: "xmark.circle.fill")
@@ -477,7 +506,7 @@ struct ContentView: View {
                     }
                 }
 
-                if isLoading {
+                if isLoading && displayedAgents.isEmpty {
                     ProgressView("Loading agents…")
                         .progressViewStyle(.circular)
                         .tint(appTheme.accent)
@@ -485,13 +514,18 @@ struct ContentView: View {
                     Text(L10n.format("Error: %@", error))
                         .foregroundStyle(Color.red)
                         .font(.footnote)
-                } else if filteredAgents.isEmpty {
-                    Text(agents.isEmpty ? "No agents loaded. Save your connection to begin." : "No agents match your search.")
+                } else if displayedAgents.isEmpty {
+                    Text(agentEmptyMessage)
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else {
+                    if isLoading {
+                        ProgressView("Refreshing agents…")
+                            .progressViewStyle(.circular)
+                            .tint(appTheme.accent)
+                    }
                     LazyVStack(spacing: 16) {
-                        ForEach(sortedAgentsForDisplay) { agent in
+                        ForEach(displayedAgents) { agent in
                             NavigationLink {
                                 AgentDetailView(
                                     agent: agent,
@@ -571,7 +605,7 @@ struct ContentView: View {
     private var agentCountText: String {
         let total = agents.count
         guard total > 0 else { return "No agents yet" }
-        let displayed = sortedAgentsForDisplay.count
+        let displayed = displayedAgents.count
         if displayed == total && appliedSearchText.isEmpty && sortOption == .none {
             return total == 1
                 ? L10n.format("agents.count.single", total)
@@ -580,38 +614,51 @@ struct ContentView: View {
         return L10n.format("agents.count.filteredFormat", displayed, total)
     }
 
-    private var filteredAgents: [Agent] {
-        let base = agents.filter { sortOption.matches($0) }
-        guard !appliedSearchText.isEmpty else { return base }
+    @MainActor
+    private func updateDisplayedAgents() {
+        agentFilterTask?.cancel()
+        let agentsSnapshot = agents
         let query = appliedSearchText.lowercased()
-        return base.filter {
-            $0.hostname.lowercased().contains(query) ||
-            $0.operating_system.lowercased().contains(query) ||
-            ($0.description?.lowercased().contains(query) ?? false)
-        }
-    }
-
-    private var sortedAgentsForDisplay: [Agent] {
-        switch sortOption {
-        case .none:
-            return filteredAgents.sorted {
-                $0.hostname.localizedCaseInsensitiveCompare($1.hostname) == .orderedAscending
-            }
-        case .online:
-            return filteredAgents.sorted { lhs, rhs in
-                if lhs.isOnlineStatus == rhs.isOnlineStatus {
-                    return lhs.hostname.localizedCaseInsensitiveCompare(rhs.hostname) == .orderedAscending
+        let selectedSort = sortOption
+        agentFilterTask = Task.detached(priority: .userInitiated) {
+            if Task.isCancelled { return }
+            var working = agentsSnapshot.filter { selectedSort.matches($0) }
+            if !query.isEmpty {
+                working = working.filter {
+                    $0.hostname.lowercased().contains(query) ||
+                    $0.operating_system.lowercased().contains(query) ||
+                    ($0.description?.lowercased().contains(query) ?? false)
                 }
-                return lhs.isOnlineStatus && !rhs.isOnlineStatus
             }
-        default:
-            return filteredAgents.sorted { lhs, rhs in
-                let left = sortOption.sortKey(for: lhs)
-                let right = sortOption.sortKey(for: rhs)
-                if left == right {
-                    return lhs.hostname.localizedCaseInsensitiveCompare(rhs.hostname) == .orderedAscending
+            if Task.isCancelled { return }
+            let sorted: [Agent]
+            switch selectedSort {
+            case .none:
+                sorted = working.sorted {
+                    $0.hostname.localizedCaseInsensitiveCompare($1.hostname) == .orderedAscending
                 }
-                return left.localizedCaseInsensitiveCompare(right) == .orderedAscending
+            case .online:
+                sorted = working.sorted { lhs, rhs in
+                    if lhs.isOnlineStatus == rhs.isOnlineStatus {
+                        return lhs.hostname.localizedCaseInsensitiveCompare(rhs.hostname) == .orderedAscending
+                    }
+                    return lhs.isOnlineStatus && !rhs.isOnlineStatus
+                }
+            default:
+                sorted = working.sorted { lhs, rhs in
+                    let left = selectedSort.sortKey(for: lhs)
+                    let right = selectedSort.sortKey(for: rhs)
+                    if left == right {
+                        return lhs.hostname.localizedCaseInsensitiveCompare(rhs.hostname) == .orderedAscending
+                    }
+                    return left.localizedCaseInsensitiveCompare(right) == .orderedAscending
+                }
+            }
+            if Task.isCancelled { return }
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    displayedAgents = sorted
+                }
             }
         }
     }
@@ -626,16 +673,41 @@ struct ContentView: View {
         return nil
     }
 
+    private var agentEmptyMessage: String {
+        if agents.isEmpty {
+            return L10n.key("No agents loaded. Save your connection to begin.")
+        }
+        if !appliedSearchText.isEmpty {
+            return L10n.key("No agents match your search.")
+        }
+        if sortOption != .none {
+            return "No agents match your filter."
+        }
+        return "No agents available."
+    }
+
+    private var agentsSubtitle: String? {
+        if agents.isEmpty {
+            return isLoading ? nil : String(localized: "agents.subtitle.connectEstate")
+        }
+        return agentCountText
+    }
+
     // MARK: – Helper Methods
 
     private func resetAgentsForInstanceChange() {
         withAnimation(.easeInOut(duration: 0.2)) {
             agents.removeAll()
+            displayedAgents.removeAll()
             errorMessage = nil
             isLoading = false
             searchText = ""
             appliedSearchText = ""
         }
+        agentFilterTask?.cancel()
+        agentFilterTask = nil
+        searchDebounceTask?.cancel()
+        searchDebounceTask = nil
     }
 
     private func enforceHTTPSPrefix(_ input: String) -> String {
@@ -867,6 +939,7 @@ struct ContentView: View {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             agents = result.agents
                         }
+                        updateDisplayedAgents()
                         AgentCache.shared.setAgents(result.agents)
 
                         if result.usedWrapper {
@@ -979,6 +1052,7 @@ struct ContentView: View {
             )
             ]
         }
+        updateDisplayedAgents()
         AgentCache.shared.setAgents(agents)
     }
 }

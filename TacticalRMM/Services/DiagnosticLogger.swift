@@ -4,6 +4,9 @@ import UIKit
 final class DiagnosticLogger {
     static let shared = DiagnosticLogger()
 
+    private let maxLinesPerBatch = 500
+    private let maxLinesPerMessage = 1000
+
     private let fileName: String
     private let fileManager = FileManager.default
     private let sensitiveURLFragments: [String] = [
@@ -31,20 +34,16 @@ final class DiagnosticLogger {
 
     func append(_ message: String) {
         guard let url = logFileURL else { return }
-        let logEntry = "\(Date()): \(message)\n"
+        let timestamp = Date()
         do {
-            if fileManager.fileExists(atPath: url.path) {
-                let fileHandle = try FileHandle(forWritingTo: url)
-                fileHandle.seekToEndOfFile()
-                if let data = logEntry.data(using: .utf8) {
-                    fileHandle.write(data)
-                }
-                fileHandle.closeFile()
-                applyFileProtection(to: url)
+            let fileHandle = try openLogFileHandle(at: url)
+            if message.contains("\n") {
+                try writeMultiline(message, timestamp: timestamp, to: fileHandle)
             } else {
-                try logEntry.write(to: url, atomically: true, encoding: .utf8)
-                applyFileProtection(to: url)
+                try writeLogEntry("\(timestamp): \(message)\n", to: fileHandle)
             }
+            fileHandle.closeFile()
+            applyFileProtection(to: url)
         } catch {
             print("Error writing log: \(error)")
         }
@@ -143,6 +142,59 @@ final class DiagnosticLogger {
             ], ofItemAtPath: url.path)
         } catch {
             print("Failed to apply file protection: \(error)")
+        }
+    }
+
+    private func openLogFileHandle(at url: URL) throws -> FileHandle {
+        if !fileManager.fileExists(atPath: url.path) {
+            fileManager.createFile(atPath: url.path, contents: nil)
+        }
+        let fileHandle = try FileHandle(forWritingTo: url)
+        fileHandle.seekToEndOfFile()
+        return fileHandle
+    }
+
+    private func writeLogEntry(_ entry: String, to fileHandle: FileHandle) throws {
+        if let data = entry.data(using: .utf8) {
+            fileHandle.write(data)
+        }
+    }
+
+    private func writeMultiline(_ message: String, timestamp: Date, to fileHandle: FileHandle) throws {
+        var batch = ""
+        var lineCount = 0
+        var totalLines = 0
+        var truncatedLines = 0
+        message.enumerateLines { line, _ in
+            if totalLines >= self.maxLinesPerMessage {
+                truncatedLines += 1
+                return
+            }
+            batch.append("\(timestamp): \(line)\n")
+            lineCount += 1
+            totalLines += 1
+            if lineCount >= self.maxLinesPerBatch {
+                try? self.writeLogEntry(batch, to: fileHandle)
+                batch.removeAll(keepingCapacity: true)
+                lineCount = 0
+            }
+        }
+
+        if message.hasSuffix("\n") && totalLines < maxLinesPerMessage {
+            batch.append("\(timestamp): \n")
+            lineCount += 1
+            totalLines += 1
+        } else if message.hasSuffix("\n") {
+            truncatedLines += 1
+        }
+
+        if truncatedLines > 0 {
+            batch.append("\(timestamp): [TRUNCATED] Dropped \(truncatedLines) lines (cap \(maxLinesPerMessage)).\n")
+            lineCount += 1
+        }
+
+        if lineCount > 0 {
+            try writeLogEntry(batch, to: fileHandle)
         }
     }
 }

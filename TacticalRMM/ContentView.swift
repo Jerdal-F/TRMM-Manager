@@ -675,10 +675,10 @@ struct ContentView: View {
 
     private var agentEmptyMessage: String {
         if agents.isEmpty {
-            return L10n.key("No agents loaded. Save your connection to begin.")
+            return String(localized: "No agents loaded. Save your connection to begin.")
         }
         if !appliedSearchText.isEmpty {
-            return L10n.key("No agents match your search.")
+            return String(localized: "No agents match your search.")
         }
         if sortOption != .none {
             return "No agents match your filter."

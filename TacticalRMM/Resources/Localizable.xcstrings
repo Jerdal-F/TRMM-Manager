@@ -8875,6 +8875,24 @@
         }
       }
     },
+    "settings.hideCommunityScripts" : {
+      "comment" : "Toggle label for hiding community scripts",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Community Scripts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skjul fellesskapsskript"
+          }
+        }
+      }
+    },
     "settings.instances.activeBadge" : {
       "comment" : "Badge label indicating active instance",
       "extractionState" : "manual",

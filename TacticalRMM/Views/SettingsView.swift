@@ -10,6 +10,7 @@ struct SettingsView: View {
 
     @AppStorage("useFaceID") var useFaceID: Bool = false
     @AppStorage("hideSensitive") var hideSensitiveInfo: Bool = false
+    @AppStorage("hideCommunityScripts") var hideCommunityScripts: Bool = false
     @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
     @AppStorage("selectedTheme") private var selectedThemeID: String = AppTheme.default.rawValue
     @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
@@ -220,6 +221,7 @@ struct SettingsView: View {
                 SectionHeader(L10n.key("settings.preferences.title"), subtitle: L10n.key("settings.preferences.subtitle"), systemImage: "gearshape")
 
                 settingsToggle(title: L10n.key("settings.hideSensitive"), isOn: $hideSensitiveInfo)
+                settingsToggle(title: L10n.key("settings.hideCommunityScripts"), isOn: $hideCommunityScripts)
 
                 Toggle(isOn: $useFaceID) {
                     Text(L10n.key("settings.faceIDLock"))

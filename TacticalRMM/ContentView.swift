@@ -15,6 +15,7 @@ struct ContentView: View {
     @ObservedObject private var agentCache = AgentCache.shared
 
     @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
+    @AppStorage("hideCommunityScripts") private var hideCommunityScripts: Bool = false
     @AppStorage("useFaceID") private var useFaceID: Bool = false
     @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
     @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
@@ -2997,6 +2998,7 @@ struct RunScriptView: View {
     let baseURL: String
     let apiKey: String
     @Environment(\.appTheme) private var appTheme
+    @AppStorage("hideCommunityScripts") private var hideCommunityScripts: Bool = false
 
     @State private var scripts: [RMMScript] = []
     @State private var isLoadingScripts = false
@@ -3657,7 +3659,8 @@ struct RunScriptView: View {
         }
 
         let sanitized = baseURL.removingTrailingSlash()
-        guard let url = URL(string: "\(sanitized)/scripts/") else {
+        let scriptsPath = hideCommunityScripts ? "/scripts/?showCommunityScripts=false" : "/scripts/"
+        guard let url = URL(string: "\(sanitized)\(scriptsPath)") else {
             scriptsError = "Invalid URL."
             return
         }

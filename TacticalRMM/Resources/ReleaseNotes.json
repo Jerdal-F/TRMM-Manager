@@ -1,7 +1,7 @@
 [  
   {
     "version": "0.6.0-dev",
-    "description": "Loading improvements.",
+    "description": "Loading improvements.\n\nAdded a new setting to hide community scripts.\n",
     "isCurrent": true
   },
   {

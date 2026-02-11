@@ -3,6 +3,7 @@ import SwiftUI
 struct ScriptManagerView: View {
     let settings: RMMSettings
     @Environment(\.appTheme) private var appTheme
+    @AppStorage("hideCommunityScripts") private var hideCommunityScripts: Bool = false
 
     @ObservedObject private var agentCache = AgentCache.shared
     @State private var scripts: [ScriptSummary] = []
@@ -296,7 +297,8 @@ struct ScriptManagerView: View {
             return
         }
 
-        guard let request = makeRequest(path: "/scripts/", method: "GET", apiKey: apiKey) else {
+        let scriptsPath = hideCommunityScripts ? "/scripts/?showCommunityScripts=false" : "/scripts/"
+        guard let request = makeRequest(path: scriptsPath, method: "GET", apiKey: apiKey) else {
             await MainActor.run { loadError = L10n.key("scripts.error.invalidBaseUrl") }
             return
         }

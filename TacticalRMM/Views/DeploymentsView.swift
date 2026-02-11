@@ -105,7 +105,10 @@ struct DeploymentsView: View {
             await loadDeployments(force: true)
             await loadClients(force: true)
         }
-        .sheet(isPresented: $showCreateDeployment) {
+        .settingsPresentation(
+            isPresented: $showCreateDeployment,
+            fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+        ) {
             createDeploymentSheet()
         }
         .confirmationDialog(
@@ -232,6 +235,7 @@ struct DeploymentsView: View {
                     .disabled(isCreatingDeployment || selectedSiteID == nil)
                 }
             }
+            .keyboardDismissToolbar()
             .task {
                 if clients.isEmpty {
                     await loadClients(force: true)

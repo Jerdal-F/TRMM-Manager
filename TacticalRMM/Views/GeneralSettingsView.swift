@@ -120,6 +120,7 @@ struct GeneralSettingsView: View {
                 .disabled(isLoading || isSaving)
             }
         }
+        .keyboardDismissToolbar()
         .task {
             await loadSettings(force: true)
         }

@@ -1,7 +1,7 @@
 [  
   {
     "version": "0.6.0-dev",
-    "description": "Loading improvements.\n\nAdded a new setting to hide community scripts.\n",
+    "description": "Loading improvements.\n\nAdded a new setting to hide community scripts.\n\nAdded a dismiss keyboard button.\n\nAdded MacOS support.",
     "isCurrent": true
   },
   {

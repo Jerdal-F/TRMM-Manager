@@ -105,6 +105,7 @@ struct UserAdministrationView: View {
         }
         .navigationTitle("User Administration")
         .navigationBarTitleDisplayMode(.inline)
+        .keyboardDismissToolbar()
         .task(id: settings.uuid) {
             await loadInitialData(force: true)
         }
@@ -115,8 +116,8 @@ struct UserAdministrationView: View {
         .refreshable {
             await loadInitialData(force: true)
         }
-        .sheet(item: $editingUser) { user in
-            editUserSheet(for: user)
+        .settingsPresentation(item: $editingUser, fullScreen: ProcessInfo.processInfo.isiOSAppOnMac) { user in
+            editUserSheet(for: user, onClose: { editingUser = nil })
         }
         .sheet(item: $resettingUser) { user in
             resetPasswordSheet(for: user)
@@ -198,7 +199,7 @@ struct UserAdministrationView: View {
     }
 
     @ViewBuilder
-    private func editUserSheet(for user: RMMUser) -> some View {
+    private func editUserSheet(for user: RMMUser, onClose: @escaping () -> Void) -> some View {
         NavigationStack {
             ZStack {
                 DarkGradientBackground()
@@ -253,7 +254,10 @@ struct UserAdministrationView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { cancelEditingUser() }
+                    Button("Cancel") {
+                        cancelEditingUser()
+                        onClose()
+                    }
                         .foregroundStyle(appTheme.accent)
                         .disabled(isSavingUser)
                 }
@@ -271,6 +275,7 @@ struct UserAdministrationView: View {
                     .disabled(isSavingUser || editUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .keyboardDismissToolbar()
             .onAppear {
                 syncEditRoleState(with: user)
                 roleSelectionVersion = UUID()
@@ -424,6 +429,7 @@ struct UserAdministrationView: View {
                     .disabled(isResettingPassword || resetPassword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .keyboardDismissToolbar()
         }
     }
 

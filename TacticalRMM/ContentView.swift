@@ -49,6 +49,10 @@ struct ContentView: View {
     @State private var agentFilterTask: Task<Void, Never>?
     @State private var searchDebounceTask: Task<Void, Never>?
 
+    private var faceIDEnabled: Bool {
+        useFaceID && !ProcessInfo.processInfo.isiOSAppOnMac
+    }
+
     var body: some View {
         ZStack {
             DarkGradientBackground()
@@ -76,9 +80,10 @@ struct ContentView: View {
                                 .font(.title3.weight(.semibold))
                         }
                         .foregroundStyle(appTheme.accent)
-                        .disabled(useFaceID && !didAuthenticate)
+                        .disabled(faceIDEnabled && !didAuthenticate)
                     }
                 }
+                .keyboardDismissToolbar()
                 .navigationDestination(isPresented: $showServerSettings) {
                     if let settings = selectedServerSettings {
                         ServerSettingsView(settings: settings)
@@ -96,11 +101,14 @@ struct ContentView: View {
             }
             .onAppear {
                 DiagnosticLogger.shared.append("ContentView onAppear")
+                if ProcessInfo.processInfo.isiOSAppOnMac {
+                    useFaceID = false
+                }
                 if agents.isEmpty, !agentCache.agents.isEmpty {
                     agents = agentCache.agents
                     updateDisplayedAgents()
                 }
-                if !useFaceID {
+                if !faceIDEnabled {
                     loadInitialSettings()
                 }
                 startTransactionUpdatesIfNeeded()
@@ -125,7 +133,7 @@ struct ContentView: View {
                 updateDisplayedAgents()
             }
             .onReceive(NotificationCenter.default.publisher(for: .init("reloadAgents"))) { notification in
-                guard !(useFaceID && !didAuthenticate) else { return }
+                guard !(faceIDEnabled && !didAuthenticate) else { return }
                 applyActiveSettings()
                 resetAgentsForInstanceChange()
             }
@@ -148,7 +156,7 @@ struct ContentView: View {
                     break
 
                 case .active:
-                    guard useFaceID, !didAuthenticate else { return }
+                    guard faceIDEnabled, !didAuthenticate else { return }
 
                     if !authAvailable {
                         showRecoveryAlert = true
@@ -171,6 +179,10 @@ struct ContentView: View {
                 }
             }
             .onChange(of: useFaceID) { _, newValue in
+                if ProcessInfo.processInfo.isiOSAppOnMac {
+                    useFaceID = false
+                    return
+                }
                 if newValue {
                     isAuthenticating = true
                     authenticateBiometrics { success in
@@ -182,7 +194,7 @@ struct ContentView: View {
                 }
             }
 
-            if useFaceID && !didAuthenticate {
+            if faceIDEnabled && !didAuthenticate {
                 ZStack {
                     Rectangle()
                         .fill(.ultraThinMaterial)
@@ -213,10 +225,13 @@ struct ContentView: View {
                 }
             }
         }
-        .sheet(isPresented: Binding(
-            get: { showSettings && !(useFaceID && !didAuthenticate) },
-            set: { showSettings = $0 }
-        )) {
+        .settingsPresentation(
+            isPresented: Binding(
+                get: { showSettings && !(faceIDEnabled && !didAuthenticate) },
+                set: { showSettings = $0 }
+            ),
+            fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+        ) {
             SettingsView()
         }
         .sheet(isPresented: $showLogShareSheet) {
@@ -369,7 +384,7 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity)
         }
         .primaryButton()
-        .disabled(useFaceID && !didAuthenticate)
+        .disabled(faceIDEnabled && !didAuthenticate)
     }
 
     @ViewBuilder
@@ -1150,9 +1165,11 @@ struct InstallAgentView: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Done") {
+                Button {
                     focusedField = nil
                     UIApplication.shared.dismissKeyboard()
+                } label: {
+                    Image(systemName: "keyboard.chevron.compact.down")
                 }
                 .tint(appTheme.accent)
             }
@@ -3127,11 +3144,15 @@ struct RunScriptView: View {
                 timeout = stripped
             }
         }
-        .sheet(isPresented: $showScriptPicker) {
+        .settingsPresentation(
+            isPresented: $showScriptPicker,
+            fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+        ) {
             ScriptPickerView(
                 scripts: scripts,
                 agentPlatform: normalizedAgentPlatform,
-                selectedScriptID: $selectedScriptID
+                selectedScriptID: $selectedScriptID,
+                onClose: { showScriptPicker = false }
             )
             .presentationDetents([.medium, .large])
         }
@@ -3999,6 +4020,7 @@ struct RunScriptView: View {
         let scripts: [RMMScript]
         let agentPlatform: String
         @Binding var selectedScriptID: Int?
+        let onClose: () -> Void
 
         @Environment(\.dismiss) private var dismiss
         @Environment(\.appTheme) private var appTheme
@@ -4062,6 +4084,7 @@ struct RunScriptView: View {
                                             isSupported: supports(script)
                                         ) {
                                             selectedScriptID = script.id
+                                            onClose()
                                             dismiss()
                                         }
                                     }
@@ -4089,7 +4112,10 @@ struct RunScriptView: View {
                 .navigationTitle("Select Script")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { dismiss() }
+                        Button("Cancel") {
+                            onClose()
+                            dismiss()
+                        }
                     }
                 }
             }
@@ -5431,7 +5457,10 @@ struct AgentNotesView: View {
         .onAppear {
             Task { await fetchNotes() }
         }
-        .sheet(isPresented: $isComposerPresented) {
+        .settingsPresentation(
+            isPresented: $isComposerPresented,
+            fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+        ) {
             AddAgentNoteSheet(
                 noteText: $newNoteText,
                 isSubmitting: isSubmittingNote,
@@ -5545,6 +5574,7 @@ struct AgentNotesView: View {
         let onSubmit: (String) -> Void
 
         @FocusState private var editorFocused: Bool
+        @Environment(\.dismiss) private var dismiss
 
         private var trimmedNote: String {
             noteText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -5597,7 +5627,10 @@ struct AgentNotesView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button(L10n.key("common.cancel")) { onCancel() }
+                        Button(L10n.key("common.cancel")) {
+                            onCancel()
+                            dismiss()
+                        }
                             .disabled(isSubmitting)
                     }
                     ToolbarItem(placement: .confirmationAction) {

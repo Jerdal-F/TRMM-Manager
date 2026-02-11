@@ -43,6 +43,10 @@ struct SettingsView: View {
         LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
     }
 
+    private var biometricsEnabled: Bool {
+        authAvailable && !ProcessInfo.processInfo.isiOSAppOnMac
+    }
+
     private var activeSettings: RMMSettings? {
         if let match = settingsList.first(where: { $0.uuid.uuidString == activeSettingsUUID }) {
             return ensureIdentifiers(for: match)
@@ -136,7 +140,11 @@ struct SettingsView: View {
                         .foregroundStyle(appTheme.accent)
                 }
             }
-            .sheet(isPresented: $showAddInstanceSheet) {
+            .keyboardDismissToolbar()
+            .settingsPresentation(
+                isPresented: $showAddInstanceSheet,
+                fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+            ) {
                 addInstanceSheet
             }
             .sheet(isPresented: Binding(
@@ -147,10 +155,16 @@ struct SettingsView: View {
                     editInstanceSheet(for: instance)
                 }
             }
-            .sheet(isPresented: $showDonationSheet) {
+            .settingsPresentation(
+                isPresented: $showDonationSheet,
+                fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+            ) {
                 DonationSheet()
             }
-            .sheet(isPresented: $showReleaseNotes) {
+            .settingsPresentation(
+                isPresented: $showReleaseNotes,
+                fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+            ) {
                 ReleaseNotesView()
             }
             .alert(L10n.key("settings.alert.deleteAllTitle"), isPresented: $showResetConfirmation) {
@@ -178,6 +192,11 @@ struct SettingsView: View {
             } message: {
                 if let instance = pendingDeleteInstance {
                     Text(L10n.format("settings.alert.deleteInstanceMessage", instance.displayName))
+                }
+            }
+            .onAppear {
+                if ProcessInfo.processInfo.isiOSAppOnMac {
+                    useFaceID = false
                 }
             }
         }
@@ -229,10 +248,10 @@ struct SettingsView: View {
                         .foregroundStyle(Color.white)
                 }
                 .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
-                .disabled(!authAvailable)
-                .opacity(authAvailable ? 1 : 0.4)
+                .disabled(!biometricsEnabled)
+                .opacity(biometricsEnabled ? 1 : 0.4)
 
-                if !authAvailable {
+                if !biometricsEnabled {
                     Text(L10n.key("settings.faceIDRequirement"))
                         .font(.caption2)
                         .foregroundStyle(Color.white.opacity(0.6))
@@ -596,6 +615,7 @@ struct SettingsView: View {
                                   newInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .keyboardDismissToolbar()
             .onAppear {
                 addInstanceField = .name
             }
@@ -655,6 +675,7 @@ struct SettingsView: View {
                                   editInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .keyboardDismissToolbar()
             .onAppear {
                 editInstanceField = .name
             }

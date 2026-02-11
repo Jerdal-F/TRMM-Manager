@@ -66,12 +66,17 @@ struct CodeSigningView: View {
         }
         .navigationTitle(L10n.key("codesigning.title"))
         .navigationBarTitleDisplayMode(.inline)
+        .keyboardDismissToolbar()
         .task { await loadToken(force: true) }
         .refreshable { await loadToken(force: true) }
-        .sheet(isPresented: $isShowingEditor) {
+        .settingsPresentation(
+            isPresented: $isShowingEditor,
+            fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+        ) {
             CodeSigningEditorSheet(
                 token: $draftToken,
                 isSaving: $isSaving,
+                onClose: { isShowingEditor = false },
                 onSubmit: { await handleSubmit() }
             )
             .presentationDetents([.medium])
@@ -562,6 +567,7 @@ private struct CodeSigningEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var token: String
     @Binding var isSaving: Bool
+    let onClose: () -> Void
     let onSubmit: () async -> Void
 
     var body: some View {
@@ -577,6 +583,7 @@ private struct CodeSigningEditorSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(L10n.key("common.cancel")) {
+                        onClose()
                         dismiss()
                     }
                 }
@@ -593,6 +600,7 @@ private struct CodeSigningEditorSheet: View {
                     .disabled(isSaving)
                 }
             }
+            .keyboardDismissToolbar()
         }
     }
 }

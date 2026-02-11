@@ -147,13 +147,8 @@ struct SettingsView: View {
             ) {
                 addInstanceSheet
             }
-            .sheet(isPresented: Binding(
-                get: { editingInstance != nil },
-                set: { if !$0 { cancelEditInstance() } }
-            )) {
-                if let instance = editingInstance {
-                    editInstanceSheet(for: instance)
-                }
+            .settingsPresentation(item: $editingInstance, fullScreen: ProcessInfo.processInfo.isiOSAppOnMac) { instance in
+                editInstanceSheet(for: instance)
             }
             .settingsPresentation(
                 isPresented: $showDonationSheet,

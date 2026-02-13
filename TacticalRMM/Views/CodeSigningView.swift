@@ -261,7 +261,7 @@ struct CodeSigningView: View {
     private func loadToken(force: Bool = false) async {
         guard !isLoading || force else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 token = "DEMO-TOKEN-123"
                 isLoading = false
@@ -351,7 +351,7 @@ struct CodeSigningView: View {
             return
         }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 signAllMessage = L10n.key("codesigning.error.demoBulkUnsupported")
             }
@@ -411,7 +411,7 @@ struct CodeSigningView: View {
         await MainActor.run { showDeleteConfirmation = false }
         guard !isDeleting else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 token = nil
                 loadError = nil
@@ -476,7 +476,7 @@ struct CodeSigningView: View {
     }
 
     private func updateToken() async throws {
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run { isShowingEditor = false }
             return
         }

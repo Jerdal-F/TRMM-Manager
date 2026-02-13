@@ -568,7 +568,7 @@ struct DeploymentsView: View {
             return
         }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             createDemoDeployment(siteID: siteID)
             return
         }
@@ -666,7 +666,7 @@ struct DeploymentsView: View {
             deleteErrorMessage = nil
         }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 withAnimation {
                     deployments.removeAll { $0.id == deploymentID }
@@ -773,7 +773,7 @@ struct DeploymentsView: View {
     private func loadClients(force: Bool = false) async {
         if isLoadingClients && !force { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             loadDemoClients()
             return
         }
@@ -869,7 +869,7 @@ struct DeploymentsView: View {
 
         deleteErrorMessage = nil
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             loadDemoDeployments()
             return
         }

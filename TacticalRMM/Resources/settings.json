@@ -1,0 +1,3 @@
+{
+  "debugMenuEnabled": true // Disable in production builds
+}

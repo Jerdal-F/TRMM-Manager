@@ -119,11 +119,14 @@ struct UserAdministrationView: View {
         .settingsPresentation(item: $editingUser, fullScreen: ProcessInfo.processInfo.isiOSAppOnMac) { user in
             editUserSheet(for: user, onClose: { editingUser = nil })
         }
-        .sheet(item: $resettingUser) { user in
-            resetPasswordSheet(for: user)
+        .settingsPresentation(item: $resettingUser, fullScreen: ProcessInfo.processInfo.isiOSAppOnMac) { user in
+            resetPasswordSheet(for: user, onClose: { resettingUser = nil })
         }
-        .sheet(item: $sessionUser) { user in
-            activeSessionsSheet(for: user)
+        .settingsPresentation(item: $sessionUser, fullScreen: ProcessInfo.processInfo.isiOSAppOnMac) { user in
+            activeSessionsSheet(for: user, onClose: {
+                sessionUser = nil
+                resetSessionState()
+            })
         }
     }
 
@@ -362,7 +365,7 @@ struct UserAdministrationView: View {
     }
 
     @ViewBuilder
-    private func resetPasswordSheet(for user: RMMUser) -> some View {
+    private func resetPasswordSheet(for user: RMMUser, onClose: @escaping () -> Void) -> some View {
         NavigationStack {
             ZStack {
                 DarkGradientBackground()
@@ -411,7 +414,10 @@ struct UserAdministrationView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { cancelResettingPassword() }
+                    Button("Cancel") {
+                        cancelResettingPassword()
+                        onClose()
+                    }
                         .foregroundStyle(appTheme.accent)
                         .disabled(isResettingPassword)
                 }
@@ -434,7 +440,7 @@ struct UserAdministrationView: View {
     }
 
     @ViewBuilder
-    private func activeSessionsSheet(for user: RMMUser) -> some View {
+    private func activeSessionsSheet(for user: RMMUser, onClose: @escaping () -> Void) -> some View {
         NavigationStack {
             ZStack {
                 DarkGradientBackground()
@@ -498,8 +504,7 @@ struct UserAdministrationView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") {
-                        sessionUser = nil
-                        resetSessionState()
+                        onClose()
                     }
                     .foregroundStyle(appTheme.accent)
                     .disabled(isLoadingSessions || isLoggingOutAllSessions)
@@ -1101,7 +1106,7 @@ struct UserAdministrationView: View {
     private func loadUsers(apiKey: String, force: Bool = false) async {
         guard !isLoading || force else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             DiagnosticLogger.shared.append("UserAdministrationView loading demo users.")
             loadDemoUsers()
             return
@@ -1179,7 +1184,7 @@ struct UserAdministrationView: View {
     private func loadRoles(apiKey: String, force: Bool = false) async {
         if !force && !roles.isEmpty { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             loadDemoRoles()
             return
         }
@@ -1266,7 +1271,7 @@ struct UserAdministrationView: View {
 
     @MainActor
     private func loadInitialData(force: Bool = false) async {
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             loadDemoRoles()
             loadDemoUsers()
             return
@@ -1325,7 +1330,7 @@ struct UserAdministrationView: View {
     private func loadSessions(for user: RMMUser, force: Bool = false) async {
         guard !isLoadingSessions || force else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             loadDemoSessions()
             return
         }
@@ -1417,7 +1422,7 @@ struct UserAdministrationView: View {
         deletingSessionDigests.insert(session.digest)
         defer { deletingSessionDigests.remove(session.digest) }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             withAnimation {
                 userSessions.removeAll { $0.digest == session.digest }
             }
@@ -1497,7 +1502,7 @@ struct UserAdministrationView: View {
         isLoggingOutAllSessions = true
         defer { isLoggingOutAllSessions = false }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             withAnimation { userSessions = [] }
             return
         }

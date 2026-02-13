@@ -286,7 +286,7 @@ struct ScriptManagerView: View {
     private func loadScripts(force: Bool = false) async {
         guard !isLoading || force else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 scripts = ScriptSummary.demoScripts
                 loadError = nil
@@ -350,7 +350,7 @@ struct ScriptManagerView: View {
         guard selectedScript?.id == summary.id else { return }
         guard !isLoadingDetail || force else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 scriptDetail = ScriptDetail.demoScript(for: summary)
                 detailError = nil
@@ -458,7 +458,7 @@ struct ScriptManagerView: View {
             Task { @MainActor in isDeletingScript = false }
         }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 scripts.removeAll { $0.id == summary.id }
                 if selectedScript?.id == summary.id {
@@ -522,7 +522,7 @@ struct ScriptManagerView: View {
         do {
             let payload = try editDraft.makePayload(existing: detail)
 
-            if settings.baseURL.isDemoEntry {
+            if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
                 await MainActor.run {
                     scriptDetail = ScriptDetail(
                         id: payload.id,
@@ -621,7 +621,7 @@ struct ScriptManagerView: View {
         do {
             let (agentID, payload) = try draft.makePayload()
 
-            if settings.baseURL.isDemoEntry {
+            if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
                 await MainActor.run {
                     testResult = ScriptTestResponse.demo
                     testError = nil

@@ -11,6 +11,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.appTheme) private var appTheme
+    @Environment(\.openURL) private var openURL
     @Query private var settingsList: [RMMSettings]
     @ObservedObject private var agentCache = AgentCache.shared
 
@@ -19,11 +20,15 @@ struct ContentView: View {
     @AppStorage("useFaceID") private var useFaceID: Bool = false
     @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
     @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
+    @AppStorage("skippedUpdateVersion") private var skippedUpdateVersion: String = ""
+    @ObservedObject private var demoMode = DemoModeState.shared
     @State private var showGuideAlert = false
     @State private var showDiagnosticAlert = false
     @State private var showLogShareSheet = false
     @State private var showSettings = false
     @State private var showRecoveryAlert = false
+    @State private var showUpdateAlert = false
+    @State private var latestVersion: String = ""
 
     @State private var isAuthenticating = false
     @State private var didAuthenticate = false
@@ -112,6 +117,7 @@ struct ContentView: View {
                     loadInitialSettings()
                 }
                 startTransactionUpdatesIfNeeded()
+                Task { await checkForUpdateIfNeeded() }
             }
             .onChange(of: activeSettingsUUID) { _, _ in
                 applyActiveSettings()
@@ -136,6 +142,9 @@ struct ContentView: View {
                 guard !(faceIDEnabled && !didAuthenticate) else { return }
                 applyActiveSettings()
                 resetAgentsForInstanceChange()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .forceUpdateCheck)) { _ in
+                Task { await checkForUpdateIfNeeded(force: true) }
             }
             .onDisappear {
                 transactionUpdatesTask?.cancel()
@@ -233,6 +242,18 @@ struct ContentView: View {
             fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
         ) {
             SettingsView()
+        }
+        .alert(L10n.key("common.notice"), isPresented: $showUpdateAlert) {
+            Button(L10n.key("common.update")) {
+                if let url = URL(string: "https://apps.apple.com/gb/app/trmm-manager/id6742686284") {
+                    openURL(url)
+                }
+            }
+            Button(L10n.key("common.dismiss"), role: .cancel) {
+                skippedUpdateVersion = latestVersion
+            }
+        } message: {
+            Text(L10n.format("update.available.message", latestVersion))
         }
         .sheet(isPresented: $showLogShareSheet) {
             if let url = DiagnosticLogger.shared.getLogFileURL() {
@@ -390,7 +411,10 @@ struct ContentView: View {
     @ViewBuilder
     private func connectionSummary(for settings: RMMSettings) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            summaryRow(title: L10n.key("connection.summary.instanceLabel"), value: settings.displayName, systemImage: "server.rack")
+            let displayName = demoMode.isEnabled
+                ? L10n.key("connection.summary.instance.demo")
+                : settings.displayName
+            summaryRow(title: L10n.key("connection.summary.instanceLabel"), value: displayName, systemImage: "server.rack")
             Text(L10n.key("connection.summary.manageDetails"))
                 .font(.caption)
                 .foregroundStyle(Color.white.opacity(0.65))
@@ -838,6 +862,67 @@ struct ContentView: View {
     private var authAvailable: Bool {
         LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
     }
+
+    private func checkForUpdateIfNeeded() async {
+        await checkForUpdateIfNeeded(force: false)
+    }
+
+    private func checkForUpdateIfNeeded(force: Bool) async {
+        guard let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
+            return
+        }
+        if !force, !skippedUpdateVersion.isEmpty, skippedUpdateVersion == current {
+            return
+        }
+
+        let bundleID = "jerdal.TacticalRMM-Manager"
+        guard let url = URL(string: "https://itunes.apple.com/lookup?bundleId=\(bundleID)") else {
+            return
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                return
+            }
+
+            guard let lookup = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let results = lookup["results"] as? [[String: Any]],
+                  let latest = results.first?["version"] as? String else {
+                return
+            }
+
+            if !force, !isVersion(latest, greaterThan: current) {
+                return
+            }
+
+            if !force, skippedUpdateVersion == latest {
+                return
+            }
+
+            await MainActor.run {
+                latestVersion = latest
+                showUpdateAlert = true
+            }
+        } catch {
+            return
+        }
+    }
+
+    private func isVersion(_ latest: String, greaterThan current: String) -> Bool {
+        let latestParts = latest.split(separator: ".").map { Int($0) ?? 0 }
+        let currentParts = current.split(separator: ".").map { Int($0) ?? 0 }
+        let maxCount = max(latestParts.count, currentParts.count)
+
+        for index in 0..<maxCount {
+            let latestValue = index < latestParts.count ? latestParts[index] : 0
+            let currentValue = index < currentParts.count ? currentParts[index] : 0
+            if latestValue != currentValue {
+                return latestValue > currentValue
+            }
+        }
+        return false
+    }
     
 // Fredrik Jerdal 2025
     @MainActor
@@ -906,7 +991,7 @@ struct ContentView: View {
         DiagnosticLogger.shared.append("fetchAgents started (attempt \(attempt))")
         let resolved = ensureIdentifiers(for: settings)
         KeychainHelper.shared.setActiveIdentifier(resolved.keychainKey)
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             DiagnosticLogger.shared.append("Demo mode detected, loading sample agents instead of performing network call.")
             isLoading = false
             errorMessage = nil
@@ -1815,8 +1900,7 @@ struct AgentDetailView: View {
     }
 
     private var isDemoMode: Bool {
-         return baseURL.isDemoEntry &&
-             effectiveAPIKey.lowercased() == "demo"
+        DemoMode.isEnabled || (baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo")
     }
     
     @MainActor
@@ -1824,6 +1908,11 @@ struct AgentDetailView: View {
         if isDemoMode {
             DiagnosticLogger.shared.append("Demo mode active, skipping fetchAgentDetail.")
             updatedAgent = agent
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            message = L10n.key("agents.error.simulated")
+            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping fetchAgentDetail.")
             return
         }
         DiagnosticLogger.shared.append("AgentDetailView: fetchAgentDetail started")
@@ -1860,6 +1949,18 @@ struct AgentDetailView: View {
     
     @MainActor
     func performWakeOnLan() async {
+        if isDemoMode {
+            isProcessing = true
+            message = L10n.format("agents.wol.sentToFormat", agent.hostname)
+            DiagnosticLogger.shared.append("Demo mode: simulated Wake-on-LAN.")
+            isProcessing = false
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            message = L10n.key("agents.error.simulated")
+            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping Wake-on-LAN.")
+            return
+        }
         isProcessing = true
         message = nil
         let sanitizedURL = baseURL.removingTrailingSlash()
@@ -1924,8 +2025,13 @@ struct AgentDetailView: View {
         }()
 
         if isDemoMode {
-            message = L10n.format("agents.error.demoUnsupported", action)
-            DiagnosticLogger.shared.append("Demo mode: skipping \(action) command.")
+            message = L10n.format("agents.action.successFormat", actionLabel)
+            DiagnosticLogger.shared.append("Demo mode: simulated \(action) command.")
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            message = L10n.key("agents.error.simulated")
+            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping \(action) command.")
             return
         }
         let sanitizedURL = baseURL.removingTrailingSlash()
@@ -3396,7 +3502,7 @@ struct RunScriptView: View {
     }
 
     private var isDemoMode: Bool {
-        baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo"
+        DemoMode.isEnabled || (baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo")
     }
 
     private func clearScriptOutput() {
@@ -4224,6 +4330,18 @@ struct AgentProcessesView: View {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
     }
 
+    private var isDemoMode: Bool {
+        DemoMode.isEnabled || (baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo")
+    }
+
+    private static let demoProcesses: [ProcessRecord] = [
+        ProcessRecord(id: 1, name: "Explorer", pid: 4240, membytes: 145_760_256, username: "SYSTEM", cpu_percent: "0.6"),
+        ProcessRecord(id: 2, name: "chrome", pid: 1328, membytes: 312_500_224, username: "demo.user", cpu_percent: "3.1"),
+        ProcessRecord(id: 3, name: "Code", pid: 2210, membytes: 268_435_456, username: "demo.user", cpu_percent: "1.7"),
+        ProcessRecord(id: 4, name: "OneDrive", pid: 1760, membytes: 98_304_512, username: "demo.user", cpu_percent: "0.2"),
+        ProcessRecord(id: 5, name: "svchost", pid: 840, membytes: 72_351_744, username: "LOCAL SERVICE", cpu_percent: "0.1")
+    ]
+
     var displayedProcesses: [ProcessRecord] {
         if appliedSearchQuery.isEmpty {
             return processRecords
@@ -4537,6 +4655,19 @@ struct AgentProcessesView: View {
                 isLoading = false
             }
         }
+        if ApiErrorSimulation.isEnabled {
+            errorMessage = L10n.key("agents.error.simulated")
+            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping fetchProcesses.")
+            return
+        }
+        if isDemoMode {
+            guard fetchID == processFetchSequence else { return }
+            withAnimation(.easeInOut(duration: 0.25)) {
+                processRecords = Self.demoProcesses
+                deletedPIDs.removeAll()
+            }
+            return
+        }
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/\(agentId)/processes/") else {
             errorMessage = "Invalid URL"
@@ -4592,6 +4723,21 @@ struct AgentProcessesView: View {
     @MainActor
     func killProcess(withPid pid: Int) async {
         killBannerMessage = nil
+        if isDemoMode {
+            killBannerMessage = "Demo mode: process \(pid) terminated."
+            selectedProcess = nil
+            withAnimation(.easeInOut(duration: 0.2)) {
+                processRecords.removeAll { $0.pid == pid }
+                deletedPIDs.insert(pid)
+            }
+            pidToKill = ""
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            killBannerMessage = L10n.key("agents.error.simulated")
+            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping killProcess.")
+            return
+        }
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/\(agentId)/processes/\(pid)/") else {
             DiagnosticLogger.shared.appendError("Invalid URL in kill process.")
@@ -4694,8 +4840,55 @@ struct AgentSoftwareView: View {
     @FocusState private var searchFocused: Bool
 
     private var isWindowsAgent: Bool {
-        operatingSystem.lowercased().contains("windows")
+        isDemoMode || operatingSystem.lowercased().contains("windows")
     }
+
+    private var isDemoMode: Bool {
+        DemoMode.isEnabled || (baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo")
+    }
+
+    private static let demoInventory: [InstalledSoftware] = [
+        InstalledSoftware(
+            name: "Microsoft Edge",
+            size: "321 MB",
+            source: "winget",
+            version: "128.0.2739.42",
+            location: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application",
+            publisher: "Microsoft Corporation",
+            uninstall: "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\128.0.2739.42\\Installer\\setup.exe\" --uninstall --system-level",
+            install_date: "2024-08-12"
+        ),
+        InstalledSoftware(
+            name: "7-Zip",
+            size: "5 MB",
+            source: "choco",
+            version: "23.01",
+            location: "C:\\Program Files\\7-Zip",
+            publisher: "Igor Pavlov",
+            uninstall: "\"C:\\Program Files\\7-Zip\\Uninstall.exe\"",
+            install_date: "2024-06-03"
+        ),
+        InstalledSoftware(
+            name: "Visual Studio Code",
+            size: "412 MB",
+            source: "winget",
+            version: "1.92.2",
+            location: "C:\\Users\\demo.user\\AppData\\Local\\Programs\\Microsoft VS Code",
+            publisher: "Microsoft Corporation",
+            uninstall: "\"C:\\Users\\demo.user\\AppData\\Local\\Programs\\Microsoft VS Code\\unins000.exe\" /SILENT",
+            install_date: "2024-07-18"
+        ),
+        InstalledSoftware(
+            name: "Git",
+            size: "120 MB",
+            source: "manual",
+            version: "2.46.0",
+            location: "C:\\Program Files\\Git",
+            publisher: "The Git Development Community",
+            uninstall: "\"C:\\Program Files\\Git\\unins000.exe\" /VERYSILENT",
+            install_date: "2024-05-21"
+        )
+    ]
 
     private var softwareEndpointRoot: String {
         baseURL.removingTrailingSlash() + "/software"
@@ -4883,6 +5076,20 @@ struct AgentSoftwareView: View {
     private func submitUninstall() async {
         guard let software = pendingUninstallSoftware else { return }
 
+        if isDemoMode {
+            pendingUninstallSoftware = nil
+            statusMessage = "Demo mode: uninstall queued for \(software.name)."
+            uninstallCommandText = ""
+            uninstallTimeoutText = "1800"
+            uninstallRunAsUser = false
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            uninstallSheetError = L10n.key("agents.error.simulated")
+            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping uninstall.")
+            return
+        }
+
         let trimmedCommand = uninstallCommandText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedCommand.isEmpty else {
             uninstallSheetError = L10n.key("agents.software.uninstall.commandRequired")
@@ -5021,6 +5228,25 @@ struct AgentSoftwareView: View {
     func fetchSoftwareInventory(force: Bool = false) async {
         guard isWindowsAgent else { return }
         if isLoading && !force { return }
+
+        if isDemoMode {
+            isLoading = true
+            errorMessage = nil
+            statusMessage = nil
+            withAnimation(.easeInOut(duration: 0.25)) {
+                inventory = Self.demoInventory
+            }
+            isLoading = false
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            isLoading = true
+            errorMessage = L10n.key("agents.error.simulated")
+            statusMessage = nil
+            isLoading = false
+            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping fetchSoftwareInventory.")
+            return
+        }
 
         let trimmedAgent = agentId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedAgent.isEmpty else {
@@ -5430,6 +5656,36 @@ struct AgentNotesView: View {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
     }
 
+    private var isDemoMode: Bool {
+        DemoMode.isEnabled || (baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo")
+    }
+
+    private static func demoNotes(agentId: String) -> [Note] {
+        [
+            Note(
+                pk: 101,
+                entry_time: "2024-08-25T09:14:22Z",
+                note: "Demo note: device enrolled, baseline policies applied.",
+                username: "demo.user",
+                agent_id: agentId
+            ),
+            Note(
+                pk: 102,
+                entry_time: "2024-09-02T14:46:00Z",
+                note: "Demo note: reboot scheduled after patch window.",
+                username: "Demo",
+                agent_id: agentId
+            ),
+            Note(
+                pk: 103,
+                entry_time: "2024-09-18T18:05:11Z",
+                note: "Demo note: user reported intermittent VPN drops.",
+                username: "demo.user",
+                agent_id: agentId
+            )
+        ]
+    }
+
     var body: some View {
         ZStack {
             DarkGradientBackground()
@@ -5659,6 +5915,29 @@ struct AgentNotesView: View {
 
     @MainActor
     func createNote(with note: String) async {
+        if isDemoMode {
+            let nextId = (notes.map { $0.pk }.max() ?? 100) + 1
+            let newNote = Note(
+                pk: nextId,
+                entry_time: ISO8601DateFormatter().string(from: Date()),
+                note: note,
+                username: "Demo",
+                agent_id: agentId
+            )
+            withAnimation(.easeInOut(duration: 0.25)) {
+                notes.insert(newNote, at: 0)
+            }
+            newNoteText = ""
+            statusMessage = L10n.key("agents.notes.added")
+            isComposerPresented = false
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            errorMessage = L10n.key("agents.error.simulated")
+            statusMessage = nil
+            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping createNote.")
+            return
+        }
         guard !note.isEmpty else {
             errorMessage = L10n.key("agents.notes.error.empty")
             statusMessage = nil
@@ -5726,6 +6005,19 @@ struct AgentNotesView: View {
 
     @MainActor
     func deleteNote(_ note: Note) async {
+        if isDemoMode {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                notes.removeAll { $0.pk == note.pk }
+            }
+            statusMessage = L10n.key("agents.notes.deleted")
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            errorMessage = L10n.key("agents.error.simulated")
+            statusMessage = nil
+            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping deleteNote.")
+            return
+        }
         errorMessage = nil
         statusMessage = nil
 
@@ -5878,6 +6170,24 @@ struct AgentNotesView: View {
 
     @MainActor
     func fetchNotes() async {
+        if isDemoMode {
+            isLoading = true
+            errorMessage = nil
+            statusMessage = nil
+            withAnimation(.easeInOut(duration: 0.25)) {
+                notes = Self.demoNotes(agentId: agentId)
+            }
+            isLoading = false
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            isLoading = true
+            errorMessage = L10n.key("agents.error.simulated")
+            statusMessage = nil
+            isLoading = false
+            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping fetchNotes.")
+            return
+        }
         isLoading = true
         errorMessage = nil
         let sanitizedURL = baseURL.removingTrailingSlash()

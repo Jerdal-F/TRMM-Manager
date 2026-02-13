@@ -15,6 +15,7 @@ struct SettingsView: View {
     @AppStorage("selectedTheme") private var selectedThemeID: String = AppTheme.default.rawValue
     @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
     @AppStorage("selectedBackground") private var selectedBackgroundID: String = AppBackgroundStyle.default.rawValue
+    @ObservedObject private var demoMode = DemoModeState.shared
 
     @State private var showResetConfirmation = false
     @State private var showAddInstanceSheet = false
@@ -35,6 +36,8 @@ struct SettingsView: View {
     @State private var showDonationSheet = false
     @State private var showReleaseNotes = false
     @State private var pendingDeleteInstance: RMMSettings?
+    @State private var showDebugMenu = false
+    @State private var debugStatusMessage: String?
 
     private enum AddInstanceField: Hashable { case name, url, key }
     private enum EditInstanceField: Hashable { case name, url, key }
@@ -59,8 +62,13 @@ struct SettingsView: View {
 
     private var instanceSubtitle: String {
         if settingsList.isEmpty { return L10n.key("settings.instances.subtitle.none") }
+        if demoMode.isEnabled { return L10n.key("settings.instances.subtitle.demo") }
         if let active = activeSettings { return L10n.format("settings.instances.subtitle.active", active.displayName) }
         return L10n.key("settings.instances.subtitle.select")
+    }
+
+    private var isTestFlight: Bool {
+        Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
     }
 
     private var selectedTheme: AppTheme {
@@ -125,6 +133,9 @@ struct SettingsView: View {
                     VStack(spacing: 24) {
                         instancesCard
                         preferencesCard
+                        if isTestFlight && AppSettings.shared.debugMenuEnabled {
+                            debugCard
+                        }
                         resourcesCard
                         dangerCard
                         footer
@@ -161,6 +172,20 @@ struct SettingsView: View {
                 fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
             ) {
                 ReleaseNotesView()
+            }
+            .settingsPresentation(
+                isPresented: $showDebugMenu,
+                fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+            ) {
+                DebugMenuView(
+                    statusMessage: $debugStatusMessage,
+                    onClearCache: clearDebugCache,
+                    onEnterDemoMode: enterDemoMode,
+                    onForceUpdate: {
+                        NotificationCenter.default.post(name: .forceUpdateCheck, object: nil)
+                        debugStatusMessage = L10n.key("settings.debug.updateRequested")
+                    }
+                )
             }
             .alert(L10n.key("settings.alert.deleteAllTitle"), isPresented: $showResetConfirmation) {
                 Button(L10n.key("common.delete"), role: .destructive) {
@@ -476,6 +501,165 @@ struct SettingsView: View {
         }
     }
 
+    private var debugCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader(L10n.key("settings.debug.title"), subtitle: L10n.key("settings.debug.subtitle"), systemImage: "wrench.and.screwdriver")
+
+                Button {
+                    showDebugMenu = true
+                } label: {
+                    Label(L10n.key("settings.debug.open"), systemImage: "ladybug")
+                        .frame(maxWidth: .infinity)
+                }
+                .secondaryButton()
+            }
+        }
+    }
+
+    private struct DebugMenuView: View {
+        @Environment(\.dismiss) private var dismiss
+        @Environment(\.appTheme) private var appTheme
+        @Binding var statusMessage: String?
+        @ObservedObject private var apiErrorSim = ApiErrorSimulationState.shared
+        let onClearCache: () -> Void
+        let onEnterDemoMode: () -> Void
+        let onForceUpdate: () -> Void
+
+        @State private var showClearCacheConfirm = false
+        @State private var showDemoConfirm = false
+        @State private var showLogShareSheet = false
+        @State private var showLogMissingAlert = false
+
+        var body: some View {
+            NavigationStack {
+                ZStack {
+                    DarkGradientBackground()
+
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 24) {
+                            GlassCard {
+                                VStack(alignment: .leading, spacing: 16) {
+                                    SectionHeader(L10n.key("settings.debug.title"), subtitle: L10n.key("settings.debug.subtitle"), systemImage: "wrench.and.screwdriver")
+
+                                    Button {
+                                        if DiagnosticLogger.shared.getLogFileURL() == nil {
+                                            showLogMissingAlert = true
+                                        } else {
+                                            showLogShareSheet = true
+                                        }
+                                    } label: {
+                                        Label(L10n.key("settings.debug.exportLogs"), systemImage: "doc.text.magnifyingglass")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .secondaryButton()
+
+                                    Button {
+                                        showClearCacheConfirm = true
+                                    } label: {
+                                        Label(L10n.key("settings.debug.clearCache"), systemImage: "trash.slash")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .secondaryButton()
+
+                                    Button {
+                                        showDemoConfirm = true
+                                    } label: {
+                                        Label(L10n.key("settings.debug.enterDemo"), systemImage: "sparkles")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .secondaryButton()
+
+                                    Button {
+                                        let enabled = !apiErrorSim.isEnabled
+                                        ApiErrorSimulation.setEnabled(enabled)
+                                        statusMessage = enabled
+                                            ? L10n.key("settings.debug.apiError.enabled")
+                                            : L10n.key("settings.debug.apiError.disabled")
+                                    } label: {
+                                        Label(
+                                            L10n.key(apiErrorSim.isEnabled
+                                                ? "settings.debug.apiError.disable"
+                                                : "settings.debug.apiError.enable"),
+                                            systemImage: "exclamationmark.triangle"
+                                        )
+                                        .frame(maxWidth: .infinity)
+                                    }
+                                    .secondaryButton()
+
+                                    Button {
+                                        onForceUpdate()
+                                    } label: {
+                                        Label(L10n.key("settings.debug.forceUpdate"), systemImage: "arrow.triangle.2.circlepath")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .secondaryButton()
+
+                                    if let statusMessage {
+                                        Text(statusMessage)
+                                            .font(.footnote)
+                                            .foregroundStyle(Color.white.opacity(0.7))
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 28)
+                    }
+                }
+                .navigationTitle(L10n.key("settings.debug.title"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(L10n.key("common.done")) { dismiss() }
+                            .foregroundStyle(appTheme.accent)
+                    }
+                }
+                .alert(L10n.key("settings.debug.clearCache.confirm.title"), isPresented: $showClearCacheConfirm) {
+                    Button(L10n.key("common.cancel"), role: .cancel) {}
+                    Button(L10n.key("common.clear"), role: .destructive) {
+                        onClearCache()
+                    }
+                } message: {
+                    Text(L10n.key("settings.debug.clearCache.confirm.message"))
+                }
+                .alert(L10n.key("settings.debug.demo.confirm.title"), isPresented: $showDemoConfirm) {
+                    Button(L10n.key("common.cancel"), role: .cancel) {}
+                    Button(L10n.key("common.confirm"), role: .destructive) {
+                        onEnterDemoMode()
+                    }
+                } message: {
+                    Text(L10n.key("settings.debug.demo.confirm.message"))
+                }
+                .alert(L10n.key("common.notice"), isPresented: $showLogMissingAlert) {
+                    Button(L10n.key("common.dismiss"), role: .cancel) { }
+                } message: {
+                    Text(L10n.key("settings.debug.noLog"))
+                }
+                .sheet(isPresented: $showLogShareSheet) {
+                    if let url = DiagnosticLogger.shared.getLogFileURL() {
+                        ActivityView(activityItems: [url])
+                    } else {
+                        Text(L10n.key("settings.debug.noLog"))
+                    }
+                }
+            }
+        }
+    }
+
+    private func clearDebugCache() {
+        AgentCache.shared.clear()
+        KeychainHelper.shared.clearCachedKeys()
+        NotificationCenter.default.post(name: .init("reloadAgents"), object: nil)
+        debugStatusMessage = L10n.key("settings.debug.cacheCleared")
+    }
+
+    private func enterDemoMode() {
+        DemoMode.setEnabled(true)
+        debugStatusMessage = L10n.key("settings.debug.demoEnabled")
+        NotificationCenter.default.post(name: .init("reloadAgents"), object: nil)
+    }
+
     private var dangerCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
@@ -504,7 +688,7 @@ struct SettingsView: View {
 
     private func instanceRow(for settings: RMMSettings) -> some View {
         let resolved = ensureIdentifiers(for: settings)
-        let isActive = resolved.uuid.uuidString == activeSettingsUUID
+        let isActive = !demoMode.isEnabled && resolved.uuid.uuidString == activeSettingsUUID
 
         return HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
@@ -728,6 +912,7 @@ struct SettingsView: View {
 
     private func setActiveInstance(_ settings: RMMSettings, triggerReload: Bool = false) {
         let resolved = ensureIdentifiers(for: settings)
+        DemoMode.setEnabled(false)
         activeSettingsUUID = resolved.uuid.uuidString
         KeychainHelper.shared.setActiveIdentifier(resolved.keychainKey)
         if triggerReload {

@@ -232,7 +232,7 @@ struct KeyStoreView: View {
     private func loadEntries(force: Bool = false) async {
         guard !isLoading || force else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 entries = KeyStoreEntry.demoEntries
                 isLoading = false
@@ -342,7 +342,7 @@ struct KeyStoreView: View {
 
     private func deleteEntry(_ entry: KeyStoreEntry) async {
         guard !isDeleting else { return }
-        guard !settings.baseURL.isDemoEntry else {
+        guard !DemoMode.isEnabled && !settings.baseURL.isDemoEntry else {
             await MainActor.run {
                 entries.removeAll { $0.id == entry.id }
                 entryPendingDelete = nil
@@ -388,7 +388,7 @@ struct KeyStoreView: View {
     }
 
     private func sendMutatingRequest(method: String, body: Data, pathSuffix: String?) async throws {
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run { isShowingEditor = false }
             return
         }

@@ -158,7 +158,7 @@ private extension ServerSettingsView {
     var installBaseURL: String {
         let resolved = resolvedSettings
         let base = resolved.baseURL
-        if base.isDemoEntry { return base }
+        if DemoMode.isEnabled || base.isDemoEntry { return base }
         let lower = base.lowercased()
         if lower.hasPrefix("https://") {
             return base

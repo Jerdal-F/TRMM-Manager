@@ -117,24 +117,6 @@
         }
       }
     },
-    "agents.error.simulated" : {
-      "comment" : "Message shown when API error simulation is enabled.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Simulated API error (debug mode)."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Simulert API-feil (debugmodus)."
-          }
-        }
-      }
-    },
     "agents.action.successFormat" : {
       "comment" : "Success message after issuing an agent action. Argument is the action label.",
       "extractionState" : "manual",
@@ -815,6 +797,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ingen egendefinerte felter tilgjengelig for denne agenten."
+          }
+        }
+      }
+    },
+    "agents.error.http" : {
+      "comment" : "Generic HTTP error message for agent actions. Argument is the status code.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HTTP Error: %lld"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HTTP-feil: %lld"
+          }
+        }
+      }
+    },
+    "agents.error.simulated" : {
+      "comment" : "Message shown when API error simulation is enabled.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Simulated API error (debug mode)."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Simulert API-feil (debugmodus)."
           }
         }
       }
@@ -4171,42 +4189,6 @@
         }
       }
     },
-    "common.close" : {
-      "comment" : "Common Close button label",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Close"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lukk"
-          }
-        }
-      }
-    },
-    "common.update" : {
-      "comment" : "Update action button label.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Update"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Oppdater"
-          }
-        }
-      }
-    },
     "common.clear" : {
       "comment" : "General clear action label.",
       "extractionState" : "manual",
@@ -4221,6 +4203,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tøm"
+          }
+        }
+      }
+    },
+    "common.close" : {
+      "comment" : "Common Close button label",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lukk"
           }
         }
       }
@@ -4293,24 +4293,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lukk"
-          }
-        }
-      }
-    },
-    "update.available.message" : {
-      "comment" : "Message shown when a newer app version is available. Argument is the version string.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A new update is available (%@)."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En ny oppdatering er tilgjengelig (%@)."
           }
         }
       }
@@ -4675,6 +4657,24 @@
         }
       }
     },
+    "common.update" : {
+      "comment" : "Update action button label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdater"
+          }
+        }
+      }
+    },
     "common.value" : {
       "comment" : "Common Value label",
       "extractionState" : "manual",
@@ -4711,24 +4711,6 @@
         }
       }
     },
-    "connection.summary.instanceLabel" : {
-      "comment" : "Label above the selected instance name in the connection summary",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Instance"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Instans"
-          }
-        }
-      }
-    },
     "connection.summary.instance.demo" : {
       "comment" : "Displayed instance name when demo mode is active.",
       "extractionState" : "manual",
@@ -4743,6 +4725,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Demo"
+          }
+        }
+      }
+    },
+    "connection.summary.instanceLabel" : {
+      "comment" : "Label above the selected instance name in the connection summary",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instance"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instans"
           }
         }
       }
@@ -7110,24 +7110,6 @@
         }
       }
     },
-    "scripts.detail.test" : {
-      "comment" : "Button label to test a script from the detail view.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Test"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Test"
-          }
-        }
-      }
-    },
     "scripts.detail.lastRefreshedFormat" : {
       "comment" : "Format for the last refreshed timestamp in script detail.",
       "extractionState" : "manual",
@@ -7146,56 +7128,20 @@
         }
       }
     },
-    "scripts.meta.timeoutFormat" : {
-      "comment" : "Timeout label format for script metadata. Uses an integer seconds value.",
+    "scripts.detail.test" : {
+      "comment" : "Button label to test a script from the detail view.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d s"
+            "value" : "Test"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d s"
-          }
-        }
-      }
-    },
-    "scripts.edit.scriptBody" : {
-      "comment" : "Section header for script body in edit and detail views.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Script Body"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skriptinnhold"
-          }
-        }
-      }
-    },
-    "scripts.edit.filename" : {
-      "comment" : "Label for script filename in edit and detail views.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Filename"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Filnavn"
+            "value" : "Test"
           }
         }
       }
@@ -7218,20 +7164,110 @@
         }
       }
     },
-    "scripts.test.title" : {
-      "comment" : "Title for the script test screen.",
+    "scripts.edit.filename" : {
+      "comment" : "Label for script filename in edit and detail views.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Test Script"
+            "value" : "Filename"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Test skript"
+            "value" : "Filnavn"
+          }
+        }
+      }
+    },
+    "scripts.edit.scriptBody" : {
+      "comment" : "Section header for script body in edit and detail views.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Script Body"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skriptinnhold"
+          }
+        }
+      }
+    },
+    "scripts.loading" : {
+      "comment" : "Loading label for scripts.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading scripts…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laster skript…"
+          }
+        }
+      }
+    },
+    "scripts.meta.timeoutFormat" : {
+      "comment" : "Timeout label format for script metadata. Uses an integer seconds value.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d s"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d s"
+          }
+        }
+      }
+    },
+    "scripts.search.placeholder" : {
+      "comment" : "Placeholder text for searching scripts.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search scripts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk i skript"
+          }
+        }
+      }
+    },
+    "scripts.subtitle" : {
+      "comment" : "Subtitle for scripts list.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Browse and manage scripts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bla gjennom og administrer skript"
           }
         }
       }
@@ -7250,60 +7286,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Agent"
-          }
-        }
-      }
-    },
-    "scripts.test.execution" : {
-      "comment" : "Section header for execution options in script test.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Execution"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kjoring"
-          }
-        }
-      }
-    },
-    "scripts.test.runAsUser" : {
-      "comment" : "Toggle label for running the script as the logged-in user.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Run as user"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kjor som bruker"
-          }
-        }
-      }
-    },
-    "scripts.test.shell" : {
-      "comment" : "Label for the shell picker in script test.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shell"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shell"
           }
         }
       }
@@ -7344,6 +7326,24 @@
         }
       }
     },
+    "scripts.test.code" : {
+      "comment" : "Section header for script body/code in test.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kode"
+          }
+        }
+      }
+    },
     "scripts.test.envVars" : {
       "comment" : "Section header for environment variables in test.",
       "extractionState" : "manual",
@@ -7362,20 +7362,20 @@
         }
       }
     },
-    "scripts.test.code" : {
-      "comment" : "Section header for script body/code in test.",
+    "scripts.test.execution" : {
+      "comment" : "Section header for execution options in script test.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Code"
+            "value" : "Execution"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kode"
+            "value" : "Kjoring"
           }
         }
       }
@@ -7416,20 +7416,38 @@
         }
       }
     },
-    "scripts.test.stdout" : {
-      "comment" : "Section header for standard output in test results.",
+    "scripts.test.runAsUser" : {
+      "comment" : "Toggle label for running the script as the logged-in user.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standard Output"
+            "value" : "Run as user"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standard utdata"
+            "value" : "Kjor som bruker"
+          }
+        }
+      }
+    },
+    "scripts.test.shell" : {
+      "comment" : "Label for the shell picker in script test.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shell"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shell"
           }
         }
       }
@@ -7452,56 +7470,38 @@
         }
       }
     },
-    "scripts.loading" : {
-      "comment" : "Loading label for scripts.",
+    "scripts.test.stdout" : {
+      "comment" : "Section header for standard output in test results.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Loading scripts…"
+            "value" : "Standard Output"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Laster skript…"
+            "value" : "Standard utdata"
           }
         }
       }
     },
-    "scripts.search.placeholder" : {
-      "comment" : "Placeholder text for searching scripts.",
+    "scripts.test.title" : {
+      "comment" : "Title for the script test screen.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search scripts"
+            "value" : "Test Script"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Søk i skript"
-          }
-        }
-      }
-    },
-    "scripts.subtitle" : {
-      "comment" : "Subtitle for scripts list.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Browse and manage scripts"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bla gjennom og administrer skript"
+            "value" : "Test skript"
           }
         }
       }
@@ -8038,6 +8038,366 @@
         }
       }
     },
+    "settings.debug.apiError.disable" : {
+      "comment" : "Button label to disable API error simulation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disable API Error Simulation"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deaktiver API-feilsimulering"
+          }
+        }
+      }
+    },
+    "settings.debug.apiError.disabled" : {
+      "comment" : "Status message when API error simulation is disabled.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API error simulation disabled."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API-feilsimulering deaktivert."
+          }
+        }
+      }
+    },
+    "settings.debug.apiError.enable" : {
+      "comment" : "Button label to enable API error simulation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable API Error Simulation"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktiver API-feilsimulering"
+          }
+        }
+      }
+    },
+    "settings.debug.apiError.enabled" : {
+      "comment" : "Status message when API error simulation is enabled.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API error simulation enabled."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API-feilsimulering aktivert."
+          }
+        }
+      }
+    },
+    "settings.debug.cacheCleared" : {
+      "comment" : "Status message after clearing cache.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cache cleared."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hurtiglager tømt."
+          }
+        }
+      }
+    },
+    "settings.debug.clearCache" : {
+      "comment" : "Button label to clear cached data.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear Cache"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tøm hurtiglager"
+          }
+        }
+      }
+    },
+    "settings.debug.clearCache.confirm.message" : {
+      "comment" : "Confirmation message for clearing cache.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This removes cached agents and API keys from memory."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dette fjerner bufrede agenter og API-nøkler fra minnet."
+          }
+        }
+      }
+    },
+    "settings.debug.clearCache.confirm.title" : {
+      "comment" : "Confirmation title for clearing cache.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear Cache?"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tømme hurtiglager?"
+          }
+        }
+      }
+    },
+    "settings.debug.demo.confirm.message" : {
+      "comment" : "Confirmation message for enabling demo mode.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A demo instance will be created and set as active."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En demoinstans blir opprettet og satt som aktiv."
+          }
+        }
+      }
+    },
+    "settings.debug.demo.confirm.title" : {
+      "comment" : "Confirmation title for enabling demo mode.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter Demo Mode?"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktivere demomodus?"
+          }
+        }
+      }
+    },
+    "settings.debug.demoEnabled" : {
+      "comment" : "Status message after enabling demo mode.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demo mode enabled."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demomodus aktivert."
+          }
+        }
+      }
+    },
+    "settings.debug.demoFailed" : {
+      "comment" : "Status message when enabling demo mode fails. Argument is error details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to enable demo mode: %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kunne ikke aktivere demomodus: %@"
+          }
+        }
+      }
+    },
+    "settings.debug.enterDemo" : {
+      "comment" : "Button label to enable demo mode.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter Demo Mode"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gå inn i demomodus"
+          }
+        }
+      }
+    },
+    "settings.debug.exportLogs" : {
+      "comment" : "Button label to export diagnostics logs.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export Diagnostics Log"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eksporter diagnostikklogg"
+          }
+        }
+      }
+    },
+    "settings.debug.forceUpdate" : {
+      "comment" : "Button label to force the update prompt.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Force Update Prompt"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tving oppdateringsvarsel"
+          }
+        }
+      }
+    },
+    "settings.debug.noLog" : {
+      "comment" : "Message shown when no diagnostics log is available.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No diagnostics log available."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen diagnostikklogg tilgjengelig."
+          }
+        }
+      }
+    },
+    "settings.debug.open" : {
+      "comment" : "Button label to open the debug menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Debug Menu"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åpne feilsøkingsmeny"
+          }
+        }
+      }
+    },
+    "settings.debug.subtitle" : {
+      "comment" : "Subtitle for the debug tools section (TestFlight only).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TestFlight tools"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TestFlight-verktøy"
+          }
+        }
+      }
+    },
+    "settings.debug.title" : {
+      "comment" : "Title for the debug tools section (TestFlight only).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Debug"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feilsøking"
+          }
+        }
+      }
+    },
+    "settings.debug.updateRequested" : {
+      "comment" : "Status message after forcing an update check.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update check requested."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdateringssjekk forespurt."
+          }
+        }
+      }
+    },
     "settings.edit.navigationTitle" : {
       "comment" : "Navigation title for edit instance sheet",
       "extractionState" : "manual",
@@ -8410,366 +8770,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Administrer e-postvarsler"
-          }
-        }
-      }
-    },
-    "settings.debug.title" : {
-      "comment" : "Title for the debug tools section (TestFlight only).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Debug"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Feilsøking"
-          }
-        }
-      }
-    },
-    "settings.debug.subtitle" : {
-      "comment" : "Subtitle for the debug tools section (TestFlight only).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "TestFlight tools"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "TestFlight-verktøy"
-          }
-        }
-      }
-    },
-    "settings.debug.open" : {
-      "comment" : "Button label to open the debug menu.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open Debug Menu"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Åpne feilsøkingsmeny"
-          }
-        }
-      }
-    },
-    "settings.debug.exportLogs" : {
-      "comment" : "Button label to export diagnostics logs.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Export Diagnostics Log"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eksporter diagnostikklogg"
-          }
-        }
-      }
-    },
-    "settings.debug.clearCache" : {
-      "comment" : "Button label to clear cached data.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear Cache"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tøm hurtiglager"
-          }
-        }
-      }
-    },
-    "settings.debug.enterDemo" : {
-      "comment" : "Button label to enable demo mode.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enter Demo Mode"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gå inn i demomodus"
-          }
-        }
-      }
-    },
-    "settings.debug.apiError.enable" : {
-      "comment" : "Button label to enable API error simulation.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enable API Error Simulation"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aktiver API-feilsimulering"
-          }
-        }
-      }
-    },
-    "settings.debug.apiError.disable" : {
-      "comment" : "Button label to disable API error simulation.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Disable API Error Simulation"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deaktiver API-feilsimulering"
-          }
-        }
-      }
-    },
-    "settings.debug.forceUpdate" : {
-      "comment" : "Button label to force the update prompt.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Force Update Prompt"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tving oppdateringsvarsel"
-          }
-        }
-      }
-    },
-    "settings.debug.cacheCleared" : {
-      "comment" : "Status message after clearing cache.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cache cleared."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hurtiglager tømt."
-          }
-        }
-      }
-    },
-    "settings.debug.demoEnabled" : {
-      "comment" : "Status message after enabling demo mode.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Demo mode enabled."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Demomodus aktivert."
-          }
-        }
-      }
-    },
-    "settings.debug.apiError.enabled" : {
-      "comment" : "Status message when API error simulation is enabled.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API error simulation enabled."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API-feilsimulering aktivert."
-          }
-        }
-      }
-    },
-    "settings.debug.apiError.disabled" : {
-      "comment" : "Status message when API error simulation is disabled.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API error simulation disabled."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "API-feilsimulering deaktivert."
-          }
-        }
-      }
-    },
-    "settings.debug.demoFailed" : {
-      "comment" : "Status message when enabling demo mode fails. Argument is error details.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Failed to enable demo mode: %@"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kunne ikke aktivere demomodus: %@"
-          }
-        }
-      }
-    },
-    "settings.debug.updateRequested" : {
-      "comment" : "Status message after forcing an update check.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Update check requested."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Oppdateringssjekk forespurt."
-          }
-        }
-      }
-    },
-    "settings.debug.clearCache.confirm.title" : {
-      "comment" : "Confirmation title for clearing cache.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear Cache?"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tømme hurtiglager?"
-          }
-        }
-      }
-    },
-    "settings.debug.clearCache.confirm.message" : {
-      "comment" : "Confirmation message for clearing cache.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This removes cached agents and API keys from memory."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dette fjerner bufrede agenter og API-nøkler fra minnet."
-          }
-        }
-      }
-    },
-    "settings.debug.demo.confirm.title" : {
-      "comment" : "Confirmation title for enabling demo mode.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enter Demo Mode?"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aktivere demomodus?"
-          }
-        }
-      }
-    },
-    "settings.debug.demo.confirm.message" : {
-      "comment" : "Confirmation message for enabling demo mode.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A demo instance will be created and set as active."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En demoinstans blir opprettet og satt som aktiv."
-          }
-        }
-      }
-    },
-    "settings.debug.noLog" : {
-      "comment" : "Message shown when no diagnostics log is available.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No diagnostics log available."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ingen diagnostikklogg tilgjengelig."
           }
         }
       }
@@ -9817,24 +9817,6 @@
         }
       }
     },
-    "settings.instances.subtitle.none" : {
-      "comment" : "Subtitle when no instances exist",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No instances added"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ingen instanser lagt til"
-          }
-        }
-      }
-    },
     "settings.instances.subtitle.demo" : {
       "comment" : "Subtitle when demo mode is active",
       "extractionState" : "manual",
@@ -9849,6 +9831,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Demomodus aktiv"
+          }
+        }
+      }
+    },
+    "settings.instances.subtitle.none" : {
+      "comment" : "Subtitle when no instances exist",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No instances added"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen instanser lagt til"
           }
         }
       }
@@ -10507,6 +10507,10 @@
         }
       }
     },
+    "Show translation strings" : {
+      "comment" : "A toggle that lets users show or hide translation keys in the settings.",
+      "isCommentAutoGenerated" : true
+    },
     "Site: %@" : {
       "comment" : "Site label with value.",
       "extractionState" : "manual",
@@ -10630,6 +10634,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "UID: %@"
+          }
+        }
+      }
+    },
+    "update.available.message" : {
+      "comment" : "Message shown when a newer app version is available. Argument is the version string.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A new update is available (%@)."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En ny oppdatering er tilgjengelig (%@)."
           }
         }
       }

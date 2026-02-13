@@ -88,6 +88,24 @@ enum DemoMode {
     }
 }
 
+final class LocalizationDebugState: ObservableObject {
+    static let shared = LocalizationDebugState()
+
+    @Published var showTranslationKeys: Bool = false
+
+    private init() {}
+}
+
+enum LocalizationDebug {
+    static var showTranslationKeys: Bool {
+        LocalizationDebugState.shared.showTranslationKeys
+    }
+
+    static func setShowTranslationKeys(_ enabled: Bool) {
+        LocalizationDebugState.shared.showTranslationKeys = enabled
+    }
+}
+
 struct AppSettings: Decodable {
     let debugMenuEnabled: Bool
 

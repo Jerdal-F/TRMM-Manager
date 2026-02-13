@@ -16,6 +16,7 @@ struct SettingsView: View {
     @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
     @AppStorage("selectedBackground") private var selectedBackgroundID: String = AppBackgroundStyle.default.rawValue
     @ObservedObject private var demoMode = DemoModeState.shared
+    @ObservedObject private var localizationDebug = LocalizationDebugState.shared
 
     @State private var showResetConfirmation = false
     @State private var showAddInstanceSheet = false
@@ -522,6 +523,7 @@ struct SettingsView: View {
         @Environment(\.appTheme) private var appTheme
         @Binding var statusMessage: String?
         @ObservedObject private var apiErrorSim = ApiErrorSimulationState.shared
+        @ObservedObject private var localizationDebug = LocalizationDebugState.shared
         let onClearCache: () -> Void
         let onEnterDemoMode: () -> Void
         let onForceUpdate: () -> Void
@@ -582,6 +584,20 @@ struct SettingsView: View {
                                                 ? "settings.debug.apiError.disable"
                                                 : "settings.debug.apiError.enable"),
                                             systemImage: "exclamationmark.triangle"
+                                        )
+                                        .frame(maxWidth: .infinity)
+                                    }
+                                    .secondaryButton()
+
+                                    Button {
+                                        let enabled = !localizationDebug.showTranslationKeys
+                                        LocalizationDebug.setShowTranslationKeys(enabled)
+                                    } label: {
+                                        Label(
+                                            "Show translation strings",
+                                            systemImage: localizationDebug.showTranslationKeys
+                                                ? "checkmark.circle.fill"
+                                                : "circle"
                                         )
                                         .frame(maxWidth: .infinity)
                                     }

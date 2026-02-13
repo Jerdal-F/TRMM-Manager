@@ -14,6 +14,7 @@ struct ContentView: View {
     @Environment(\.openURL) private var openURL
     @Query private var settingsList: [RMMSettings]
     @ObservedObject private var agentCache = AgentCache.shared
+    @ObservedObject private var localizationDebug = LocalizationDebugState.shared
 
     @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
     @AppStorage("hideCommunityScripts") private var hideCommunityScripts: Bool = false
@@ -1911,8 +1912,7 @@ struct AgentDetailView: View {
             return
         }
         if ApiErrorSimulation.isEnabled {
-            message = L10n.key("agents.error.simulated")
-            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping fetchAgentDetail.")
+            message = L10n.format("agents.error.http", 401)
             return
         }
         DiagnosticLogger.shared.append("AgentDetailView: fetchAgentDetail started")
@@ -1957,8 +1957,7 @@ struct AgentDetailView: View {
             return
         }
         if ApiErrorSimulation.isEnabled {
-            message = L10n.key("agents.error.simulated")
-            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping Wake-on-LAN.")
+            message = L10n.format("agents.error.http", 401)
             return
         }
         isProcessing = true
@@ -2030,8 +2029,7 @@ struct AgentDetailView: View {
             return
         }
         if ApiErrorSimulation.isEnabled {
-            message = L10n.key("agents.error.simulated")
-            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping \(action) command.")
+            message = L10n.format("agents.error.http", 401)
             return
         }
         let sanitizedURL = baseURL.removingTrailingSlash()
@@ -4656,8 +4654,7 @@ struct AgentProcessesView: View {
             }
         }
         if ApiErrorSimulation.isEnabled {
-            errorMessage = L10n.key("agents.error.simulated")
-            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping fetchProcesses.")
+            errorMessage = L10n.format("agents.error.http", 401)
             return
         }
         if isDemoMode {
@@ -4734,8 +4731,7 @@ struct AgentProcessesView: View {
             return
         }
         if ApiErrorSimulation.isEnabled {
-            killBannerMessage = L10n.key("agents.error.simulated")
-            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping killProcess.")
+            killBannerMessage = L10n.format("agents.error.http", 401)
             return
         }
         let sanitizedURL = baseURL.removingTrailingSlash()
@@ -5085,8 +5081,7 @@ struct AgentSoftwareView: View {
             return
         }
         if ApiErrorSimulation.isEnabled {
-            uninstallSheetError = L10n.key("agents.error.simulated")
-            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping uninstall.")
+            uninstallSheetError = "HTTP Error: 401"
             return
         }
 
@@ -5241,10 +5236,9 @@ struct AgentSoftwareView: View {
         }
         if ApiErrorSimulation.isEnabled {
             isLoading = true
-            errorMessage = L10n.key("agents.error.simulated")
+            errorMessage = "HTTP Error: 401"
             statusMessage = nil
             isLoading = false
-            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping fetchSoftwareInventory.")
             return
         }
 
@@ -5933,9 +5927,8 @@ struct AgentNotesView: View {
             return
         }
         if ApiErrorSimulation.isEnabled {
-            errorMessage = L10n.key("agents.error.simulated")
+            errorMessage = "HTTP Error: 401"
             statusMessage = nil
-            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping createNote.")
             return
         }
         guard !note.isEmpty else {
@@ -6013,9 +6006,8 @@ struct AgentNotesView: View {
             return
         }
         if ApiErrorSimulation.isEnabled {
-            errorMessage = L10n.key("agents.error.simulated")
+            errorMessage = L10n.format("common.httpErrorFormat", 401)
             statusMessage = nil
-            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping deleteNote.")
             return
         }
         errorMessage = nil
@@ -6182,10 +6174,9 @@ struct AgentNotesView: View {
         }
         if ApiErrorSimulation.isEnabled {
             isLoading = true
-            errorMessage = L10n.key("agents.error.simulated")
+            errorMessage = L10n.format("agents.error.http", 401)
             statusMessage = nil
             isLoading = false
-            DiagnosticLogger.shared.appendWarning("API error simulation enabled; skipping fetchNotes.")
             return
         }
         isLoading = true

@@ -29,6 +29,7 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var showRecoveryAlert = false
     @State private var showUpdateAlert = false
+    @State private var showApiEndpointAlert = false
     @State private var latestVersion: String = ""
 
     @State private var isAuthenticating = false
@@ -256,6 +257,16 @@ struct ContentView: View {
         } message: {
             Text(L10n.format("update.available.message", latestVersion))
         }
+            .alert(L10n.key("connection.endpoint.alert.title"), isPresented: $showApiEndpointAlert) {
+                Button(L10n.key("connection.endpoint.alert.help")) {
+                    if let url = URL(string: "https://trmm-manager.jerdal.no") {
+                        openURL(url)
+                    }
+                }
+                Button(L10n.key("common.dismiss"), role: .cancel) { }
+            } message: {
+                Text(L10n.key("connection.endpoint.alert.message"))
+            }
         .sheet(isPresented: $showLogShareSheet) {
             if let url = DiagnosticLogger.shared.getLogFileURL() {
                 ActivityView(activityItems: [url])
@@ -1027,6 +1038,16 @@ struct ContentView: View {
                 )
                 switch http.statusCode {
                 case 200:
+                    if let body = String(data: data, encoding: .utf8),
+                       body.localizedCaseInsensitiveContains("<!doctype html") ||
+                       body.localizedCaseInsensitiveContains("<div id=q-app") ||
+                       body.localizedCaseInsensitiveContains("<title>Tactical RMM</title>") {
+                        errorMessage = nil
+                        isLoading = false
+                        showApiEndpointAlert = true
+                        DiagnosticLogger.shared.appendWarning("Detected HTML response from /agents/. Expected API endpoint.")
+                        return
+                    }
                     do {
                         let decodeTask = Task<(agents: [Agent], reportedCount: Int?, usedWrapper: Bool), Error>.detached(priority: .userInitiated) {
                             let decoder = JSONDecoder()

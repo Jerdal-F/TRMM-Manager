@@ -84,6 +84,9 @@ struct Agent: Identifiable, Decodable {
         } else {
             cpu_model = []
         }
+        cpu_model = cpu_model
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
 
         description = try c.decodeIfPresent(String.self, forKey: .description)
         public_ip = try c.decodeIfPresent(String.self, forKey: .public_ip)

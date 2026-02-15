@@ -168,12 +168,12 @@ final class DiagnosticLogger {
 
     private func redactJsonFields(in text: String) -> String {
         var redacted = text
-        let quotedKeys = "(agent_id|serial_number|username|user|public_ip|local_ips|custom_fields|notes|checks|tasks|processes)"
+        let quotedKeys = "(agent_id|serial_number|username|logged_username|user|public_ip|local_ips|custom_fields|notes|checks|tasks|processes)"
         let patterns = [
-            "\"\(quotedKeys)\"\\s*:\\s*\"[^\"]*\"",
-            "\"\(quotedKeys)\"\\s*:\\s*\[[^\]]*\]",
-            "\"\(quotedKeys)\"\\s*:\\s*\{[^}]*\}",
-            "\"\(quotedKeys)\"\\s*:\\s*[^,}\"]+"
+            #""\#(quotedKeys)"\s*:\s*"[^"]*""#,
+            #""\#(quotedKeys)"\s*:\s*\[[^\]]*\]"#,
+            #""\#(quotedKeys)"\s*:\s*\{[^}]*\}"#,
+            #""\#(quotedKeys)"\s*:\s*[^,}"]+"#
         ]
         for pattern in patterns {
             redacted = redactRegex(pattern, in: redacted) { match in

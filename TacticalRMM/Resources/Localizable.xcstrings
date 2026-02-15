@@ -4765,6 +4765,60 @@
         }
       }
     },
+    "connection.endpoint.alert.title" : {
+      "comment" : "Alert title when user hits the web UI instead of the API endpoint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the API Endpoint"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk API-endepunktet"
+          }
+        }
+      }
+    },
+    "connection.endpoint.alert.message" : {
+      "comment" : "Alert message when the /agents endpoint returns HTML.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server returned the Tactical RMM web app. Please use your API endpoint URL in Settings."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serveren returnerte Tactical RMM web-appen. Bruk API-endepunktet i Innstillinger."
+          }
+        }
+      }
+    },
+    "connection.endpoint.alert.help" : {
+      "comment" : "Button label to open the API endpoint documentation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "User Guide"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brukerhåndbok"
+          }
+        }
+      }
+    },
     "connection.title" : {
       "comment" : "Section title for connection",
       "extractionState" : "manual",

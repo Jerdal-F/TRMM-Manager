@@ -135,6 +135,42 @@
         }
       }
     },
+    "agents.inventory.count.multipleFormat" : {
+      "comment" : "Pluralized count label for inventory items.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld items"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld elementer"
+          }
+        }
+      }
+    },
+    "agents.inventory.count.single" : {
+      "comment" : "Singular count label for inventory items.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld item"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld element"
+          }
+        }
+      }
+    },
     "agents.checks.count.multipleFormat" : {
       "comment" : "Pluralized count label for checks.",
       "extractionState" : "manual",
@@ -1312,13 +1348,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Installed apps"
+            "value" : "Installed apps and services"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Installerte apper"
+            "value" : "Installerte apper og tjenester"
           }
         }
       }
@@ -1330,13 +1366,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Software"
+            "value" : "Software and Services"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Programvare"
+            "value" : "Programvare og tjenester"
           }
         }
       }
@@ -2348,6 +2384,186 @@
         }
       }
     },
+    "agents.services.filter.placeholder" : {
+      "comment" : "Placeholder for services search field.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search services"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk i tjenester"
+          }
+        }
+      }
+    },
+    "agents.services.action.restart" : {
+      "comment" : "Label for restart action in services menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start på nytt"
+          }
+        }
+      }
+    },
+    "agents.services.action.start" : {
+      "comment" : "Label for start action in services menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        }
+      }
+    },
+    "agents.services.action.stop" : {
+      "comment" : "Label for stop action in services menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopp"
+          }
+        }
+      }
+    },
+    "agents.services.filter.subtitle" : {
+      "comment" : "Subtitle for services filter section.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search by service name"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk etter tjenestenavn"
+          }
+        }
+      }
+    },
+    "agents.services.filter.title" : {
+      "comment" : "Title for services filter section.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter Services"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtrer tjenester"
+          }
+        }
+      }
+    },
+    "agents.services.unableToContactAgent" : {
+      "comment" : "Error shown when services endpoint returns HTTP 400.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to contact the agent"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan ikke kontakte agenten"
+          }
+        }
+      }
+    },
+    "agents.services.status.pending" : {
+      "comment" : "Status label for pending services.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pending"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter"
+          }
+        }
+      }
+    },
+    "agents.services.status.running" : {
+      "comment" : "Status label for running services.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kjører"
+          }
+        }
+      }
+    },
+    "agents.services.status.stopped" : {
+      "comment" : "Status label for stopped services.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopped"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stoppet"
+          }
+        }
+      }
+    },
     "agents.software.copyInstallPath" : {
       "comment" : "Context menu label to copy install path.",
       "extractionState" : "manual",
@@ -2427,13 +2643,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search installed software"
+            "value" : "Search installed software by name"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Søk i installert programvare"
+            "value" : "Søk i installert programvare etter navn"
           }
         }
       }
@@ -2445,13 +2661,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search by name, publisher, or path"
+            "value" : "Search by software name"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Søk etter navn, utgiver eller sti"
+            "value" : "Søk etter programvarenavn"
           }
         }
       }
@@ -4693,6 +4909,60 @@
         }
       }
     },
+    "connection.endpoint.alert.help" : {
+      "comment" : "Button label to open the API endpoint documentation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "User Guide"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brukerhåndbok"
+          }
+        }
+      }
+    },
+    "connection.endpoint.alert.message" : {
+      "comment" : "Alert message when the /agents endpoint returns HTML.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server returned the Tactical RMM web app. Please use your API endpoint URL in Settings."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serveren returnerte Tactical RMM web-appen. Bruk API-endepunktet i Innstillinger."
+          }
+        }
+      }
+    },
+    "connection.endpoint.alert.title" : {
+      "comment" : "Alert title when user hits the web UI instead of the API endpoint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the API Endpoint"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk API-endepunktet"
+          }
+        }
+      }
+    },
     "connection.subtitle.secure" : {
       "comment" : "Subtitle for connection section",
       "extractionState" : "manual",
@@ -4761,60 +5031,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Administrer tilkoblingsdetaljer, inkludert URL og legitimasjon, i Innstillinger."
-          }
-        }
-      }
-    },
-    "connection.endpoint.alert.title" : {
-      "comment" : "Alert title when user hits the web UI instead of the API endpoint.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use the API Endpoint"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bruk API-endepunktet"
-          }
-        }
-      }
-    },
-    "connection.endpoint.alert.message" : {
-      "comment" : "Alert message when the /agents endpoint returns HTML.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The server returned the Tactical RMM web app. Please use your API endpoint URL in Settings."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Serveren returnerte Tactical RMM web-appen. Bruk API-endepunktet i Innstillinger."
-          }
-        }
-      }
-    },
-    "connection.endpoint.alert.help" : {
-      "comment" : "Button label to open the API endpoint documentation.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "User Guide"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Brukerhåndbok"
           }
         }
       }
@@ -5949,6 +6165,18 @@
         }
       }
     },
+    "Inventory" : {
+      "comment" : "A segment in the picker that lists \"Inventory\".",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inventar"
+          }
+        }
+      }
+    },
     "Key Store" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6473,6 +6701,30 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ingen skript samsvarer med søket ditt."
+          }
+        }
+      }
+    },
+    "No services found." : {
+      "comment" : "A message displayed when no services are found.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tjenester funnet."
+          }
+        }
+      }
+    },
+    "No services match your filter." : {
+      "comment" : "A message displayed when no services match the user's filter in the \"Services\" section of the agent software view.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tjenester samsvarer med filteret ditt."
           }
         }
       }
@@ -10563,7 +10815,15 @@
     },
     "Show translation strings" : {
       "comment" : "A toggle that lets users show or hide translation keys in the settings.",
-      "isCommentAutoGenerated" : true
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vis oversettelsesstrenger"
+          }
+        }
+      }
     },
     "Site: %@" : {
       "comment" : "Site label with value.",

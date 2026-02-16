@@ -63,11 +63,6 @@
 			path = TacticalRMMUITests;
 			sourceTree = "<group>";
 		};
-		5AC8A1172F00000100000001 /* TacticalRMMWidget */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = TacticalRMMWidget;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,7 +95,6 @@
 			isa = PBXGroup;
 			children = (
 				5A0248A42D71D5780052F3A8 /* TacticalRMM */,
-				5AC8A1172F00000100000001 /* TacticalRMMWidget */,
 				5A0248B72D71D57B0052F3A8 /* TacticalRMMTests */,
 				5A0248C12D71D57B0052F3A8 /* TacticalRMMUITests */,
 				5ABE24332EEB8DC8000018B2 /* Frameworks */,

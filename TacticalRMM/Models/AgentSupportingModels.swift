@@ -155,6 +155,26 @@ struct InstalledSoftware: Identifiable, Decodable {
     }
 }
 
+struct ServiceInventoryResponse: Decodable {
+    let services: [AgentService]
+}
+
+struct AgentService: Identifiable, Decodable {
+    let name: String
+    let status: String
+    let display_name: String
+    let binpath: String
+    let description: String
+    let username: String
+    let pid: Int
+    let start_type: String
+    let autodelay: Bool
+
+    var id: String {
+        "\(name)|\(display_name)|\(username)|\(start_type)"
+    }
+}
+
 struct Note: Identifiable, Decodable {
     let pk: Int
     let entry_time: String

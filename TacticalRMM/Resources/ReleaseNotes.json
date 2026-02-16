@@ -1,7 +1,7 @@
 [  
   {
     "version": "0.6.0-dev",
-    "description": "Loading improvements.\n\nAdded a new setting to hide community scripts.\n\nAdded a dismiss keyboard button.\n\nAdded MacOS support.\n\nAdded API endpoint guidance when the web UI URL is used instead of the API URL.",
+    "description": "Loading improvements.\n\nAdded a new setting to hide community scripts.\n\nAdded a dismiss keyboard button.\n\nAdded MacOS support.\n\nAdded API endpoint guidance when the web UI URL is used instead of the API URL.\n\nAddes services view in the software tab.",
     "isCurrent": true
   },
   {

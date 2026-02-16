@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		5ABE24352EEB8DC8000018B2 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5ABE24342EEB8DC8000018B2 /* StoreKit.framework */; };
-		5AC8A1112F00000100000001 /* TacticalRMMWidget.appex in CopyFiles */ = {isa = PBXBuildFile; fileRef = 5AC8A1102F00000100000001 /* TacticalRMMWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,30 +27,29 @@
 		};
 /* End PBXContainerItemProxy section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		5AC8A1122F00000100000001 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				5AC8A1112F00000100000001 /* TacticalRMMWidget.appex in CopyFiles */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
 		5A0248A22D71D5780052F3A8 /* TRMM Manager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "TRMM Manager.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A0248B42D71D57A0052F3A8 /* TacticalRMMTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TacticalRMMTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A0248BE2D71D57B0052F3A8 /* TacticalRMMUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TacticalRMMUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5ABE24342EEB8DC8000018B2 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
-		5AC8A1102F00000100000001 /* TacticalRMMWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = TacticalRMMWidget.appex; path = "TRMM Manager Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5AF0AA012F11111100000001 /* Exceptions for "TacticalRMM" folder in "TacticalRMM" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 5A0248A12D71D5780052F3A8 /* TacticalRMM */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5A0248A42D71D5780052F3A8 /* TacticalRMM */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5AF0AA012F11111100000001 /* Exceptions for "TacticalRMM" folder in "TacticalRMM" target */,
+			);
 			path = TacticalRMM;
 			sourceTree = "<group>";
 		};
@@ -95,13 +93,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		5AC8A1132F00000100000001 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -121,7 +112,6 @@
 			isa = PBXGroup;
 			children = (
 				5A0248A22D71D5780052F3A8 /* TRMM Manager.app */,
-				5AC8A1102F00000100000001 /* TacticalRMMWidget.appex */,
 				5A0248B42D71D57A0052F3A8 /* TacticalRMMTests.xctest */,
 				5A0248BE2D71D57B0052F3A8 /* TacticalRMMUITests.xctest */,
 			);
@@ -146,7 +136,6 @@
 				5A02489E2D71D5780052F3A8 /* Sources */,
 				5A02489F2D71D5780052F3A8 /* Frameworks */,
 				5A0248A02D71D5780052F3A8 /* Resources */,
-				5AC8A1122F00000100000001 /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -208,28 +197,6 @@
 			productReference = 5A0248BE2D71D57B0052F3A8 /* TacticalRMMUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		5AC8A1162F00000100000001 /* TacticalRMMWidget */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 5AC8A1182F00000100000001 /* Build configuration list for PBXNativeTarget "TacticalRMMWidget" */;
-			buildPhases = (
-				5AC8A1142F00000100000001 /* Sources */,
-				5AC8A1132F00000100000001 /* Frameworks */,
-				5AC8A1152F00000100000001 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				5AC8A1172F00000100000001 /* TacticalRMMWidget */,
-			);
-			name = TacticalRMMWidget;
-			packageProductDependencies = (
-			);
-			productName = TacticalRMMWidget;
-			productReference = 5AC8A1102F00000100000001 /* TacticalRMMWidget.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -251,9 +218,6 @@
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = 5A0248A12D71D5780052F3A8;
 					};
-					5AC8A1162F00000100000001 = {
-						CreatedOnToolsVersion = 16.2;
-					};
 				};
 			};
 			buildConfigurationList = 5A02489D2D71D5780052F3A8 /* Build configuration list for PBXProject "TacticalRMM" */;
@@ -272,7 +236,6 @@
 			projectRoot = "";
 			targets = (
 				5A0248A12D71D5780052F3A8 /* TacticalRMM */,
-				5AC8A1162F00000100000001 /* TacticalRMMWidget */,
 				5A0248B32D71D57A0052F3A8 /* TacticalRMMTests */,
 				5A0248BD2D71D57B0052F3A8 /* TacticalRMMUITests */,
 			);
@@ -301,13 +264,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		5AC8A1152F00000100000001 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -326,13 +282,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		5A0248BA2D71D57B0052F3A8 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		5AC8A1142F00000100000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -489,6 +438,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = NR87BXDCC8;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
@@ -532,6 +482,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = NR87BXDCC8;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
@@ -634,49 +585,6 @@
 			};
 			name = Release;
 		};
-		5AC8A1192F00000100000001 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = TacticalRMMWidget/TacticalRMMWidget.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = NR87BXDCC8;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = TacticalRMMWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
-				MARKETING_VERSION = 0.7.5;
-				PRODUCT_BUNDLE_IDENTIFIER = "jerdal.TacticalRMM-Manager.widget";
-				PRODUCT_NAME = "TRMM Manager Widget";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		5AC8A11A2F00000100000001 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = TacticalRMMWidget/TacticalRMMWidget.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = NR87BXDCC8;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = TacticalRMMWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
-				MARKETING_VERSION = 0.7.5;
-				PRODUCT_BUNDLE_IDENTIFIER = "jerdal.TacticalRMM-Manager.widget";
-				PRODUCT_NAME = "TRMM Manager Widget";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -712,15 +620,6 @@
 			buildConfigurations = (
 				5A0248CF2D71D57B0052F3A8 /* Debug */,
 				5A0248D02D71D57B0052F3A8 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		5AC8A1182F00000100000001 /* Build configuration list for PBXNativeTarget "TacticalRMMWidget" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				5AC8A1192F00000100000001 /* Debug */,
-				5AC8A11A2F00000100000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -2492,6 +2492,42 @@
         }
       }
     },
+    "agents.services.loading" : {
+      "comment" : "Loading message for services inventory.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading services…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laster tjenester…"
+          }
+        }
+      }
+    },
+    "agents.services.title" : {
+      "comment" : "Title for services inventory.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Services"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tjenester"
+          }
+        }
+      }
+    },
     "agents.services.unableToContactAgent" : {
       "comment" : "Error shown when services endpoint returns HTTP 400.",
       "extractionState" : "manual",

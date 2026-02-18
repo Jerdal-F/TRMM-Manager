@@ -2633,8 +2633,10 @@ struct AgentDetailView: View {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(Color.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
                 if let subtitle {
                     Text(subtitle)
                         .font(.caption)
@@ -4803,9 +4805,9 @@ struct AgentSoftwareView: View {
         var title: String {
             switch self {
             case .software:
-                return "Software"
+                return L10n.key("agents.software.title")
             case .services:
-                return "Services"
+                return L10n.key("agents.services.title")
             }
         }
     }
@@ -5012,7 +5014,7 @@ struct AgentSoftwareView: View {
     }
 
     private var listSubtitle: String {
-        if isLoading { return "Loading…" }
+        if isLoading { return L10n.key("common.loading") }
         let count = selectedMode == .software ? filteredInventory.count : filteredServices.count
         let baseCount = selectedMode == .software ? inventory.count : services.count
         if !appliedSearchQuery.isEmpty {
@@ -5024,7 +5026,7 @@ struct AgentSoftwareView: View {
     }
 
     private var loadingLabel: String {
-        selectedMode == .software ? L10n.key("agents.software.loading") : "Loading services…"
+        selectedMode == .software ? L10n.key("agents.software.loading") : L10n.key("agents.services.loading")
     }
 
     private var filterSectionTitle: String {
@@ -5135,7 +5137,12 @@ struct AgentSoftwareView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Picker("Inventory", selection: $selectedMode) {
                     ForEach(InventoryMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
+                        Text(mode.title)
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.7)
+                            .multilineTextAlignment(.center)
+                            .tag(mode)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -5175,7 +5182,7 @@ struct AgentSoftwareView: View {
     private var inventoryListCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader(selectedMode == .software ? L10n.key("agents.software.title") : "Services", subtitle: listSubtitle, systemImage: selectedMode == .software ? "macwindow" : "gearshape.2")
+                SectionHeader(selectedMode == .software ? L10n.key("agents.software.title") : L10n.key("agents.services.title"), subtitle: listSubtitle, systemImage: selectedMode == .software ? "macwindow" : "gearshape.2")
 
                 if selectedMode == .software && inventory.isEmpty && !isLoading && errorMessage == nil {
                     Text(L10n.key("agents.software.empty"))

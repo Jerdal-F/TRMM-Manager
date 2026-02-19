@@ -1125,6 +1125,312 @@
         }
       }
     },
+    "agents.history.count.multipleFormat" : {
+      "comment" : "Pluralized count label for history entries.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld entries"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld oppføringer"
+          }
+        }
+      }
+    },
+    "agents.history.count.single" : {
+      "comment" : "Singular count label for history entries.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld entry"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld oppføring"
+          }
+        }
+      }
+    },
+    "agents.history.detail.command" : {
+      "comment" : "Label for command field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kommando"
+          }
+        }
+      }
+    },
+    "agents.history.detail.action" : {
+      "comment" : "Label for action field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Action"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Handling"
+          }
+        }
+      }
+    },
+    "agents.history.detail.initiatedBy" : {
+      "comment" : "Label for initiator field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Initiated By"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startet av"
+          }
+        }
+      }
+    },
+    "agents.history.detail.scriptOrCommand" : {
+      "comment" : "Label for script or command field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Script/Command"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skript/kommando"
+          }
+        }
+      }
+    },
+    "agents.history.detail.stderr" : {
+      "comment" : "Label for stderr output in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error Output"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feilutdata"
+          }
+        }
+      }
+    },
+    "agents.history.detail.stdout" : {
+      "comment" : "Label for stdout output in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Output"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utdata"
+          }
+        }
+      }
+    },
+    "agents.history.detail.time" : {
+      "comment" : "Label for time field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tid"
+          }
+        }
+      }
+    },
+    "agents.history.detail.user" : {
+      "comment" : "Label for user field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "User"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruker"
+          }
+        }
+      }
+    },
+    "agents.history.empty" : {
+      "comment" : "Empty state when no history entries are available.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No history entries found."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen historikkoppføringer funnet."
+          }
+        }
+      }
+    },
+    "agents.history.header.title" : {
+      "comment" : "Header title for agent history view.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historikk"
+          }
+        }
+      }
+    },
+    "agents.history.loading" : {
+      "comment" : "Loading message for agent history.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading history…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laster historikk…"
+          }
+        }
+      }
+    },
+    "agents.history.retcodeFormat" : {
+      "comment" : "Return code badge text in history rows.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code %lld"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kode %lld"
+          }
+        }
+      }
+    },
+    "agents.history.output.button" : {
+      "comment" : "Button label to open full output window from history row.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Output"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utdata"
+          }
+        }
+      }
+    },
+    "agents.history.output.empty" : {
+      "comment" : "Message shown in output window when no output is available.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No output available."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen utdata tilgjengelig."
+          }
+        }
+      }
+    },
+    "agents.history.title" : {
+      "comment" : "Navigation title for agent history view.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historikk"
+          }
+        }
+      }
+    },
     "agents.management.checks.subtitle" : {
       "comment" : "Subtitle for the checks tile in agent management.",
       "extractionState" : "manual",
@@ -1229,6 +1535,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Egendefinerte felter"
+          }
+        }
+      }
+    },
+    "agents.management.history.subtitle" : {
+      "comment" : "Subtitle for the history tile in agent management.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activity log"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktivitetslogg"
+          }
+        }
+      }
+    },
+    "agents.management.history.title" : {
+      "comment" : "Title for the history tile in agent management.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historikk"
           }
         }
       }

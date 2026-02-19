@@ -2476,6 +2476,22 @@ struct AgentDetailView: View {
                     .buttonStyle(.plain)
 
                     NavigationLink {
+                        AgentHistoryView(
+                            agentId: agent.agent_id,
+                            baseURL: baseURL,
+                            apiKey: effectiveAPIKey
+                        )
+                    } label: {
+                        AgentActionTile(
+                            title: L10n.key("agents.management.history.title"),
+                            subtitle: L10n.key("agents.management.history.subtitle"),
+                            systemImage: "clock.arrow.circlepath",
+                            tint: Color.cyan
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
                         AgentTasksView(
                             agentId: agent.agent_id,
                             baseURL: baseURL,
@@ -2507,23 +2523,24 @@ struct AgentDetailView: View {
                     }
                     .buttonStyle(.plain)
 
-                    NavigationLink {
-                        RunScriptView(
-                            agent: agent,
-                            baseURL: baseURL,
-                            apiKey: effectiveAPIKey
-                        )
-                    } label: {
-                        AgentActionTile(
-                            title: L10n.key("agents.management.runScript.title"),
-                            subtitle: L10n.key("agents.management.runScript.subtitle"),
-                            systemImage: "play.rectangle.on.rectangle.fill",
-                            tint: Color.pink
-                        )
-                    }
-                    .buttonStyle(.plain)
+                }
 
-                  }
+                NavigationLink {
+                    RunScriptView(
+                        agent: agent,
+                        baseURL: baseURL,
+                        apiKey: effectiveAPIKey
+                    )
+                } label: {
+                    AgentActionTile(
+                        title: L10n.key("agents.management.runScript.title"),
+                        subtitle: L10n.key("agents.management.runScript.subtitle"),
+                        systemImage: "play.rectangle.on.rectangle.fill",
+                        tint: Color.pink
+                    )
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
             }
         }
     }
@@ -6142,6 +6159,380 @@ struct AgentSoftwareView: View {
                     )
             )
         }
+    }
+}
+
+// MARK: - AgentHistoryView
+
+struct AgentHistoryView: View {
+    let agentId: String
+    let baseURL: String
+    let apiKey: String
+    @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
+
+    @State private var history: [AgentHistoryEntry] = []
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+    @State private var selectedOutputEntry: AgentHistoryEntry? = nil
+
+    private static let isoFormatterWithFractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    var effectiveAPIKey: String {
+        KeychainHelper.shared.getAPIKey() ?? apiKey
+    }
+
+    var body: some View {
+        ZStack {
+            DarkGradientBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    headerCard
+                    historyListCard
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
+            }
+
+            if isLoading {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                ProgressView(L10n.key("agents.history.loading"))
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(12)
+            }
+        }
+        .navigationTitle(L10n.key("agents.history.title"))
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            Task { await fetchHistory() }
+        }
+        .settingsPresentation(
+            item: $selectedOutputEntry,
+            fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+        ) { entry in
+            HistoryOutputSheet(
+                title: outputTitle(for: entry),
+                output: outputText(for: entry)
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var headerCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader(L10n.key("agents.history.header.title"), subtitle: headerSubtitle, systemImage: "clock.arrow.circlepath")
+                if let errorMessage {
+                    banner(message: errorMessage, isError: true)
+                }
+            }
+        }
+    }
+
+    private var historyListCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                if history.isEmpty && !isLoading && errorMessage == nil {
+                    Text(L10n.key("agents.history.empty"))
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else {
+                    LazyVStack(spacing: 14) {
+                        ForEach(history) { entry in
+                            HistoryTile(
+                                entry: entry,
+                                formattedTime: formattedDate(entry.time),
+                                onShowOutput: { selectedOutputEntry = entry }
+                            )
+                        }
+                    }
+                    .animation(.easeInOut(duration: 0.25), value: history.count)
+                }
+            }
+        }
+    }
+
+    private var headerSubtitle: String {
+        if isLoading { return L10n.key("common.loading") }
+        return history.count == 1
+            ? L10n.format("agents.history.count.single", history.count)
+            : L10n.format("agents.history.count.multipleFormat", history.count)
+    }
+
+    private func formattedDate(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return L10n.key("common.notAvailable") }
+
+        if let date = Self.isoFormatterWithFractional.date(from: trimmed)
+            ?? Self.isoFormatter.date(from: trimmed) {
+            return formatLastSeenDateValue(date, customFormat: lastSeenDateFormat)
+        }
+
+        return trimmed
+    }
+
+    private func banner(message: String, isError: Bool) -> some View {
+        let tint: Color = isError ? .red : .green
+        let icon = isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+        return HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+            Text(message)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private func outputTitle(for entry: AgentHistoryEntry) -> String {
+        if let scriptName = entry.script_name?.nonEmpty {
+            return scriptName
+        }
+        if let command = entry.command?.nonEmpty {
+            return command
+        }
+        return entry.type.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+
+    private func outputText(for entry: AgentHistoryEntry) -> String {
+        let stdout = entry.script_results?.stdout?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let stderr = entry.script_results?.stderr?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        var sections: [String] = []
+        if !stdout.isEmpty {
+            sections.append("\(L10n.key("agents.history.detail.stdout"))\n\(stdout)")
+        }
+        if !stderr.isEmpty {
+            sections.append("\(L10n.key("agents.history.detail.stderr"))\n\(stderr)")
+        }
+        if sections.isEmpty {
+            return L10n.key("agents.history.output.empty")
+        }
+        return sections.joined(separator: "\n\n")
+    }
+
+    private struct HistoryTile: View {
+        let entry: AgentHistoryEntry
+        let formattedTime: String
+        let onShowOutput: () -> Void
+        @Environment(\.appTheme) private var appTheme
+
+        private var title: String {
+            if let scriptName = entry.script_name?.nonEmpty {
+                return scriptName
+            }
+            if let command = entry.command?.nonEmpty {
+                return command
+            }
+            return entry.type
+        }
+
+        private var username: String {
+            entry.username?.nonEmpty ?? L10n.key("common.unknown")
+        }
+
+        private var typeLabel: String {
+            entry.type.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+
+        private var scriptOrCommand: String {
+            if let scriptName = entry.script_name?.nonEmpty {
+                return scriptName
+            }
+            if let command = entry.command?.nonEmpty {
+                return command
+            }
+            return L10n.key("common.notAvailable")
+        }
+
+        private var hasOutput: Bool {
+            let stdout = entry.script_results?.stdout?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let stderr = entry.script_results?.stderr?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return !stdout.isEmpty || !stderr.isEmpty
+        }
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                detailRow(icon: "calendar", title: L10n.key("agents.history.detail.time"), value: formattedTime)
+                Divider().overlay(Color.white.opacity(0.1))
+                detailRow(icon: "bolt.fill", title: L10n.key("agents.history.detail.action"), value: typeLabel)
+                Divider().overlay(Color.white.opacity(0.1))
+                detailRow(icon: "terminal", title: L10n.key("agents.history.detail.scriptOrCommand"), value: scriptOrCommand)
+                Divider().overlay(Color.white.opacity(0.1))
+                detailRow(icon: "person.crop.circle", title: L10n.key("agents.history.detail.initiatedBy"), value: username)
+
+                HStack {
+                    Spacer()
+                    Button {
+                        onShowOutput()
+                    } label: {
+                        Label(L10n.key("agents.history.output.button"), systemImage: "doc.text.magnifyingglass")
+                    }
+                    .secondaryButton()
+                    .disabled(!hasOutput)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+            .textSelection(.enabled)
+        }
+
+        private func detailRow(icon: String, title: String, value: String) -> some View {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: icon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(appTheme.accent)
+                    .frame(width: 18)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.caption2)
+                        .foregroundStyle(Color.white.opacity(0.6))
+                    Text(value)
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+
+        private func outputSection(title: String, value: String, isError: Bool = false) -> some View {
+            VStack(alignment: .leading, spacing: 6) {
+                SectionHeader(title, subtitle: nil, systemImage: isError ? "exclamationmark.octagon" : "doc.plaintext")
+                Text(value)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(isError ? Color.red.opacity(0.9) : Color.white.opacity(0.85))
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+            )
+        }
+
+    }
+
+    private struct HistoryOutputSheet: View {
+        let title: String
+        let output: String
+        @Environment(\.dismiss) private var dismiss
+
+        var body: some View {
+            NavigationStack {
+                ZStack {
+                    DarkGradientBackground()
+                        .ignoresSafeArea()
+
+                    ScrollView(showsIndicators: true) {
+                        VStack(spacing: 16) {
+                            GlassCard {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    SectionHeader(L10n.key("agents.history.detail.stdout"), subtitle: nil, systemImage: "doc.plaintext")
+                                    Text(output)
+                                        .font(.footnote.monospaced())
+                                        .foregroundStyle(Color.white.opacity(0.9))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .textSelection(.enabled)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 28)
+                    }
+                }
+                .navigationTitle(title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(L10n.key("common.close")) {
+                            dismiss()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func fetchHistory() async {
+        isLoading = true
+        errorMessage = nil
+
+        let sanitizedURL = baseURL.removingTrailingSlash()
+        guard let url = URL(string: "\(sanitizedURL)/agents/\(agentId)/history/") else {
+            errorMessage = L10n.key("common.invalidUrl")
+            DiagnosticLogger.shared.appendError("Invalid URL in fetching history.")
+            isLoading = false
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.addDefaultHeaders(apiKey: effectiveAPIKey)
+
+        DiagnosticLogger.shared.logHTTPRequest(method: "GET", url: url.absoluteString, headers: request.allHTTPHeaderFields ?? [:])
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse {
+                DiagnosticLogger.shared.logHTTPResponse(method: "GET", url: url.absoluteString, status: httpResponse.statusCode, data: data)
+                guard httpResponse.statusCode == 200 else {
+                    errorMessage = L10n.format("common.httpErrorFormat", httpResponse.statusCode)
+                    DiagnosticLogger.shared.appendError("HTTP Error \(httpResponse.statusCode) in fetching history.")
+                    isLoading = false
+                    return
+                }
+            }
+
+            let decodedHistory = try JSONDecoder().decode([AgentHistoryEntry].self, from: data)
+            withAnimation(.easeInOut(duration: 0.25)) {
+                history = decodedHistory.sorted { $0.time > $1.time }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            DiagnosticLogger.shared.appendError("Error fetching history: \(error.localizedDescription)")
+        }
+
+        isLoading = false
     }
 }
 

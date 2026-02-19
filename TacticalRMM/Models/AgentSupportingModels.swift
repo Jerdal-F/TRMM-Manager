@@ -175,6 +175,16 @@ struct AgentService: Identifiable, Decodable {
     }
 }
 
+struct AgentHistoryEntry: Identifiable, Decodable {
+    let id: Int
+    let script_name: String?
+    let time: String
+    let type: String
+    let command: String?
+    let username: String?
+    let script_results: ScriptResults?
+}
+
 struct Note: Identifiable, Decodable {
     let pk: Int
     let entry_time: String

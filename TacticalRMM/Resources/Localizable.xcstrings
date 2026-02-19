@@ -135,42 +135,6 @@
         }
       }
     },
-    "agents.inventory.count.multipleFormat" : {
-      "comment" : "Pluralized count label for inventory items.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld items"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld elementer"
-          }
-        }
-      }
-    },
-    "agents.inventory.count.single" : {
-      "comment" : "Singular count label for inventory items.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld item"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld element"
-          }
-        }
-      }
-    },
     "agents.checks.count.multipleFormat" : {
       "comment" : "Pluralized count label for checks.",
       "extractionState" : "manual",
@@ -1017,114 +981,6 @@
         }
       }
     },
-    "agents.info.site" : {
-      "comment" : "Label for agent site field.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Site"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sted"
-          }
-        }
-      }
-    },
-    "agents.insight.lastSeen" : {
-      "comment" : "Label for last seen field in agent insight.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Last Seen"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sist sett"
-          }
-        }
-      }
-    },
-    "agents.insight.status" : {
-      "comment" : "Label for status field in agent insight.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Status"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Status"
-          }
-        }
-      }
-    },
-    "agents.insight.subtitle" : {
-      "comment" : "Subtitle for the insight section in agent details.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recent activity"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nylig aktivitet"
-          }
-        }
-      }
-    },
-    "agents.insight.title" : {
-      "comment" : "Title for the insight section in agent details.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Insight"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Innsikt"
-          }
-        }
-      }
-    },
-    "agents.insight.uptime" : {
-      "comment" : "Label for uptime field in agent insight.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uptime"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Oppetid"
-          }
-        }
-      }
-    },
     "agents.history.count.multipleFormat" : {
       "comment" : "Pluralized count label for history entries.",
       "extractionState" : "manual",
@@ -1161,24 +1017,6 @@
         }
       }
     },
-    "agents.history.detail.command" : {
-      "comment" : "Label for command field in history details.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Command"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kommando"
-          }
-        }
-      }
-    },
     "agents.history.detail.action" : {
       "comment" : "Label for action field in history details.",
       "extractionState" : "manual",
@@ -1193,6 +1031,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Handling"
+          }
+        }
+      }
+    },
+    "agents.history.detail.command" : {
+      "comment" : "Label for command field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kommando"
           }
         }
       }
@@ -1359,24 +1215,6 @@
         }
       }
     },
-    "agents.history.retcodeFormat" : {
-      "comment" : "Return code badge text in history rows.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Code %lld"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kode %lld"
-          }
-        }
-      }
-    },
     "agents.history.output.button" : {
       "comment" : "Button label to open full output window from history row.",
       "extractionState" : "manual",
@@ -1413,6 +1251,24 @@
         }
       }
     },
+    "agents.history.retcodeFormat" : {
+      "comment" : "Return code badge text in history rows.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code %lld"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kode %lld"
+          }
+        }
+      }
+    },
     "agents.history.title" : {
       "comment" : "Navigation title for agent history view.",
       "extractionState" : "manual",
@@ -1427,6 +1283,168 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Historikk"
+          }
+        }
+      }
+    },
+    "agents.info.site" : {
+      "comment" : "Label for agent site field.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Site"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sted"
+          }
+        }
+      }
+    },
+    "agents.insight.lastSeen" : {
+      "comment" : "Label for last seen field in agent insight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last Seen"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sist sett"
+          }
+        }
+      }
+    },
+    "agents.insight.status" : {
+      "comment" : "Label for status field in agent insight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
+          }
+        }
+      }
+    },
+    "agents.insight.subtitle" : {
+      "comment" : "Subtitle for the insight section in agent details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recent activity"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nylig aktivitet"
+          }
+        }
+      }
+    },
+    "agents.insight.title" : {
+      "comment" : "Title for the insight section in agent details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insight"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innsikt"
+          }
+        }
+      }
+    },
+    "agents.insight.uptime" : {
+      "comment" : "Label for uptime field in agent insight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uptime"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppetid"
+          }
+        }
+      }
+    },
+    "agents.inventory.count.multipleFormat" : {
+      "comment" : "Pluralized count label for inventory items.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld items"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld elementer"
+          }
+        }
+      }
+    },
+    "agents.inventory.count.single" : {
+      "comment" : "Singular count label for inventory items.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld item"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld element"
+          }
+        }
+      }
+    },
+    "agents.inventory.picker.title" : {
+      "comment" : "Accessibility label/title for software/services segmented picker.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inventory"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oversikt"
           }
         }
       }
@@ -2726,24 +2744,6 @@
         }
       }
     },
-    "agents.services.filter.placeholder" : {
-      "comment" : "Placeholder for services search field.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search services"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Søk i tjenester"
-          }
-        }
-      }
-    },
     "agents.services.action.restart" : {
       "comment" : "Label for restart action in services menu.",
       "extractionState" : "manual",
@@ -2794,6 +2794,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stopp"
+          }
+        }
+      }
+    },
+    "agents.services.empty" : {
+      "comment" : "Empty state for services inventory.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No services found."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tjenester funnet."
+          }
+        }
+      }
+    },
+    "agents.services.emptyFiltered" : {
+      "comment" : "Empty state for filtered services inventory.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No services match your filter."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tjenester samsvarer med filteret ditt."
+          }
+        }
+      }
+    },
+    "agents.services.filter.placeholder" : {
+      "comment" : "Placeholder for services search field.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search services"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk i tjenester"
           }
         }
       }
@@ -2852,42 +2906,6 @@
         }
       }
     },
-    "agents.services.title" : {
-      "comment" : "Title for services inventory.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Services"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tjenester"
-          }
-        }
-      }
-    },
-    "agents.services.unableToContactAgent" : {
-      "comment" : "Error shown when services endpoint returns HTTP 400.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unable to contact the agent"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kan ikke kontakte agenten"
-          }
-        }
-      }
-    },
     "agents.services.status.pending" : {
       "comment" : "Status label for pending services.",
       "extractionState" : "manual",
@@ -2938,6 +2956,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stoppet"
+          }
+        }
+      }
+    },
+    "agents.services.title" : {
+      "comment" : "Title for services inventory.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Services"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tjenester"
+          }
+        }
+      }
+    },
+    "agents.services.unableToContactAgent" : {
+      "comment" : "Error shown when services endpoint returns HTTP 400.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to contact the agent"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan ikke kontakte agenten"
           }
         }
       }
@@ -6543,18 +6597,6 @@
         }
       }
     },
-    "Inventory" : {
-      "comment" : "A segment in the picker that lists \"Inventory\".",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inventar"
-          }
-        }
-      }
-    },
     "Key Store" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7079,30 +7121,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ingen skript samsvarer med søket ditt."
-          }
-        }
-      }
-    },
-    "No services found." : {
-      "comment" : "A message displayed when no services are found.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ingen tjenester funnet."
-          }
-        }
-      }
-    },
-    "No services match your filter." : {
-      "comment" : "A message displayed when no services match the user's filter in the \"Services\" section of the agent software view.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ingen tjenester samsvarer med filteret ditt."
           }
         }
       }
@@ -11195,6 +11213,12 @@
       "comment" : "A toggle that lets users show or hide translation keys in the settings.",
       "isCommentAutoGenerated" : true,
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show translation strings"
+          }
+        },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",

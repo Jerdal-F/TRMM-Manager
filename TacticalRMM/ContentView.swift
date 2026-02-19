@@ -5152,7 +5152,7 @@ struct AgentSoftwareView: View {
     private var searchCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                Picker("Inventory", selection: $selectedMode) {
+                Picker(L10n.key("agents.inventory.picker.title"), selection: $selectedMode) {
                     ForEach(InventoryMode.allCases) { mode in
                         Text(mode.title)
                             .font(.caption.weight(.semibold))
@@ -5206,7 +5206,7 @@ struct AgentSoftwareView: View {
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else if selectedMode == .services && services.isEmpty && !isLoading && errorMessage == nil {
-                    Text("No services found.")
+                    Text(L10n.key("agents.services.empty"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else if selectedMode == .software && filteredInventory.isEmpty && !inventory.isEmpty {
@@ -5214,7 +5214,7 @@ struct AgentSoftwareView: View {
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else if selectedMode == .services && filteredServices.isEmpty && !services.isEmpty {
-                    Text("No services match your filter.")
+                    Text(L10n.key("agents.services.emptyFiltered"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else {

@@ -2391,6 +2391,7 @@ struct AgentDetailView: View {
 
     private var managementCard: some View {
         let columns = [GridItem(.flexible()), GridItem(.flexible())]
+        let softwareManagementSupported = agent.operating_system.lowercased().contains("windows")
         return GlassCard {
             VStack(alignment: .leading, spacing: 16) {
                 SectionHeader(L10n.key("agents.management.title"), subtitle: L10n.key("agents.management.subtitle"), systemImage: "rectangle.connected.to.line.below")
@@ -2444,6 +2445,8 @@ struct AgentDetailView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .opacity(softwareManagementSupported ? 1.0 : 0.45)
+                    .allowsHitTesting(softwareManagementSupported)
 
                     NavigationLink {
                         AgentCustomFieldsView(customFields: nonEmptyCustomFields)
@@ -6319,12 +6322,16 @@ struct AgentHistoryView: View {
     }
 
     private func outputText(for entry: AgentHistoryEntry) -> String {
+        let results = entry.results?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let stdout = entry.script_results?.stdout?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let stderr = entry.script_results?.stderr?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         var sections: [String] = []
+        if !results.isEmpty {
+            sections.append(results)
+        }
         if !stdout.isEmpty {
-            sections.append("\(L10n.key("agents.history.detail.stdout"))\n\(stdout)")
+            sections.append(stdout)
         }
         if !stderr.isEmpty {
             sections.append("\(L10n.key("agents.history.detail.stderr"))\n\(stderr)")
@@ -6370,9 +6377,10 @@ struct AgentHistoryView: View {
         }
 
         private var hasOutput: Bool {
+            let results = entry.results?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let stdout = entry.script_results?.stdout?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let stderr = entry.script_results?.stderr?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            return !stdout.isEmpty || !stderr.isEmpty
+            return !results.isEmpty || !stdout.isEmpty || !stderr.isEmpty
         }
 
         var body: some View {

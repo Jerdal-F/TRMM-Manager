@@ -182,7 +182,31 @@ struct AgentHistoryEntry: Identifiable, Decodable {
     let type: String
     let command: String?
     let username: String?
+    let results: String?
     let script_results: ScriptResults?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case script_name
+        case time
+        case type
+        case command
+        case username
+        case results
+        case script_results
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        script_name = try container.decodeIfPresent(String.self, forKey: .script_name)
+        time = try container.decode(String.self, forKey: .time)
+        type = try container.decode(String.self, forKey: .type)
+        command = try container.decodeIfPresent(String.self, forKey: .command)
+        username = try container.decodeIfPresent(String.self, forKey: .username)
+        results = try? container.decodeIfPresent(String.self, forKey: .results)
+        script_results = try? container.decodeIfPresent(ScriptResults.self, forKey: .script_results)
+    }
 }
 
 struct Note: Identifiable, Decodable {

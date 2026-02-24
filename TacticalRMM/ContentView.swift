@@ -11,17 +11,26 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.appTheme) private var appTheme
+    @Environment(\.openURL) private var openURL
     @Query private var settingsList: [RMMSettings]
+    @ObservedObject private var agentCache = AgentCache.shared
+    @ObservedObject private var localizationDebug = LocalizationDebugState.shared
 
     @AppStorage("hideSensitive") private var hideSensitiveInfo: Bool = false
+    @AppStorage("hideCommunityScripts") private var hideCommunityScripts: Bool = false
     @AppStorage("useFaceID") private var useFaceID: Bool = false
     @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
     @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
+    @AppStorage("skippedUpdateVersion") private var skippedUpdateVersion: String = ""
+    @ObservedObject private var demoMode = DemoModeState.shared
     @State private var showGuideAlert = false
     @State private var showDiagnosticAlert = false
     @State private var showLogShareSheet = false
     @State private var showSettings = false
     @State private var showRecoveryAlert = false
+    @State private var showUpdateAlert = false
+    @State private var showApiEndpointAlert = false
+    @State private var latestVersion: String = ""
 
     @State private var isAuthenticating = false
     @State private var didAuthenticate = false
@@ -30,6 +39,7 @@ struct ContentView: View {
     @State private var selectedServerSettings: RMMSettings?
 
     @State private var agents: [Agent] = []
+    @State private var displayedAgents: [Agent] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showSearch = false
@@ -43,6 +53,12 @@ struct ContentView: View {
 
     @FocusState private var searchFieldIsFocused: Bool
     @State private var transactionUpdatesTask: Task<Void, Never>?
+    @State private var agentFilterTask: Task<Void, Never>?
+    @State private var searchDebounceTask: Task<Void, Never>?
+
+    private var faceIDEnabled: Bool {
+        useFaceID && !ProcessInfo.processInfo.isiOSAppOnMac
+    }
 
     var body: some View {
         ZStack {
@@ -71,9 +87,10 @@ struct ContentView: View {
                                 .font(.title3.weight(.semibold))
                         }
                         .foregroundStyle(appTheme.accent)
-                        .disabled(useFaceID && !didAuthenticate)
+                        .disabled(faceIDEnabled && !didAuthenticate)
                     }
                 }
+                .keyboardDismissToolbar()
                 .navigationDestination(isPresented: $showServerSettings) {
                     if let settings = selectedServerSettings {
                         ServerSettingsView(settings: settings)
@@ -91,10 +108,18 @@ struct ContentView: View {
             }
             .onAppear {
                 DiagnosticLogger.shared.append("ContentView onAppear")
-                if !useFaceID {
+                if ProcessInfo.processInfo.isiOSAppOnMac {
+                    useFaceID = false
+                }
+                if agents.isEmpty, !agentCache.agents.isEmpty {
+                    agents = agentCache.agents
+                    updateDisplayedAgents()
+                }
+                if !faceIDEnabled {
                     loadInitialSettings()
                 }
                 startTransactionUpdatesIfNeeded()
+                Task { await checkForUpdateIfNeeded() }
             }
             .onChange(of: activeSettingsUUID) { _, _ in
                 applyActiveSettings()
@@ -109,26 +134,40 @@ struct ContentView: View {
                 applyActiveSettings()
                 resetAgentsForInstanceChange()
             }
+            .onChange(of: appliedSearchText) { _, _ in
+                updateDisplayedAgents()
+            }
+            .onChange(of: sortOption) { _, _ in
+                updateDisplayedAgents()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .init("reloadAgents"))) { notification in
-                guard !(useFaceID && !didAuthenticate) else { return }
+                guard !(faceIDEnabled && !didAuthenticate) else { return }
                 applyActiveSettings()
                 resetAgentsForInstanceChange()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .forceUpdateCheck)) { _ in
+                Task { await checkForUpdateIfNeeded(force: true) }
             }
             .onDisappear {
                 transactionUpdatesTask?.cancel()
                 transactionUpdatesTask = nil
+                agentFilterTask?.cancel()
+                agentFilterTask = nil
+                searchDebounceTask?.cancel()
+                searchDebounceTask = nil
             }
             .onChange(of: scenePhase) { _, newPhase in
                 switch newPhase {
                 case .background:
                     didAuthenticate = false
+                    KeychainHelper.shared.clearCachedKeys()
 
                 case .inactive:
                     // Keep authentication alive during transient system overlays (e.g. StoreKit purchase sheet).
                     break
 
                 case .active:
-                    guard useFaceID, !didAuthenticate else { return }
+                    guard faceIDEnabled, !didAuthenticate else { return }
 
                     if !authAvailable {
                         showRecoveryAlert = true
@@ -151,6 +190,10 @@ struct ContentView: View {
                 }
             }
             .onChange(of: useFaceID) { _, newValue in
+                if ProcessInfo.processInfo.isiOSAppOnMac {
+                    useFaceID = false
+                    return
+                }
                 if newValue {
                     isAuthenticating = true
                     authenticateBiometrics { success in
@@ -162,7 +205,7 @@ struct ContentView: View {
                 }
             }
 
-            if useFaceID && !didAuthenticate {
+            if faceIDEnabled && !didAuthenticate {
                 ZStack {
                     Rectangle()
                         .fill(.ultraThinMaterial)
@@ -193,12 +236,37 @@ struct ContentView: View {
                 }
             }
         }
-        .sheet(isPresented: Binding(
-            get: { showSettings && !(useFaceID && !didAuthenticate) },
-            set: { showSettings = $0 }
-        )) {
+        .settingsPresentation(
+            isPresented: Binding(
+                get: { showSettings && !(faceIDEnabled && !didAuthenticate) },
+                set: { showSettings = $0 }
+            ),
+            fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+        ) {
             SettingsView()
         }
+        .alert(L10n.key("common.notice"), isPresented: $showUpdateAlert) {
+            Button(L10n.key("common.update")) {
+                if let url = URL(string: "https://apps.apple.com/gb/app/trmm-manager/id6742686284") {
+                    openURL(url)
+                }
+            }
+            Button(L10n.key("common.dismiss"), role: .cancel) {
+                skippedUpdateVersion = latestVersion
+            }
+        } message: {
+            Text(L10n.format("update.available.message", latestVersion))
+        }
+            .alert(L10n.key("connection.endpoint.alert.title"), isPresented: $showApiEndpointAlert) {
+                Button(L10n.key("connection.endpoint.alert.help")) {
+                    if let url = URL(string: "https://trmm-manager.jerdal.no") {
+                        openURL(url)
+                    }
+                }
+                Button(L10n.key("common.dismiss"), role: .cancel) { }
+            } message: {
+                Text(L10n.key("connection.endpoint.alert.message"))
+            }
         .sheet(isPresented: $showLogShareSheet) {
             if let url = DiagnosticLogger.shared.getLogFileURL() {
                 ActivityView(activityItems: [url])
@@ -349,13 +417,16 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity)
         }
         .primaryButton()
-        .disabled(useFaceID && !didAuthenticate)
+        .disabled(faceIDEnabled && !didAuthenticate)
     }
 
     @ViewBuilder
     private func connectionSummary(for settings: RMMSettings) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            summaryRow(title: L10n.key("connection.summary.instanceLabel"), value: settings.displayName, systemImage: "server.rack")
+            let displayName = demoMode.isEnabled
+                ? L10n.key("connection.summary.instance.demo")
+                : settings.displayName
+            summaryRow(title: L10n.key("connection.summary.instanceLabel"), value: displayName, systemImage: "server.rack")
             Text(L10n.key("connection.summary.manageDetails"))
                 .font(.caption)
                 .foregroundStyle(Color.white.opacity(0.65))
@@ -389,7 +460,7 @@ struct ContentView: View {
                 ZStack(alignment: .topTrailing) {
                     SectionHeader(
                         String(localized: "agents.title"),
-                        subtitle: agents.isEmpty ? String(localized: "agents.subtitle.connectEstate") : agentCountText,
+                        subtitle: agentsSubtitle,
                         systemImage: "list.bullet.rectangle"
                     )
 
@@ -459,7 +530,15 @@ struct ContentView: View {
                             )
                             .focused($searchFieldIsFocused)
                             .onChange(of: searchText) { _, newValue in
-                                appliedSearchText = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                searchDebounceTask?.cancel()
+                                let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                                searchDebounceTask = Task { [trimmed] in
+                                    try? await Task.sleep(nanoseconds: 200_000_000)
+                                    if Task.isCancelled { return }
+                                    await MainActor.run {
+                                        appliedSearchText = trimmed
+                                    }
+                                }
                             }
 
                         Button {
@@ -468,6 +547,8 @@ struct ContentView: View {
                                 searchText = ""
                                 appliedSearchText = ""
                                 searchFieldIsFocused = false
+                                searchDebounceTask?.cancel()
+                                searchDebounceTask = nil
                             }
                         } label: {
                             Image(systemName: "xmark.circle.fill")
@@ -477,7 +558,7 @@ struct ContentView: View {
                     }
                 }
 
-                if isLoading {
+                if isLoading && displayedAgents.isEmpty {
                     ProgressView("Loading agents…")
                         .progressViewStyle(.circular)
                         .tint(appTheme.accent)
@@ -485,13 +566,18 @@ struct ContentView: View {
                     Text(L10n.format("Error: %@", error))
                         .foregroundStyle(Color.red)
                         .font(.footnote)
-                } else if filteredAgents.isEmpty {
-                    Text(agents.isEmpty ? "No agents loaded. Save your connection to begin." : "No agents match your search.")
+                } else if displayedAgents.isEmpty {
+                    Text(agentEmptyMessage)
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else {
+                    if isLoading {
+                        ProgressView("Refreshing agents…")
+                            .progressViewStyle(.circular)
+                            .tint(appTheme.accent)
+                    }
                     LazyVStack(spacing: 16) {
-                        ForEach(sortedAgentsForDisplay) { agent in
+                        ForEach(displayedAgents) { agent in
                             NavigationLink {
                                 AgentDetailView(
                                     agent: agent,
@@ -571,7 +657,7 @@ struct ContentView: View {
     private var agentCountText: String {
         let total = agents.count
         guard total > 0 else { return "No agents yet" }
-        let displayed = sortedAgentsForDisplay.count
+        let displayed = displayedAgents.count
         if displayed == total && appliedSearchText.isEmpty && sortOption == .none {
             return total == 1
                 ? L10n.format("agents.count.single", total)
@@ -580,38 +666,51 @@ struct ContentView: View {
         return L10n.format("agents.count.filteredFormat", displayed, total)
     }
 
-    private var filteredAgents: [Agent] {
-        let base = agents.filter { sortOption.matches($0) }
-        guard !appliedSearchText.isEmpty else { return base }
+    @MainActor
+    private func updateDisplayedAgents() {
+        agentFilterTask?.cancel()
+        let agentsSnapshot = agents
         let query = appliedSearchText.lowercased()
-        return base.filter {
-            $0.hostname.lowercased().contains(query) ||
-            $0.operating_system.lowercased().contains(query) ||
-            ($0.description?.lowercased().contains(query) ?? false)
-        }
-    }
-
-    private var sortedAgentsForDisplay: [Agent] {
-        switch sortOption {
-        case .none:
-            return filteredAgents.sorted {
-                $0.hostname.localizedCaseInsensitiveCompare($1.hostname) == .orderedAscending
-            }
-        case .online:
-            return filteredAgents.sorted { lhs, rhs in
-                if lhs.isOnlineStatus == rhs.isOnlineStatus {
-                    return lhs.hostname.localizedCaseInsensitiveCompare(rhs.hostname) == .orderedAscending
+        let selectedSort = sortOption
+        agentFilterTask = Task.detached(priority: .userInitiated) {
+            if Task.isCancelled { return }
+            var working = agentsSnapshot.filter { selectedSort.matches($0) }
+            if !query.isEmpty {
+                working = working.filter {
+                    $0.hostname.lowercased().contains(query) ||
+                    $0.operating_system.lowercased().contains(query) ||
+                    ($0.description?.lowercased().contains(query) ?? false)
                 }
-                return lhs.isOnlineStatus && !rhs.isOnlineStatus
             }
-        default:
-            return filteredAgents.sorted { lhs, rhs in
-                let left = sortOption.sortKey(for: lhs)
-                let right = sortOption.sortKey(for: rhs)
-                if left == right {
-                    return lhs.hostname.localizedCaseInsensitiveCompare(rhs.hostname) == .orderedAscending
+            if Task.isCancelled { return }
+            let sorted: [Agent]
+            switch selectedSort {
+            case .none:
+                sorted = working.sorted {
+                    $0.hostname.localizedCaseInsensitiveCompare($1.hostname) == .orderedAscending
                 }
-                return left.localizedCaseInsensitiveCompare(right) == .orderedAscending
+            case .online:
+                sorted = working.sorted { lhs, rhs in
+                    if lhs.isOnlineStatus == rhs.isOnlineStatus {
+                        return lhs.hostname.localizedCaseInsensitiveCompare(rhs.hostname) == .orderedAscending
+                    }
+                    return lhs.isOnlineStatus && !rhs.isOnlineStatus
+                }
+            default:
+                sorted = working.sorted { lhs, rhs in
+                    let left = selectedSort.sortKey(for: lhs)
+                    let right = selectedSort.sortKey(for: rhs)
+                    if left == right {
+                        return lhs.hostname.localizedCaseInsensitiveCompare(rhs.hostname) == .orderedAscending
+                    }
+                    return left.localizedCaseInsensitiveCompare(right) == .orderedAscending
+                }
+            }
+            if Task.isCancelled { return }
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    displayedAgents = sorted
+                }
             }
         }
     }
@@ -626,16 +725,41 @@ struct ContentView: View {
         return nil
     }
 
+    private var agentEmptyMessage: String {
+        if agents.isEmpty {
+            return String(localized: "No agents loaded. Save your connection to begin.")
+        }
+        if !appliedSearchText.isEmpty {
+            return String(localized: "No agents match your search.")
+        }
+        if sortOption != .none {
+            return "No agents match your filter."
+        }
+        return "No agents available."
+    }
+
+    private var agentsSubtitle: String? {
+        if agents.isEmpty {
+            return isLoading ? nil : String(localized: "agents.subtitle.connectEstate")
+        }
+        return agentCountText
+    }
+
     // MARK: – Helper Methods
 
     private func resetAgentsForInstanceChange() {
         withAnimation(.easeInOut(duration: 0.2)) {
             agents.removeAll()
+            displayedAgents.removeAll()
             errorMessage = nil
             isLoading = false
             searchText = ""
             appliedSearchText = ""
         }
+        agentFilterTask?.cancel()
+        agentFilterTask = nil
+        searchDebounceTask?.cancel()
+        searchDebounceTask = nil
     }
 
     private func enforceHTTPSPrefix(_ input: String) -> String {
@@ -750,6 +874,67 @@ struct ContentView: View {
     private var authAvailable: Bool {
         LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
     }
+
+    private func checkForUpdateIfNeeded() async {
+        await checkForUpdateIfNeeded(force: false)
+    }
+
+    private func checkForUpdateIfNeeded(force: Bool) async {
+        guard let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
+            return
+        }
+        if !force, !skippedUpdateVersion.isEmpty, skippedUpdateVersion == current {
+            return
+        }
+
+        let bundleID = "jerdal.TacticalRMM-Manager"
+        guard let url = URL(string: "https://itunes.apple.com/lookup?bundleId=\(bundleID)") else {
+            return
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                return
+            }
+
+            guard let lookup = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let results = lookup["results"] as? [[String: Any]],
+                  let latest = results.first?["version"] as? String else {
+                return
+            }
+
+            if !force, !isVersion(latest, greaterThan: current) {
+                return
+            }
+
+            if !force, skippedUpdateVersion == latest {
+                return
+            }
+
+            await MainActor.run {
+                latestVersion = latest
+                showUpdateAlert = true
+            }
+        } catch {
+            return
+        }
+    }
+
+    private func isVersion(_ latest: String, greaterThan current: String) -> Bool {
+        let latestParts = latest.split(separator: ".").map { Int($0) ?? 0 }
+        let currentParts = current.split(separator: ".").map { Int($0) ?? 0 }
+        let maxCount = max(latestParts.count, currentParts.count)
+
+        for index in 0..<maxCount {
+            let latestValue = index < latestParts.count ? latestParts[index] : 0
+            let currentValue = index < currentParts.count ? currentParts[index] : 0
+            if latestValue != currentValue {
+                return latestValue > currentValue
+            }
+        }
+        return false
+    }
     
 // Fredrik Jerdal 2025
     @MainActor
@@ -818,7 +1003,7 @@ struct ContentView: View {
         DiagnosticLogger.shared.append("fetchAgents started (attempt \(attempt))")
         let resolved = ensureIdentifiers(for: settings)
         KeychainHelper.shared.setActiveIdentifier(resolved.keychainKey)
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             DiagnosticLogger.shared.append("Demo mode detected, loading sample agents instead of performing network call.")
             isLoading = false
             errorMessage = nil
@@ -853,6 +1038,16 @@ struct ContentView: View {
                 )
                 switch http.statusCode {
                 case 200:
+                    if let body = String(data: data, encoding: .utf8),
+                       body.localizedCaseInsensitiveContains("<!doctype html") ||
+                       body.localizedCaseInsensitiveContains("<div id=q-app") ||
+                       body.localizedCaseInsensitiveContains("<title>Tactical RMM</title>") {
+                        errorMessage = nil
+                        isLoading = false
+                        showApiEndpointAlert = true
+                        DiagnosticLogger.shared.appendWarning("Detected HTML response from /agents/. Expected API endpoint.")
+                        return
+                    }
                     do {
                         let decodeTask = Task<(agents: [Agent], reportedCount: Int?, usedWrapper: Bool), Error>.detached(priority: .userInitiated) {
                             let decoder = JSONDecoder()
@@ -867,6 +1062,7 @@ struct ContentView: View {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             agents = result.agents
                         }
+                        updateDisplayedAgents()
                         AgentCache.shared.setAgents(result.agents)
 
                         if result.usedWrapper {
@@ -979,6 +1175,7 @@ struct ContentView: View {
             )
             ]
         }
+        updateDisplayedAgents()
         AgentCache.shared.setAgents(agents)
     }
 }
@@ -1075,9 +1272,11 @@ struct InstallAgentView: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Done") {
+                Button {
                     focusedField = nil
                     UIApplication.shared.dismissKeyboard()
+                } label: {
+                    Image(systemName: "keyboard.chevron.compact.down")
                 }
                 .tint(appTheme.accent)
             }
@@ -1723,8 +1922,7 @@ struct AgentDetailView: View {
     }
 
     private var isDemoMode: Bool {
-         return baseURL.isDemoEntry &&
-             effectiveAPIKey.lowercased() == "demo"
+        DemoMode.isEnabled || (baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo")
     }
     
     @MainActor
@@ -1732,6 +1930,10 @@ struct AgentDetailView: View {
         if isDemoMode {
             DiagnosticLogger.shared.append("Demo mode active, skipping fetchAgentDetail.")
             updatedAgent = agent
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            message = L10n.format("agents.error.http", 401)
             return
         }
         DiagnosticLogger.shared.append("AgentDetailView: fetchAgentDetail started")
@@ -1768,6 +1970,17 @@ struct AgentDetailView: View {
     
     @MainActor
     func performWakeOnLan() async {
+        if isDemoMode {
+            isProcessing = true
+            message = L10n.format("agents.wol.sentToFormat", agent.hostname)
+            DiagnosticLogger.shared.append("Demo mode: simulated Wake-on-LAN.")
+            isProcessing = false
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            message = L10n.format("agents.error.http", 401)
+            return
+        }
         isProcessing = true
         message = nil
         let sanitizedURL = baseURL.removingTrailingSlash()
@@ -1832,8 +2045,12 @@ struct AgentDetailView: View {
         }()
 
         if isDemoMode {
-            message = L10n.format("agents.error.demoUnsupported", action)
-            DiagnosticLogger.shared.append("Demo mode: skipping \(action) command.")
+            message = L10n.format("agents.action.successFormat", actionLabel)
+            DiagnosticLogger.shared.append("Demo mode: simulated \(action) command.")
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            message = L10n.format("agents.error.http", 401)
             return
         }
         let sanitizedURL = baseURL.removingTrailingSlash()
@@ -2174,6 +2391,7 @@ struct AgentDetailView: View {
 
     private var managementCard: some View {
         let columns = [GridItem(.flexible()), GridItem(.flexible())]
+        let softwareManagementSupported = agent.operating_system.lowercased().contains("windows")
         return GlassCard {
             VStack(alignment: .leading, spacing: 16) {
                 SectionHeader(L10n.key("agents.management.title"), subtitle: L10n.key("agents.management.subtitle"), systemImage: "rectangle.connected.to.line.below")
@@ -2227,6 +2445,8 @@ struct AgentDetailView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .opacity(softwareManagementSupported ? 1.0 : 0.45)
+                    .allowsHitTesting(softwareManagementSupported)
 
                     NavigationLink {
                         AgentCustomFieldsView(customFields: nonEmptyCustomFields)
@@ -2254,6 +2474,22 @@ struct AgentDetailView: View {
                             subtitle: L10n.key("agents.management.notes.subtitle"),
                             systemImage: "note.text",
                             tint: Color.blue
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    NavigationLink {
+                        AgentHistoryView(
+                            agentId: agent.agent_id,
+                            baseURL: baseURL,
+                            apiKey: effectiveAPIKey
+                        )
+                    } label: {
+                        AgentActionTile(
+                            title: L10n.key("agents.management.history.title"),
+                            subtitle: L10n.key("agents.management.history.subtitle"),
+                            systemImage: "clock.arrow.circlepath",
+                            tint: Color.cyan
                         )
                     }
                     .buttonStyle(.plain)
@@ -2290,23 +2526,24 @@ struct AgentDetailView: View {
                     }
                     .buttonStyle(.plain)
 
-                    NavigationLink {
-                        RunScriptView(
-                            agent: agent,
-                            baseURL: baseURL,
-                            apiKey: effectiveAPIKey
-                        )
-                    } label: {
-                        AgentActionTile(
-                            title: L10n.key("agents.management.runScript.title"),
-                            subtitle: L10n.key("agents.management.runScript.subtitle"),
-                            systemImage: "play.rectangle.on.rectangle.fill",
-                            tint: Color.pink
-                        )
-                    }
-                    .buttonStyle(.plain)
+                }
 
-                  }
+                NavigationLink {
+                    RunScriptView(
+                        agent: agent,
+                        baseURL: baseURL,
+                        apiKey: effectiveAPIKey
+                    )
+                } label: {
+                    AgentActionTile(
+                        title: L10n.key("agents.management.runScript.title"),
+                        subtitle: L10n.key("agents.management.runScript.subtitle"),
+                        systemImage: "play.rectangle.on.rectangle.fill",
+                        tint: Color.pink
+                    )
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
             }
         }
     }
@@ -2416,8 +2653,10 @@ struct AgentDetailView: View {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(Color.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
                 if let subtitle {
                     Text(subtitle)
                         .font(.caption)
@@ -2923,6 +3162,7 @@ struct RunScriptView: View {
     let baseURL: String
     let apiKey: String
     @Environment(\.appTheme) private var appTheme
+    @AppStorage("hideCommunityScripts") private var hideCommunityScripts: Bool = false
 
     @State private var scripts: [RMMScript] = []
     @State private var isLoadingScripts = false
@@ -3051,11 +3291,15 @@ struct RunScriptView: View {
                 timeout = stripped
             }
         }
-        .sheet(isPresented: $showScriptPicker) {
+        .settingsPresentation(
+            isPresented: $showScriptPicker,
+            fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+        ) {
             ScriptPickerView(
                 scripts: scripts,
                 agentPlatform: normalizedAgentPlatform,
-                selectedScriptID: $selectedScriptID
+                selectedScriptID: $selectedScriptID,
+                onClose: { showScriptPicker = false }
             )
             .presentationDetents([.medium, .large])
         }
@@ -3299,7 +3543,7 @@ struct RunScriptView: View {
     }
 
     private var isDemoMode: Bool {
-        baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo"
+        DemoMode.isEnabled || (baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo")
     }
 
     private func clearScriptOutput() {
@@ -3583,7 +3827,8 @@ struct RunScriptView: View {
         }
 
         let sanitized = baseURL.removingTrailingSlash()
-        guard let url = URL(string: "\(sanitized)/scripts/") else {
+        let scriptsPath = hideCommunityScripts ? "/scripts/?showCommunityScripts=false" : "/scripts/"
+        guard let url = URL(string: "\(sanitized)\(scriptsPath)") else {
             scriptsError = "Invalid URL."
             return
         }
@@ -3922,6 +4167,7 @@ struct RunScriptView: View {
         let scripts: [RMMScript]
         let agentPlatform: String
         @Binding var selectedScriptID: Int?
+        let onClose: () -> Void
 
         @Environment(\.dismiss) private var dismiss
         @Environment(\.appTheme) private var appTheme
@@ -3985,6 +4231,7 @@ struct RunScriptView: View {
                                             isSupported: supports(script)
                                         ) {
                                             selectedScriptID = script.id
+                                            onClose()
                                             dismiss()
                                         }
                                     }
@@ -4012,7 +4259,10 @@ struct RunScriptView: View {
                 .navigationTitle("Select Script")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { dismiss() }
+                        Button("Cancel") {
+                            onClose()
+                            dismiss()
+                        }
                     }
                 }
             }
@@ -4120,6 +4370,18 @@ struct AgentProcessesView: View {
     var effectiveAPIKey: String {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
     }
+
+    private var isDemoMode: Bool {
+        DemoMode.isEnabled || (baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo")
+    }
+
+    private static let demoProcesses: [ProcessRecord] = [
+        ProcessRecord(id: 1, name: "Explorer", pid: 4240, membytes: 145_760_256, username: "SYSTEM", cpu_percent: "0.6"),
+        ProcessRecord(id: 2, name: "chrome", pid: 1328, membytes: 312_500_224, username: "demo.user", cpu_percent: "3.1"),
+        ProcessRecord(id: 3, name: "Code", pid: 2210, membytes: 268_435_456, username: "demo.user", cpu_percent: "1.7"),
+        ProcessRecord(id: 4, name: "OneDrive", pid: 1760, membytes: 98_304_512, username: "demo.user", cpu_percent: "0.2"),
+        ProcessRecord(id: 5, name: "svchost", pid: 840, membytes: 72_351_744, username: "LOCAL SERVICE", cpu_percent: "0.1")
+    ]
 
     var displayedProcesses: [ProcessRecord] {
         if appliedSearchQuery.isEmpty {
@@ -4434,6 +4696,18 @@ struct AgentProcessesView: View {
                 isLoading = false
             }
         }
+        if ApiErrorSimulation.isEnabled {
+            errorMessage = L10n.format("agents.error.http", 401)
+            return
+        }
+        if isDemoMode {
+            guard fetchID == processFetchSequence else { return }
+            withAnimation(.easeInOut(duration: 0.25)) {
+                processRecords = Self.demoProcesses
+                deletedPIDs.removeAll()
+            }
+            return
+        }
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/\(agentId)/processes/") else {
             errorMessage = "Invalid URL"
@@ -4489,6 +4763,20 @@ struct AgentProcessesView: View {
     @MainActor
     func killProcess(withPid pid: Int) async {
         killBannerMessage = nil
+        if isDemoMode {
+            killBannerMessage = "Demo mode: process \(pid) terminated."
+            selectedProcess = nil
+            withAnimation(.easeInOut(duration: 0.2)) {
+                processRecords.removeAll { $0.pid == pid }
+                deletedPIDs.insert(pid)
+            }
+            pidToKill = ""
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            killBannerMessage = L10n.format("agents.error.http", 401)
+            return
+        }
         let sanitizedURL = baseURL.removingTrailingSlash()
         guard let url = URL(string: "\(sanitizedURL)/agents/\(agentId)/processes/\(pid)/") else {
             DiagnosticLogger.shared.appendError("Invalid URL in kill process.")
@@ -4528,6 +4816,41 @@ struct AgentProcessesView: View {
 // MARK: - AgentSoftwareView
 
 struct AgentSoftwareView: View {
+    private enum InventoryMode: String, CaseIterable, Identifiable {
+        case software
+        case services
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .software:
+                return L10n.key("agents.software.title")
+            case .services:
+                return L10n.key("agents.services.title")
+            }
+        }
+    }
+
+    private enum ServiceAction: String {
+        case stop
+        case start
+        case restart
+
+        var payloadValue: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .stop:
+                return L10n.key("agents.services.action.stop")
+            case .start:
+                return L10n.key("agents.services.action.start")
+            case .restart:
+                return L10n.key("agents.services.action.restart")
+            }
+        }
+    }
+
     private static let invalidDates: Set<String> = ["01-1-01", "0001-01-01", "1900-01-01"]
 
     private static let isoDateFormatterWithFractional: ISO8601DateFormatter = {
@@ -4573,13 +4896,16 @@ struct AgentSoftwareView: View {
     let apiKey: String
     let operatingSystem: String
 
+    @State private var selectedMode: InventoryMode = .software
     @State private var inventory: [InstalledSoftware] = []
+    @State private var services: [AgentService] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
     @State private var statusMessage: String? = nil
     @State private var searchQuery: String = ""
     @State private var appliedSearchQuery: String = ""
-    @State private var hasLoadedOnce: Bool = false
+    @State private var hasLoadedSoftware: Bool = false
+    @State private var hasLoadedServices: Bool = false
     @State private var uninstallingSoftwareIDs: Set<String> = []
     @State private var pendingUninstallSoftware: InstalledSoftware? = nil
     @State private var uninstallCommandText: String = ""
@@ -4587,15 +4913,103 @@ struct AgentSoftwareView: View {
     @State private var uninstallRunAsUser: Bool = false
     @State private var uninstallSheetError: String? = nil
     @State private var isSubmittingUninstall: Bool = false
+    @State private var serviceActionInProgressIDs: Set<String> = []
 
     @FocusState private var searchFocused: Bool
 
     private var isWindowsAgent: Bool {
-        operatingSystem.lowercased().contains("windows")
+        isDemoMode || operatingSystem.lowercased().contains("windows")
     }
+
+    private var isDemoMode: Bool {
+        DemoMode.isEnabled || (baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo")
+    }
+
+    private static let demoInventory: [InstalledSoftware] = [
+        InstalledSoftware(
+            name: "Microsoft Edge",
+            size: "321 MB",
+            source: "winget",
+            version: "128.0.2739.42",
+            location: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application",
+            publisher: "Microsoft Corporation",
+            uninstall: "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\128.0.2739.42\\Installer\\setup.exe\" --uninstall --system-level",
+            install_date: "2024-08-12"
+        ),
+        InstalledSoftware(
+            name: "7-Zip",
+            size: "5 MB",
+            source: "choco",
+            version: "23.01",
+            location: "C:\\Program Files\\7-Zip",
+            publisher: "Igor Pavlov",
+            uninstall: "\"C:\\Program Files\\7-Zip\\Uninstall.exe\"",
+            install_date: "2024-06-03"
+        ),
+        InstalledSoftware(
+            name: "Visual Studio Code",
+            size: "412 MB",
+            source: "winget",
+            version: "1.92.2",
+            location: "C:\\Users\\demo.user\\AppData\\Local\\Programs\\Microsoft VS Code",
+            publisher: "Microsoft Corporation",
+            uninstall: "\"C:\\Users\\demo.user\\AppData\\Local\\Programs\\Microsoft VS Code\\unins000.exe\" /SILENT",
+            install_date: "2024-07-18"
+        ),
+        InstalledSoftware(
+            name: "Git",
+            size: "120 MB",
+            source: "manual",
+            version: "2.46.0",
+            location: "C:\\Program Files\\Git",
+            publisher: "The Git Development Community",
+            uninstall: "\"C:\\Program Files\\Git\\unins000.exe\" /VERYSILENT",
+            install_date: "2024-05-21"
+        )
+    ]
+
+    private static let demoServices: [AgentService] = [
+        AgentService(
+            name: "a2AntiMalware",
+            status: "running",
+            display_name: "Emsisoft Protection Service",
+            binpath: "\"C:\\Program Files\\Emsisoft Anti-Malware\\a2service.exe\"",
+            description: "Scans the PC for unwanted software and provides protection from malicious code",
+            username: "LocalSystem",
+            pid: 2248,
+            start_type: "Automatic",
+            autodelay: false
+        ),
+        AgentService(
+            name: "ALG",
+            status: "stopped",
+            display_name: "Application Layer Gateway Service",
+            binpath: "C:\\WINDOWS\\System32\\alg.exe",
+            description: "Provides support for 3rd party protocol plug-ins for Internet Connection Sharing",
+            username: "NT AUTHORITY\\LocalService",
+            pid: 0,
+            start_type: "Manual",
+            autodelay: false
+        ),
+        AgentService(
+            name: "AppHostSvc",
+            status: "running",
+            display_name: "Application Host Helper Service",
+            binpath: "C:\\WINDOWS\\system32\\svchost.exe -k apphost",
+            description: "Provides administrative services for IIS, for example configuration history and Application Pool account mapping.",
+            username: "LocalSystem",
+            pid: 5016,
+            start_type: "Automatic",
+            autodelay: false
+        )
+    ]
 
     private var softwareEndpointRoot: String {
         baseURL.removingTrailingSlash() + "/software"
+    }
+
+    private var servicesEndpointRoot: String {
+        baseURL.removingTrailingSlash() + "/services"
     }
 
     var effectiveAPIKey: String {
@@ -4606,17 +5020,45 @@ struct AgentSoftwareView: View {
         guard !appliedSearchQuery.isEmpty else { return inventory }
         let needle = appliedSearchQuery
         return inventory.filter { item in
-            [item.name, item.publisher, item.version, item.location, item.uninstall, item.source]
+            item.name.localizedCaseInsensitiveContains(needle)
+        }
+    }
+
+    private var filteredServices: [AgentService] {
+        guard !appliedSearchQuery.isEmpty else { return services }
+        let needle = appliedSearchQuery
+        return services.filter { item in
+            [item.name, item.display_name, item.description, item.binpath, item.username, item.start_type, item.status]
                 .contains { $0.localizedCaseInsensitiveContains(needle) }
         }
     }
 
     private var listSubtitle: String {
-        if isLoading { return "Loading…" }
+        if isLoading { return L10n.key("common.loading") }
+        let count = selectedMode == .software ? filteredInventory.count : filteredServices.count
+        let baseCount = selectedMode == .software ? inventory.count : services.count
         if !appliedSearchQuery.isEmpty {
-            return filteredInventory.count == 1 ? "1 match" : "\(filteredInventory.count) matches"
+            return count == 1 ? "1 match" : "\(count) matches"
         }
-        return inventory.count == 1 ? "1 item" : "\(inventory.count) items"
+        return baseCount == 1
+            ? L10n.format("agents.inventory.count.single", baseCount)
+            : L10n.format("agents.inventory.count.multipleFormat", baseCount)
+    }
+
+    private var loadingLabel: String {
+        selectedMode == .software ? L10n.key("agents.software.loading") : L10n.key("agents.services.loading")
+    }
+
+    private var filterSectionTitle: String {
+        selectedMode == .software
+            ? L10n.key("agents.software.filter.title")
+            : L10n.key("agents.services.filter.title")
+    }
+
+    private var filterSectionSubtitle: String {
+        selectedMode == .software
+            ? L10n.key("agents.software.filter.subtitle")
+            : L10n.key("agents.services.filter.subtitle")
     }
 
     var body: some View {
@@ -4627,20 +5069,20 @@ struct AgentSoftwareView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         searchCard
-                        softwareListCard
+                        inventoryListCard
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 28)
                     .padding(.bottom, 180)
                 }
                 .refreshable {
-                    await fetchSoftwareInventory(force: true)
+                    await fetchCurrentInventory(force: true)
                 }
 
                 if isLoading {
                     Color.black.opacity(0.35)
                         .ignoresSafeArea()
-                    ProgressView(L10n.key("agents.software.loading"))
+                    ProgressView(loadingLabel)
                         .padding()
                         .background(.ultraThinMaterial)
                         .cornerRadius(12)
@@ -4652,10 +5094,12 @@ struct AgentSoftwareView: View {
         .navigationTitle(L10n.key("agents.software.title"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            guard !hasLoadedOnce else { return }
-            hasLoadedOnce = true
             guard isWindowsAgent else { return }
-            Task { await fetchSoftwareInventory() }
+            Task { await fetchCurrentInventory() }
+        }
+        .onChange(of: selectedMode) { _, _ in
+            appliedSearchQuery = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+            Task { await fetchCurrentInventory(force: true) }
         }
         .sheet(isPresented: Binding(
             get: { pendingUninstallSoftware != nil },
@@ -4690,6 +5134,7 @@ struct AgentSoftwareView: View {
                 EmptyView()
             }
         }
+        .keyboardDismissToolbar()
     }
 
     @MainActor
@@ -4710,8 +5155,20 @@ struct AgentSoftwareView: View {
     private var searchCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader(L10n.key("agents.software.filter.title"), subtitle: L10n.key("agents.software.filter.subtitle"), systemImage: "magnifyingglass")
-                TextField(L10n.key("agents.software.filter.placeholder"), text: $searchQuery)
+                Picker(L10n.key("agents.inventory.picker.title"), selection: $selectedMode) {
+                    ForEach(InventoryMode.allCases) { mode in
+                        Text(mode.title)
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.7)
+                            .multilineTextAlignment(.center)
+                            .tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                SectionHeader(filterSectionTitle, subtitle: filterSectionSubtitle, systemImage: "magnifyingglass")
+                TextField(selectedMode == .software ? L10n.key("agents.software.filter.placeholder") : L10n.key("agents.services.filter.placeholder"), text: $searchQuery)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .focused($searchFocused)
@@ -4729,9 +5186,7 @@ struct AgentSoftwareView: View {
                         appliedSearchQuery = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
                     }
                     .onChange(of: searchQuery) { _, newValue in
-                        if newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            appliedSearchQuery = ""
-                        }
+                        appliedSearchQuery = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
                     }
 
                 if let errorMessage {
@@ -4744,33 +5199,53 @@ struct AgentSoftwareView: View {
         }
     }
 
-    private var softwareListCard: some View {
+    private var inventoryListCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 16) {
-                SectionHeader(L10n.key("agents.software.title"), subtitle: listSubtitle, systemImage: "macwindow")
+                SectionHeader(selectedMode == .software ? L10n.key("agents.software.title") : L10n.key("agents.services.title"), subtitle: listSubtitle, systemImage: selectedMode == .software ? "macwindow" : "gearshape.2")
 
-                if inventory.isEmpty && !isLoading && errorMessage == nil {
+                if selectedMode == .software && inventory.isEmpty && !isLoading && errorMessage == nil {
                     Text(L10n.key("agents.software.empty"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
-                } else if filteredInventory.isEmpty && !inventory.isEmpty {
+                } else if selectedMode == .services && services.isEmpty && !isLoading && errorMessage == nil {
+                    Text(L10n.key("agents.services.empty"))
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else if selectedMode == .software && filteredInventory.isEmpty && !inventory.isEmpty {
                     Text(L10n.key("agents.software.emptyFiltered"))
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else if selectedMode == .services && filteredServices.isEmpty && !services.isEmpty {
+                    Text(L10n.key("agents.services.emptyFiltered"))
                         .font(.footnote)
                         .foregroundStyle(Color.white.opacity(0.65))
                 } else {
                     LazyVStack(spacing: 14) {
-                        ForEach(filteredInventory) { item in
-                            SoftwareTile(
-                                software: item,
-                                installDate: formattedInstallDate(item.install_date),
-                                isUninstalling: uninstallingSoftwareIDs.contains(item.id),
-                                onRequestUninstall: { selected in
-                                    presentUninstallSheet(for: selected)
-                                }
-                            )
+                        if selectedMode == .software {
+                            ForEach(filteredInventory) { item in
+                                SoftwareTile(
+                                    software: item,
+                                    installDate: formattedInstallDate(item.install_date),
+                                    isUninstalling: uninstallingSoftwareIDs.contains(item.id),
+                                    onRequestUninstall: { selected in
+                                        presentUninstallSheet(for: selected)
+                                    }
+                                )
+                            }
+                        } else {
+                            ForEach(filteredServices) { item in
+                                ServiceTile(
+                                    service: item,
+                                    isActionInProgress: serviceActionInProgressIDs.contains(item.id),
+                                    onAction: { service, action in
+                                        Task { await sendServiceAction(service, action: action) }
+                                    }
+                                )
+                            }
                         }
                     }
-                    .animation(.easeInOut(duration: 0.25), value: filteredInventory.count)
+                    .animation(.easeInOut(duration: 0.25), value: selectedMode == .software ? filteredInventory.count : filteredServices.count)
                 }
             }
         }
@@ -4779,6 +5254,19 @@ struct AgentSoftwareView: View {
     @MainActor
     private func submitUninstall() async {
         guard let software = pendingUninstallSoftware else { return }
+
+        if isDemoMode {
+            pendingUninstallSoftware = nil
+            statusMessage = "Demo mode: uninstall queued for \(software.name)."
+            uninstallCommandText = ""
+            uninstallTimeoutText = "1800"
+            uninstallRunAsUser = false
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            uninstallSheetError = "HTTP Error: 401"
+            return
+        }
 
         let trimmedCommand = uninstallCommandText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedCommand.isEmpty else {
@@ -4915,9 +5403,42 @@ struct AgentSoftwareView: View {
     }
 
     @MainActor
+    private func fetchCurrentInventory(force: Bool = false) async {
+        switch selectedMode {
+        case .software:
+            if hasLoadedSoftware && !force { return }
+            await fetchSoftwareInventory(force: force)
+            hasLoadedSoftware = true
+        case .services:
+            if hasLoadedServices && !force { return }
+            await fetchServicesInventory(force: force)
+            hasLoadedServices = true
+        }
+    }
+
+    @MainActor
     func fetchSoftwareInventory(force: Bool = false) async {
         guard isWindowsAgent else { return }
         if isLoading && !force { return }
+
+        if isDemoMode {
+            isLoading = true
+            errorMessage = nil
+            statusMessage = nil
+            withAnimation(.easeInOut(duration: 0.25)) {
+                inventory = Self.demoInventory
+            }
+            hasLoadedSoftware = true
+            isLoading = false
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            isLoading = true
+            errorMessage = "HTTP Error: 401"
+            statusMessage = nil
+            isLoading = false
+            return
+        }
 
         let trimmedAgent = agentId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedAgent.isEmpty else {
@@ -4975,6 +5496,7 @@ struct AgentSoftwareView: View {
             withAnimation(.easeInOut(duration: 0.25)) {
                 inventory = sortedInventory
             }
+            hasLoadedSoftware = true
         } catch {
             if let urlError = error as? URLError, urlError.code == .cancelled {
                 return
@@ -4982,6 +5504,210 @@ struct AgentSoftwareView: View {
             errorMessage = error.localizedDescription
             DiagnosticLogger.shared.appendError("Error fetching software inventory: \(error.localizedDescription)")
         }
+    }
+
+    @MainActor
+    func fetchServicesInventory(force: Bool = false) async {
+        guard isWindowsAgent else { return }
+        if isLoading && !force { return }
+
+        if isDemoMode {
+            isLoading = true
+            errorMessage = nil
+            statusMessage = nil
+            withAnimation(.easeInOut(duration: 0.25)) {
+                services = Self.demoServices
+            }
+            hasLoadedServices = true
+            isLoading = false
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            isLoading = true
+            errorMessage = "HTTP Error: 401"
+            statusMessage = nil
+            isLoading = false
+            return
+        }
+
+        let trimmedAgent = agentId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedAgent.isEmpty else {
+            errorMessage = "Missing agent identifier."
+            return
+        }
+
+        let token = effectiveAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else {
+            errorMessage = "Add an API key in Settings before fetching services."
+            return
+        }
+
+        guard let url = URL(string: "\(servicesEndpointRoot)/\(trimmedAgent)") else {
+            errorMessage = "Invalid endpoint."
+            DiagnosticLogger.shared.appendError("Invalid services URL constructed for agent \(trimmedAgent).")
+            return
+        }
+
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 45
+        request.addDefaultHeaders(apiKey: token)
+
+        DiagnosticLogger.shared.logHTTPRequest(
+            method: "GET",
+            url: url.absoluteString,
+            headers: request.allHTTPHeaderFields ?? [:]
+        )
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                DiagnosticLogger.shared.logHTTPResponse(method: "GET", url: url.absoluteString, status: http.statusCode, data: data)
+                guard (200...299).contains(http.statusCode) else {
+                    errorMessage = http.statusCode == 400 ? L10n.key("agents.services.unableToContactAgent") : "HTTP Error: \(http.statusCode)"
+                    DiagnosticLogger.shared.appendError("HTTP Error \(http.statusCode) when fetching services for agent \(trimmedAgent).")
+                    return
+                }
+            }
+
+            let sortedServices = try await Task<[AgentService], Error>.detached(priority: .userInitiated) {
+                let decoder = JSONDecoder()
+                if let wrapped = try? decoder.decode(ServiceInventoryResponse.self, from: data) {
+                    return wrapped.services.sorted { $0.display_name.localizedCaseInsensitiveCompare($1.display_name) == .orderedAscending }
+                }
+                let items = try decoder.decode([AgentService].self, from: data)
+                return items.sorted { $0.display_name.localizedCaseInsensitiveCompare($1.display_name) == .orderedAscending }
+            }.value
+
+            withAnimation(.easeInOut(duration: 0.25)) {
+                services = sortedServices
+            }
+            hasLoadedServices = true
+        } catch {
+            if let urlError = error as? URLError, urlError.code == .cancelled {
+                return
+            }
+            errorMessage = error.localizedDescription
+            DiagnosticLogger.shared.appendError("Error fetching services: \(error.localizedDescription)")
+        }
+    }
+
+    @MainActor
+    private func sendServiceAction(_ service: AgentService, action: ServiceAction) async {
+        if serviceActionInProgressIDs.contains(service.id) {
+            return
+        }
+
+        if isDemoMode {
+            errorMessage = nil
+            return
+        }
+
+        if ApiErrorSimulation.isEnabled {
+            errorMessage = "HTTP Error: 401"
+            statusMessage = nil
+            return
+        }
+
+        let trimmedAgent = agentId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedAgent.isEmpty else {
+            errorMessage = "Missing agent identifier."
+            statusMessage = nil
+            return
+        }
+
+        let token = effectiveAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else {
+            errorMessage = "Add an API key in Settings before managing services."
+            statusMessage = nil
+            return
+        }
+
+        let pathAllowed = CharacterSet.urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))
+        guard let encodedServiceName = service.name.addingPercentEncoding(withAllowedCharacters: pathAllowed),
+              !encodedServiceName.isEmpty,
+              let url = URL(string: "\(servicesEndpointRoot)/\(trimmedAgent)/\(encodedServiceName)/") else {
+            errorMessage = "Invalid service endpoint."
+            statusMessage = nil
+            DiagnosticLogger.shared.appendError("Invalid service action URL for service \(service.name) and agent \(trimmedAgent).")
+            return
+        }
+
+        serviceActionInProgressIDs.insert(service.id)
+        var shouldClearPendingOnExit = true
+        defer {
+            if shouldClearPendingOnExit {
+                serviceActionInProgressIDs.remove(service.id)
+            }
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 45
+        request.addDefaultHeaders(apiKey: token)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let payload: [String: Any] = [
+            "sv_action": action.payloadValue
+        ]
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: payload, options: [])
+        } catch {
+            errorMessage = "Failed to encode request."
+            statusMessage = nil
+            DiagnosticLogger.shared.appendError("Failed to encode service action payload: \(error.localizedDescription)")
+            return
+        }
+
+        DiagnosticLogger.shared.logHTTPRequest(method: "POST", url: url.absoluteString, headers: request.allHTTPHeaderFields ?? [:])
+        if let body = request.httpBody, let bodyString = String(data: body, encoding: .utf8) {
+            DiagnosticLogger.shared.append("Body: \(bodyString)")
+        }
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                DiagnosticLogger.shared.logHTTPResponse(method: "POST", url: url.absoluteString, status: http.statusCode, data: data)
+                guard (200...299).contains(http.statusCode) else {
+                    errorMessage = http.statusCode == 400 ? L10n.key("agents.services.unableToContactAgent") : "HTTP Error: \(http.statusCode)"
+                    statusMessage = nil
+                    DiagnosticLogger.shared.appendError("HTTP Error \(http.statusCode) when running \(action.payloadValue) for service \(service.name).")
+                    return
+                }
+            }
+
+            serviceActionInProgressIDs.remove(service.id)
+            shouldClearPendingOnExit = false
+
+            errorMessage = nil
+            await fetchServicesInventory(force: true)
+
+            if serviceHasPendingStatus(named: service.name) {
+                for _ in 0..<8 {
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    await fetchServicesInventory(force: true)
+                    if !serviceHasPendingStatus(named: service.name) {
+                        break
+                    }
+                }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            statusMessage = nil
+            DiagnosticLogger.shared.appendError("Error sending service action: \(error.localizedDescription)")
+        }
+    }
+
+    private func serviceHasPendingStatus(named serviceName: String) -> Bool {
+        guard let service = services.first(where: { $0.name == serviceName }) else {
+            return false
+        }
+        return service.status.localizedCaseInsensitiveContains("pending")
     }
 
     private var unsupportedView: some View {
@@ -5103,6 +5829,7 @@ struct AgentSoftwareView: View {
                         .disabled(isSubmitting)
                     }
                 }
+                .keyboardDismissToolbar()
             }
             .onAppear {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -5284,6 +6011,537 @@ struct AgentSoftwareView: View {
             .accessibilityLabel(L10n.format("agents.software.uninstall.accessibilityLabelFormat", softwareName))
         }
     }
+
+    private struct ServiceTile: View {
+        let service: AgentService
+        let isActionInProgress: Bool
+        let onAction: (AgentService, ServiceAction) -> Void
+        @Environment(\.appTheme) private var appTheme
+
+        private var displayName: String {
+            service.display_name.nonEmpty ?? service.name
+        }
+
+        private var statusColor: Color {
+            service.status.localizedCaseInsensitiveContains("running") ? .green : .orange
+        }
+
+        private var statusLabel: String {
+            if service.status.localizedCaseInsensitiveContains("pending") {
+                return L10n.key("agents.services.status.pending")
+            }
+            if service.status.localizedCaseInsensitiveContains("stopped") {
+                return L10n.key("agents.services.status.stopped")
+            }
+            if service.status.localizedCaseInsensitiveContains("running") {
+                return L10n.key("agents.services.status.running")
+            }
+            return service.status.capitalized
+        }
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(displayName)
+                            .font(.headline)
+                            .foregroundStyle(Color.white)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text(service.name)
+                            .font(.caption)
+                            .foregroundStyle(Color.white.opacity(0.65))
+                    }
+                    Spacer()
+                    serviceActionMenu
+                    statusPill
+                }
+
+                HStack(spacing: 10) {
+                    pill(text: service.start_type, color: appTheme.accent)
+                    pill(text: "PID \(service.pid)", color: .purple)
+                    if service.autodelay {
+                        pill(text: "Auto Delay", color: .blue)
+                    }
+                }
+
+                detailRow(icon: "person.crop.circle", text: service.username)
+                detailRow(icon: "terminal", text: service.binpath)
+                if let description = service.description.nonEmpty {
+                    detailRow(icon: "text.alignleft", text: description)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+        }
+
+        private var serviceActionMenu: some View {
+            Menu {
+                Button {
+                    onAction(service, .stop)
+                } label: {
+                    Label(ServiceAction.stop.label, systemImage: "stop.fill")
+                }
+
+                Button {
+                    onAction(service, .start)
+                } label: {
+                    Label(ServiceAction.start.label, systemImage: "play.fill")
+                }
+
+                Button {
+                    onAction(service, .restart)
+                } label: {
+                    Label(ServiceAction.restart.label, systemImage: "arrow.clockwise")
+                }
+            } label: {
+                if isActionInProgress {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: "ellipsis")
+                        .font(.callout.weight(.semibold))
+                        .frame(width: 24, height: 24)
+                }
+            }
+            .disabled(isActionInProgress)
+            .foregroundStyle(Color.white.opacity(0.85))
+        }
+
+        private var statusPill: some View {
+            Text(statusLabel)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(statusColor)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(statusColor.opacity(0.18))
+                )
+        }
+
+        private func pill(text: String, color: Color) -> some View {
+            Text(text)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(color)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(color.opacity(0.18))
+                )
+        }
+
+        private func detailRow(icon: String, text: String) -> some View {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: icon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(appTheme.accent)
+                    .frame(width: 18)
+                Text(text)
+                    .font(.footnote)
+                    .foregroundStyle(Color.white.opacity(0.85))
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+            )
+        }
+    }
+}
+
+// MARK: - AgentHistoryView
+
+struct AgentHistoryView: View {
+    let agentId: String
+    let baseURL: String
+    let apiKey: String
+    @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
+
+    @State private var history: [AgentHistoryEntry] = []
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+    @State private var selectedOutputEntry: AgentHistoryEntry? = nil
+
+    private static let isoFormatterWithFractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    var effectiveAPIKey: String {
+        KeychainHelper.shared.getAPIKey() ?? apiKey
+    }
+
+    var body: some View {
+        ZStack {
+            DarkGradientBackground()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    headerCard
+                    historyListCard
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
+            }
+
+            if isLoading {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                ProgressView(L10n.key("agents.history.loading"))
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(12)
+            }
+        }
+        .navigationTitle(L10n.key("agents.history.title"))
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            Task { await fetchHistory() }
+        }
+        .settingsPresentation(
+            item: $selectedOutputEntry,
+            fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+        ) { entry in
+            HistoryOutputSheet(
+                title: outputTitle(for: entry),
+                output: outputText(for: entry)
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var headerCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader(L10n.key("agents.history.header.title"), subtitle: headerSubtitle, systemImage: "clock.arrow.circlepath")
+                if let errorMessage {
+                    banner(message: errorMessage, isError: true)
+                }
+            }
+        }
+    }
+
+    private var historyListCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                if history.isEmpty && !isLoading && errorMessage == nil {
+                    Text(L10n.key("agents.history.empty"))
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.65))
+                } else {
+                    LazyVStack(spacing: 14) {
+                        ForEach(history) { entry in
+                            HistoryTile(
+                                entry: entry,
+                                formattedTime: formattedDate(entry.time),
+                                onShowOutput: { selectedOutputEntry = entry }
+                            )
+                        }
+                    }
+                    .animation(.easeInOut(duration: 0.25), value: history.count)
+                }
+            }
+        }
+    }
+
+    private var headerSubtitle: String {
+        if isLoading { return L10n.key("common.loading") }
+        return history.count == 1
+            ? L10n.format("agents.history.count.single", history.count)
+            : L10n.format("agents.history.count.multipleFormat", history.count)
+    }
+
+    private func formattedDate(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return L10n.key("common.notAvailable") }
+
+        if let date = Self.isoFormatterWithFractional.date(from: trimmed)
+            ?? Self.isoFormatter.date(from: trimmed) {
+            return formatLastSeenDateValue(date, customFormat: lastSeenDateFormat)
+        }
+
+        return trimmed
+    }
+
+    private func banner(message: String, isError: Bool) -> some View {
+        let tint: Color = isError ? .red : .green
+        let icon = isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+        return HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+            Text(message)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.white)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(tint.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
+
+    private func outputTitle(for entry: AgentHistoryEntry) -> String {
+        if let scriptName = entry.script_name?.nonEmpty {
+            return scriptName
+        }
+        if let command = entry.command?.nonEmpty {
+            return command
+        }
+        return entry.type.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+
+    private func outputText(for entry: AgentHistoryEntry) -> String {
+        let results = entry.results?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let stdout = entry.script_results?.stdout?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let stderr = entry.script_results?.stderr?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        var sections: [String] = []
+        if !results.isEmpty {
+            sections.append(results)
+        }
+        if !stdout.isEmpty {
+            sections.append(stdout)
+        }
+        if !stderr.isEmpty {
+            sections.append("\(L10n.key("agents.history.detail.stderr"))\n\(stderr)")
+        }
+        if sections.isEmpty {
+            return L10n.key("agents.history.output.empty")
+        }
+        return sections.joined(separator: "\n\n")
+    }
+
+    private struct HistoryTile: View {
+        let entry: AgentHistoryEntry
+        let formattedTime: String
+        let onShowOutput: () -> Void
+        @Environment(\.appTheme) private var appTheme
+
+        private var title: String {
+            if let scriptName = entry.script_name?.nonEmpty {
+                return scriptName
+            }
+            if let command = entry.command?.nonEmpty {
+                return command
+            }
+            return entry.type
+        }
+
+        private var username: String {
+            entry.username?.nonEmpty ?? L10n.key("common.unknown")
+        }
+
+        private var typeLabel: String {
+            entry.type.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+
+        private var scriptOrCommand: String {
+            if let scriptName = entry.script_name?.nonEmpty {
+                return scriptName
+            }
+            if let command = entry.command?.nonEmpty {
+                return command
+            }
+            return L10n.key("common.notAvailable")
+        }
+
+        private var hasOutput: Bool {
+            let results = entry.results?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let stdout = entry.script_results?.stdout?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let stderr = entry.script_results?.stderr?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return !results.isEmpty || !stdout.isEmpty || !stderr.isEmpty
+        }
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                detailRow(icon: "calendar", title: L10n.key("agents.history.detail.time"), value: formattedTime)
+                Divider().overlay(Color.white.opacity(0.1))
+                detailRow(icon: "bolt.fill", title: L10n.key("agents.history.detail.action"), value: typeLabel)
+                Divider().overlay(Color.white.opacity(0.1))
+                detailRow(icon: "terminal", title: L10n.key("agents.history.detail.scriptOrCommand"), value: scriptOrCommand)
+                Divider().overlay(Color.white.opacity(0.1))
+                detailRow(icon: "person.crop.circle", title: L10n.key("agents.history.detail.initiatedBy"), value: username)
+
+                HStack {
+                    Spacer()
+                    Button {
+                        onShowOutput()
+                    } label: {
+                        Label(L10n.key("agents.history.output.button"), systemImage: "doc.text.magnifyingglass")
+                    }
+                    .secondaryButton()
+                    .disabled(!hasOutput)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+            .textSelection(.enabled)
+        }
+
+        private func detailRow(icon: String, title: String, value: String) -> some View {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: icon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(appTheme.accent)
+                    .frame(width: 18)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.caption2)
+                        .foregroundStyle(Color.white.opacity(0.6))
+                    Text(value)
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+
+        private func outputSection(title: String, value: String, isError: Bool = false) -> some View {
+            VStack(alignment: .leading, spacing: 6) {
+                SectionHeader(title, subtitle: nil, systemImage: isError ? "exclamationmark.octagon" : "doc.plaintext")
+                Text(value)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(isError ? Color.red.opacity(0.9) : Color.white.opacity(0.85))
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+            )
+        }
+
+    }
+
+    private struct HistoryOutputSheet: View {
+        let title: String
+        let output: String
+        @Environment(\.dismiss) private var dismiss
+
+        var body: some View {
+            NavigationStack {
+                ZStack {
+                    DarkGradientBackground()
+                        .ignoresSafeArea()
+
+                    ScrollView(showsIndicators: true) {
+                        VStack(spacing: 16) {
+                            GlassCard {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    SectionHeader(L10n.key("agents.history.detail.stdout"), subtitle: nil, systemImage: "doc.plaintext")
+                                    Text(output)
+                                        .font(.footnote.monospaced())
+                                        .foregroundStyle(Color.white.opacity(0.9))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .textSelection(.enabled)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 28)
+                    }
+                }
+                .navigationTitle(title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(L10n.key("common.close")) {
+                            dismiss()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func fetchHistory() async {
+        isLoading = true
+        errorMessage = nil
+
+        let sanitizedURL = baseURL.removingTrailingSlash()
+        guard let url = URL(string: "\(sanitizedURL)/agents/\(agentId)/history/") else {
+            errorMessage = L10n.key("common.invalidUrl")
+            DiagnosticLogger.shared.appendError("Invalid URL in fetching history.")
+            isLoading = false
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.addDefaultHeaders(apiKey: effectiveAPIKey)
+
+        DiagnosticLogger.shared.logHTTPRequest(method: "GET", url: url.absoluteString, headers: request.allHTTPHeaderFields ?? [:])
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse {
+                DiagnosticLogger.shared.logHTTPResponse(method: "GET", url: url.absoluteString, status: httpResponse.statusCode, data: data)
+                guard httpResponse.statusCode == 200 else {
+                    errorMessage = L10n.format("common.httpErrorFormat", httpResponse.statusCode)
+                    DiagnosticLogger.shared.appendError("HTTP Error \(httpResponse.statusCode) in fetching history.")
+                    isLoading = false
+                    return
+                }
+            }
+
+            let decodedHistory = try JSONDecoder().decode([AgentHistoryEntry].self, from: data)
+            withAnimation(.easeInOut(duration: 0.25)) {
+                history = decodedHistory.sorted { $0.time > $1.time }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            DiagnosticLogger.shared.appendError("Error fetching history: \(error.localizedDescription)")
+        }
+
+        isLoading = false
+    }
 }
 
 // MARK: - AgentNotesView
@@ -5327,6 +6585,36 @@ struct AgentNotesView: View {
         return KeychainHelper.shared.getAPIKey() ?? apiKey
     }
 
+    private var isDemoMode: Bool {
+        DemoMode.isEnabled || (baseURL.isDemoEntry && effectiveAPIKey.lowercased() == "demo")
+    }
+
+    private static func demoNotes(agentId: String) -> [Note] {
+        [
+            Note(
+                pk: 101,
+                entry_time: "2024-08-25T09:14:22Z",
+                note: "Demo note: device enrolled, baseline policies applied.",
+                username: "demo.user",
+                agent_id: agentId
+            ),
+            Note(
+                pk: 102,
+                entry_time: "2024-09-02T14:46:00Z",
+                note: "Demo note: reboot scheduled after patch window.",
+                username: "Demo",
+                agent_id: agentId
+            ),
+            Note(
+                pk: 103,
+                entry_time: "2024-09-18T18:05:11Z",
+                note: "Demo note: user reported intermittent VPN drops.",
+                username: "demo.user",
+                agent_id: agentId
+            )
+        ]
+    }
+
     var body: some View {
         ZStack {
             DarkGradientBackground()
@@ -5354,7 +6642,10 @@ struct AgentNotesView: View {
         .onAppear {
             Task { await fetchNotes() }
         }
-        .sheet(isPresented: $isComposerPresented) {
+        .settingsPresentation(
+            isPresented: $isComposerPresented,
+            fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+        ) {
             AddAgentNoteSheet(
                 noteText: $newNoteText,
                 isSubmitting: isSubmittingNote,
@@ -5468,6 +6759,7 @@ struct AgentNotesView: View {
         let onSubmit: (String) -> Void
 
         @FocusState private var editorFocused: Bool
+        @Environment(\.dismiss) private var dismiss
 
         private var trimmedNote: String {
             noteText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -5520,7 +6812,10 @@ struct AgentNotesView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button(L10n.key("common.cancel")) { onCancel() }
+                        Button(L10n.key("common.cancel")) {
+                            onCancel()
+                            dismiss()
+                        }
                             .disabled(isSubmitting)
                     }
                     ToolbarItem(placement: .confirmationAction) {
@@ -5549,6 +6844,28 @@ struct AgentNotesView: View {
 
     @MainActor
     func createNote(with note: String) async {
+        if isDemoMode {
+            let nextId = (notes.map { $0.pk }.max() ?? 100) + 1
+            let newNote = Note(
+                pk: nextId,
+                entry_time: ISO8601DateFormatter().string(from: Date()),
+                note: note,
+                username: "Demo",
+                agent_id: agentId
+            )
+            withAnimation(.easeInOut(duration: 0.25)) {
+                notes.insert(newNote, at: 0)
+            }
+            newNoteText = ""
+            statusMessage = L10n.key("agents.notes.added")
+            isComposerPresented = false
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            errorMessage = "HTTP Error: 401"
+            statusMessage = nil
+            return
+        }
         guard !note.isEmpty else {
             errorMessage = L10n.key("agents.notes.error.empty")
             statusMessage = nil
@@ -5616,6 +6933,18 @@ struct AgentNotesView: View {
 
     @MainActor
     func deleteNote(_ note: Note) async {
+        if isDemoMode {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                notes.removeAll { $0.pk == note.pk }
+            }
+            statusMessage = L10n.key("agents.notes.deleted")
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            errorMessage = L10n.format("common.httpErrorFormat", 401)
+            statusMessage = nil
+            return
+        }
         errorMessage = nil
         statusMessage = nil
 
@@ -5768,6 +7097,23 @@ struct AgentNotesView: View {
 
     @MainActor
     func fetchNotes() async {
+        if isDemoMode {
+            isLoading = true
+            errorMessage = nil
+            statusMessage = nil
+            withAnimation(.easeInOut(duration: 0.25)) {
+                notes = Self.demoNotes(agentId: agentId)
+            }
+            isLoading = false
+            return
+        }
+        if ApiErrorSimulation.isEnabled {
+            isLoading = true
+            errorMessage = L10n.format("agents.error.http", 401)
+            statusMessage = nil
+            isLoading = false
+            return
+        }
         isLoading = true
         errorMessage = nil
         let sanitizedURL = baseURL.removingTrailingSlash()

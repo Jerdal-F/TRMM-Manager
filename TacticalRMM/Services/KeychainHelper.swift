@@ -17,7 +17,7 @@ final class KeychainHelper {
     func saveAPIKey(_ apiKey: String, identifier: String? = nil) {
         let account = identifier ?? activeIdentifier
         cachedAPIKeys[account] = apiKey
-        DiagnosticLogger.shared.append("Saving API key for account '\(account)'")
+        DiagnosticLogger.shared.append("Saving API key to Keychain")
 
         guard let data = apiKey.data(using: .utf8) else {
             DiagnosticLogger.shared.appendError("Failed to encode API key to Data")
@@ -34,20 +34,24 @@ final class KeychainHelper {
         }
 
         guard let data = read(account: account), let key = String(data: data, encoding: .utf8) else {
-            DiagnosticLogger.shared.appendWarning("No API Key found in Keychain for account '\(account)'")
+            DiagnosticLogger.shared.appendWarning("No API Key found in Keychain")
             return nil
         }
 
         cachedAPIKeys[account] = key
-        DiagnosticLogger.shared.append("Retrieved API key from Keychain for account '\(account)'")
+        DiagnosticLogger.shared.append("Retrieved API key from Keychain")
         return key
     }
 
     func deleteAPIKey(identifier: String? = nil) {
         let account = identifier ?? activeIdentifier
         cachedAPIKeys.removeValue(forKey: account)
-        DiagnosticLogger.shared.append("Cleared cached API key for account '\(account)'")
+        DiagnosticLogger.shared.append("Cleared cached API key")
         delete(account: account)
+    }
+
+    func clearCachedKeys() {
+        cachedAPIKeys.removeAll()
     }
 
     func deleteAllAPIKeys() {
@@ -71,14 +75,14 @@ final class KeychainHelper {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         ]
         SecItemDelete(query as CFDictionary)
         let status = SecItemAdd(query as CFDictionary, nil)
         if status == errSecSuccess {
-            DiagnosticLogger.shared.append("Keychain: Successfully saved item for account '\(account)'")
+            DiagnosticLogger.shared.append("Keychain: Successfully saved API key")
         } else {
-            DiagnosticLogger.shared.appendError("Keychain save failed for account '\(account)' with status: \(status)")
+            DiagnosticLogger.shared.appendError("Keychain save failed with status: \(status)")
         }
     }
 
@@ -94,12 +98,12 @@ final class KeychainHelper {
         let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
         switch status {
         case errSecSuccess:
-            DiagnosticLogger.shared.append("Keychain: Retrieved data for account '\(account)'")
+            DiagnosticLogger.shared.append("Keychain: Retrieved API key")
             return dataTypeRef as? Data
         case errSecItemNotFound:
-            DiagnosticLogger.shared.appendWarning("Keychain read: no item found for account '\(account)'")
+            DiagnosticLogger.shared.appendWarning("Keychain read: no item found")
         default:
-            DiagnosticLogger.shared.appendError("Keychain read failed for account '\(account)' with status: \(status)")
+            DiagnosticLogger.shared.appendError("Keychain read failed with status: \(status)")
         }
         return nil
     }
@@ -113,11 +117,11 @@ final class KeychainHelper {
         let status = SecItemDelete(query as CFDictionary)
         switch status {
         case errSecSuccess:
-            DiagnosticLogger.shared.append("Keychain: Deleted item for account '\(account)'")
+            DiagnosticLogger.shared.append("Keychain: Deleted API key")
         case errSecItemNotFound:
-            DiagnosticLogger.shared.appendWarning("Keychain delete: no item to delete for account '\(account)'")
+            DiagnosticLogger.shared.appendWarning("Keychain delete: no item to delete")
         default:
-            DiagnosticLogger.shared.appendError("Keychain delete failed for account '\(account)' with status: \(status)")
+            DiagnosticLogger.shared.appendError("Keychain delete failed with status: \(status)")
         }
     }
 }

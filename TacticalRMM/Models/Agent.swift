@@ -77,13 +77,17 @@ struct Agent: Identifiable, Decodable {
             operating_system = "Unknown OS"
         }
 
+        let rawCpu: [String]
         if let cpuArr = try c.decodeIfPresent([String].self, forKey: .cpu_model) {
-            cpu_model = cpuArr
+            rawCpu = cpuArr
         } else if let cpuStr = try c.decodeIfPresent(String.self, forKey: .cpu_model) {
-            cpu_model = cpuStr.isEmpty ? [] : [cpuStr]
+            rawCpu = cpuStr.isEmpty ? [] : [cpuStr]
         } else {
-            cpu_model = []
+            rawCpu = []
         }
+        cpu_model = rawCpu
+            .map { Agent.normalizeCpuModel($0) }
+            .filter { !$0.isEmpty }
 
         description = try c.decodeIfPresent(String.self, forKey: .description)
         public_ip = try c.decodeIfPresent(String.self, forKey: .public_ip)
@@ -97,6 +101,13 @@ struct Agent: Identifiable, Decodable {
         custom_fields = try c.decodeIfPresent([AgentCustomField].self, forKey: .custom_fields)
         serial_number = try c.decodeIfPresent(String.self, forKey: .serial_number)
         boot_time = try c.decodeIfPresent(TimeInterval.self, forKey: .boot_time)
+    }
+
+    private static func normalizeCpuModel(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        let collapsed = trimmed.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return collapsed.replacingOccurrences(of: " ,", with: ",")
     }
 }
 

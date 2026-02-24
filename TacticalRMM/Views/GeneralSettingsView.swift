@@ -120,6 +120,7 @@ struct GeneralSettingsView: View {
                 .disabled(isLoading || isSaving)
             }
         }
+        .keyboardDismissToolbar()
         .task {
             await loadSettings(force: true)
         }
@@ -738,7 +739,7 @@ struct GeneralSettingsView: View {
     private func loadSettings(force: Bool = false) async {
         guard !isLoading || force else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await loadDemoSettings()
             return
         }
@@ -843,7 +844,7 @@ struct GeneralSettingsView: View {
     private func saveSettings() async {
         guard !isSaving else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 statusMessage = L10n.key("settings.general.status.demoUpdated")
                 saveErrorMessage = nil
@@ -958,7 +959,7 @@ struct GeneralSettingsView: View {
     private func resetPatchPolicies() async {
         guard !isResettingPatchPolicy else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 statusMessage = L10n.key("settings.general.status.patchResetDemo")
             }

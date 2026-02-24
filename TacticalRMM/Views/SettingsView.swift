@@ -10,10 +10,12 @@ struct SettingsView: View {
 
     @AppStorage("useFaceID") var useFaceID: Bool = false
     @AppStorage("hideSensitive") var hideSensitiveInfo: Bool = false
+    @AppStorage("hideCommunityScripts") var hideCommunityScripts: Bool = false
     @AppStorage("activeSettingsUUID") private var activeSettingsUUID: String = ""
     @AppStorage("selectedTheme") private var selectedThemeID: String = AppTheme.default.rawValue
     @AppStorage("lastSeenDateFormat") private var lastSeenDateFormat: String = ""
     @AppStorage("selectedBackground") private var selectedBackgroundID: String = AppBackgroundStyle.default.rawValue
+    @ObservedObject private var demoMode = DemoModeState.shared
 
     @State private var showResetConfirmation = false
     @State private var showAddInstanceSheet = false
@@ -42,6 +44,10 @@ struct SettingsView: View {
         LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
     }
 
+    private var biometricsEnabled: Bool {
+        authAvailable && !ProcessInfo.processInfo.isiOSAppOnMac
+    }
+
     private var activeSettings: RMMSettings? {
         if let match = settingsList.first(where: { $0.uuid.uuidString == activeSettingsUUID }) {
             return ensureIdentifiers(for: match)
@@ -54,6 +60,7 @@ struct SettingsView: View {
 
     private var instanceSubtitle: String {
         if settingsList.isEmpty { return L10n.key("settings.instances.subtitle.none") }
+        if demoMode.isEnabled { return L10n.key("settings.instances.subtitle.demo") }
         if let active = activeSettings { return L10n.format("settings.instances.subtitle.active", active.displayName) }
         return L10n.key("settings.instances.subtitle.select")
     }
@@ -135,21 +142,26 @@ struct SettingsView: View {
                         .foregroundStyle(appTheme.accent)
                 }
             }
-            .sheet(isPresented: $showAddInstanceSheet) {
+            .keyboardDismissToolbar()
+            .settingsPresentation(
+                isPresented: $showAddInstanceSheet,
+                fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+            ) {
                 addInstanceSheet
             }
-            .sheet(isPresented: Binding(
-                get: { editingInstance != nil },
-                set: { if !$0 { cancelEditInstance() } }
-            )) {
-                if let instance = editingInstance {
-                    editInstanceSheet(for: instance)
-                }
+            .settingsPresentation(item: $editingInstance, fullScreen: ProcessInfo.processInfo.isiOSAppOnMac) { instance in
+                editInstanceSheet(for: instance)
             }
-            .sheet(isPresented: $showDonationSheet) {
+            .settingsPresentation(
+                isPresented: $showDonationSheet,
+                fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+            ) {
                 DonationSheet()
             }
-            .sheet(isPresented: $showReleaseNotes) {
+            .settingsPresentation(
+                isPresented: $showReleaseNotes,
+                fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+            ) {
                 ReleaseNotesView()
             }
             .alert(L10n.key("settings.alert.deleteAllTitle"), isPresented: $showResetConfirmation) {
@@ -177,6 +189,11 @@ struct SettingsView: View {
             } message: {
                 if let instance = pendingDeleteInstance {
                     Text(L10n.format("settings.alert.deleteInstanceMessage", instance.displayName))
+                }
+            }
+            .onAppear {
+                if ProcessInfo.processInfo.isiOSAppOnMac {
+                    useFaceID = false
                 }
             }
         }
@@ -220,6 +237,7 @@ struct SettingsView: View {
                 SectionHeader(L10n.key("settings.preferences.title"), subtitle: L10n.key("settings.preferences.subtitle"), systemImage: "gearshape")
 
                 settingsToggle(title: L10n.key("settings.hideSensitive"), isOn: $hideSensitiveInfo)
+                settingsToggle(title: L10n.key("settings.hideCommunityScripts"), isOn: $hideCommunityScripts)
 
                 Toggle(isOn: $useFaceID) {
                     Text(L10n.key("settings.faceIDLock"))
@@ -227,10 +245,10 @@ struct SettingsView: View {
                         .foregroundStyle(Color.white)
                 }
                 .toggleStyle(SwitchToggleStyle(tint: appTheme.accent))
-                .disabled(!authAvailable)
-                .opacity(authAvailable ? 1 : 0.4)
+                .disabled(!biometricsEnabled)
+                .opacity(biometricsEnabled ? 1 : 0.4)
 
-                if !authAvailable {
+                if !biometricsEnabled {
                     Text(L10n.key("settings.faceIDRequirement"))
                         .font(.caption2)
                         .foregroundStyle(Color.white.opacity(0.6))
@@ -488,7 +506,7 @@ struct SettingsView: View {
 
     private func instanceRow(for settings: RMMSettings) -> some View {
         let resolved = ensureIdentifiers(for: settings)
-        let isActive = resolved.uuid.uuidString == activeSettingsUUID
+        let isActive = !demoMode.isEnabled && resolved.uuid.uuidString == activeSettingsUUID
 
         return HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
@@ -594,6 +612,7 @@ struct SettingsView: View {
                                   newInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .keyboardDismissToolbar()
             .onAppear {
                 addInstanceField = .name
             }
@@ -653,6 +672,7 @@ struct SettingsView: View {
                                   editInstanceKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .keyboardDismissToolbar()
             .onAppear {
                 editInstanceField = .name
             }
@@ -710,6 +730,7 @@ struct SettingsView: View {
 
     private func setActiveInstance(_ settings: RMMSettings, triggerReload: Bool = false) {
         let resolved = ensureIdentifiers(for: settings)
+        DemoMode.setEnabled(false)
         activeSettingsUUID = resolved.uuid.uuidString
         KeychainHelper.shared.setActiveIdentifier(resolved.keychainKey)
         if triggerReload {

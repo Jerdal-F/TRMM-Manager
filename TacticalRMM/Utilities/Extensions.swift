@@ -66,6 +66,79 @@ extension View {
     }
 }
 
+extension Notification.Name {
+    static let forceUpdateCheck = Notification.Name("forceUpdateCheck")
+}
+
+final class DemoModeState: ObservableObject {
+    static let shared = DemoModeState()
+
+    @Published var isEnabled: Bool = false
+
+    private init() {}
+}
+
+enum DemoMode {
+    static var isEnabled: Bool {
+        DemoModeState.shared.isEnabled
+    }
+
+    static func setEnabled(_ enabled: Bool) {
+        DemoModeState.shared.isEnabled = enabled
+    }
+}
+
+final class LocalizationDebugState: ObservableObject {
+    static let shared = LocalizationDebugState()
+
+    @Published var showTranslationKeys: Bool = false
+
+    private init() {}
+}
+
+enum LocalizationDebug {
+    static var showTranslationKeys: Bool {
+        LocalizationDebugState.shared.showTranslationKeys
+    }
+
+    static func setShowTranslationKeys(_ enabled: Bool) {
+        LocalizationDebugState.shared.showTranslationKeys = enabled
+    }
+}
+
+struct AppSettings: Decodable {
+    let debugMenuEnabled: Bool
+
+    static let shared: AppSettings = load()
+
+    private static func load() -> AppSettings {
+        guard let url = Bundle.main.url(forResource: "settings", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let decoded = try? JSONDecoder().decode(AppSettings.self, from: data) else {
+            return AppSettings(debugMenuEnabled: false)
+        }
+        return decoded
+    }
+}
+
+final class ApiErrorSimulationState: ObservableObject {
+    static let shared = ApiErrorSimulationState()
+
+    @Published var isEnabled: Bool = false
+
+    private init() {}
+}
+
+enum ApiErrorSimulation {
+    static var isEnabled: Bool {
+        ApiErrorSimulationState.shared.isEnabled
+    }
+
+    static func setEnabled(_ enabled: Bool) {
+        ApiErrorSimulationState.shared.isEnabled = enabled
+    }
+}
+
 enum AppTheme: String, CaseIterable, Identifiable {
     case ocean
     case citrus

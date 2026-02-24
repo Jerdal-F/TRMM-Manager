@@ -65,13 +65,18 @@ struct KeyStoreView: View {
         }
         .navigationTitle(L10n.key("keystore.title"))
         .navigationBarTitleDisplayMode(.inline)
+        .keyboardDismissToolbar()
         .task { await loadEntries(force: true) }
         .refreshable { await loadEntries(force: true) }
-        .sheet(isPresented: $isShowingEditor) {
+        .settingsPresentation(
+            isPresented: $isShowingEditor,
+            fullScreen: ProcessInfo.processInfo.isiOSAppOnMac
+        ) {
             KeyStoreEditorSheet(
                 mode: editorMode,
                 draft: $draft,
                 isSaving: $isSaving,
+                onClose: { isShowingEditor = false },
                 onSubmit: { await handleSubmit() }
             )
             .presentationDetents([.medium])
@@ -227,7 +232,7 @@ struct KeyStoreView: View {
     private func loadEntries(force: Bool = false) async {
         guard !isLoading || force else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 entries = KeyStoreEntry.demoEntries
                 isLoading = false
@@ -337,7 +342,7 @@ struct KeyStoreView: View {
 
     private func deleteEntry(_ entry: KeyStoreEntry) async {
         guard !isDeleting else { return }
-        guard !settings.baseURL.isDemoEntry else {
+        guard !DemoMode.isEnabled && !settings.baseURL.isDemoEntry else {
             await MainActor.run {
                 entries.removeAll { $0.id == entry.id }
                 entryPendingDelete = nil
@@ -383,7 +388,7 @@ struct KeyStoreView: View {
     }
 
     private func sendMutatingRequest(method: String, body: Data, pathSuffix: String?) async throws {
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run { isShowingEditor = false }
             return
         }
@@ -521,6 +526,7 @@ private struct KeyStoreEditorSheet: View {
     let mode: KeyStoreView.EditorMode
     @Binding var draft: KeyStoreDraft
     @Binding var isSaving: Bool
+    let onClose: () -> Void
     let onSubmit: () async -> Void
 
     var body: some View {
@@ -541,6 +547,7 @@ private struct KeyStoreEditorSheet: View {
                     Button(L10n.key("common.cancel")) {
                         draft = KeyStoreDraft(entry: draft.entry)
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        onClose()
                         dismiss()
                     }
                 }
@@ -557,6 +564,7 @@ private struct KeyStoreEditorSheet: View {
                     .disabled(isSaving)
                 }
             }
+            .keyboardDismissToolbar()
         }
     }
 }

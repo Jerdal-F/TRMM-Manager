@@ -50,9 +50,6 @@ struct DonationSheet: View {
                                     VStack(spacing: 4) {
                                         Text(product.displayPrice)
                                             .font(.headline)
-                                        Text(product.displayName)
-                                            .font(.caption)
-                                            .foregroundStyle(Color.white.opacity(0.7))
                                     }
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 18)

@@ -801,6 +801,24 @@
         }
       }
     },
+    "agents.error.http" : {
+      "comment" : "Generic HTTP error message for agent actions. Argument is the status code.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HTTP Error: %lld"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HTTP-feil: %lld"
+          }
+        }
+      }
+    },
     "agents.fetch" : {
       "comment" : "Button label to fetch agents initially",
       "extractionState" : "manual",
@@ -945,6 +963,312 @@
         }
       }
     },
+    "agents.history.count.multipleFormat" : {
+      "comment" : "Pluralized count label for history entries.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld entries"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld oppføringer"
+          }
+        }
+      }
+    },
+    "agents.history.count.single" : {
+      "comment" : "Singular count label for history entries.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld entry"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld oppføring"
+          }
+        }
+      }
+    },
+    "agents.history.detail.action" : {
+      "comment" : "Label for action field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Action"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Handling"
+          }
+        }
+      }
+    },
+    "agents.history.detail.command" : {
+      "comment" : "Label for command field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kommando"
+          }
+        }
+      }
+    },
+    "agents.history.detail.initiatedBy" : {
+      "comment" : "Label for initiator field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Initiated By"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startet av"
+          }
+        }
+      }
+    },
+    "agents.history.detail.scriptOrCommand" : {
+      "comment" : "Label for script or command field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Script/Command"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skript/kommando"
+          }
+        }
+      }
+    },
+    "agents.history.detail.stderr" : {
+      "comment" : "Label for stderr output in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error Output"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feilutdata"
+          }
+        }
+      }
+    },
+    "agents.history.detail.stdout" : {
+      "comment" : "Label for stdout output in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Output"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utdata"
+          }
+        }
+      }
+    },
+    "agents.history.detail.time" : {
+      "comment" : "Label for time field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tid"
+          }
+        }
+      }
+    },
+    "agents.history.detail.user" : {
+      "comment" : "Label for user field in history details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "User"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruker"
+          }
+        }
+      }
+    },
+    "agents.history.empty" : {
+      "comment" : "Empty state when no history entries are available.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No history entries found."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen historikkoppføringer funnet."
+          }
+        }
+      }
+    },
+    "agents.history.header.title" : {
+      "comment" : "Header title for agent history view.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historikk"
+          }
+        }
+      }
+    },
+    "agents.history.loading" : {
+      "comment" : "Loading message for agent history.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading history…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laster historikk…"
+          }
+        }
+      }
+    },
+    "agents.history.output.button" : {
+      "comment" : "Button label to open full output window from history row.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Output"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utdata"
+          }
+        }
+      }
+    },
+    "agents.history.output.empty" : {
+      "comment" : "Message shown in output window when no output is available.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No output available."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen utdata tilgjengelig."
+          }
+        }
+      }
+    },
+    "agents.history.retcodeFormat" : {
+      "comment" : "Return code badge text in history rows.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code %lld"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kode %lld"
+          }
+        }
+      }
+    },
+    "agents.history.title" : {
+      "comment" : "Navigation title for agent history view.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historikk"
+          }
+        }
+      }
+    },
     "agents.info.site" : {
       "comment" : "Label for agent site field.",
       "extractionState" : "manual",
@@ -1053,6 +1377,60 @@
         }
       }
     },
+    "agents.inventory.count.multipleFormat" : {
+      "comment" : "Pluralized count label for inventory items.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld items"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld elementer"
+          }
+        }
+      }
+    },
+    "agents.inventory.count.single" : {
+      "comment" : "Singular count label for inventory items.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld item"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld element"
+          }
+        }
+      }
+    },
+    "agents.inventory.picker.title" : {
+      "comment" : "Accessibility label/title for software/services segmented picker.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inventory"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oversikt"
+          }
+        }
+      }
+    },
     "agents.management.checks.subtitle" : {
       "comment" : "Subtitle for the checks tile in agent management.",
       "extractionState" : "manual",
@@ -1157,6 +1535,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Egendefinerte felter"
+          }
+        }
+      }
+    },
+    "agents.management.history.subtitle" : {
+      "comment" : "Subtitle for the history tile in agent management.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activity log"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktivitetslogg"
+          }
+        }
+      }
+    },
+    "agents.management.history.title" : {
+      "comment" : "Title for the history tile in agent management.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "History"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historikk"
           }
         }
       }
@@ -1276,13 +1690,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Installed apps"
+            "value" : "Installed apps and services"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Installerte apper"
+            "value" : "Installerte apper og tjenester"
           }
         }
       }
@@ -1294,13 +1708,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Software"
+            "value" : "Software and Services"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Programvare"
+            "value" : "Programvare og tjenester"
           }
         }
       }
@@ -2312,6 +2726,258 @@
         }
       }
     },
+    "agents.services.action.restart" : {
+      "comment" : "Label for restart action in services menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start på nytt"
+          }
+        }
+      }
+    },
+    "agents.services.action.start" : {
+      "comment" : "Label for start action in services menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        }
+      }
+    },
+    "agents.services.action.stop" : {
+      "comment" : "Label for stop action in services menu.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopp"
+          }
+        }
+      }
+    },
+    "agents.services.empty" : {
+      "comment" : "Empty state for services inventory.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No services found."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tjenester funnet."
+          }
+        }
+      }
+    },
+    "agents.services.emptyFiltered" : {
+      "comment" : "Empty state for filtered services inventory.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No services match your filter."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen tjenester samsvarer med filteret ditt."
+          }
+        }
+      }
+    },
+    "agents.services.filter.placeholder" : {
+      "comment" : "Placeholder for services search field.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search services"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk i tjenester"
+          }
+        }
+      }
+    },
+    "agents.services.filter.subtitle" : {
+      "comment" : "Subtitle for services filter section.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search by service name"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Søk etter tjenestenavn"
+          }
+        }
+      }
+    },
+    "agents.services.filter.title" : {
+      "comment" : "Title for services filter section.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter Services"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtrer tjenester"
+          }
+        }
+      }
+    },
+    "agents.services.loading" : {
+      "comment" : "Loading message for services inventory.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading services…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laster tjenester…"
+          }
+        }
+      }
+    },
+    "agents.services.status.pending" : {
+      "comment" : "Status label for pending services.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pending"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Venter"
+          }
+        }
+      }
+    },
+    "agents.services.status.running" : {
+      "comment" : "Status label for running services.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kjører"
+          }
+        }
+      }
+    },
+    "agents.services.status.stopped" : {
+      "comment" : "Status label for stopped services.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopped"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stoppet"
+          }
+        }
+      }
+    },
+    "agents.services.title" : {
+      "comment" : "Title for services inventory.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Services"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tjenester"
+          }
+        }
+      }
+    },
+    "agents.services.unableToContactAgent" : {
+      "comment" : "Error shown when services endpoint returns HTTP 400.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to contact the agent"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan ikke kontakte agenten"
+          }
+        }
+      }
+    },
     "agents.software.copyInstallPath" : {
       "comment" : "Context menu label to copy install path.",
       "extractionState" : "manual",
@@ -2391,13 +3057,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search installed software"
+            "value" : "Search installed software by name"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Søk i installert programvare"
+            "value" : "Søk i installert programvare etter navn"
           }
         }
       }
@@ -2409,13 +3075,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search by name, publisher, or path"
+            "value" : "Search by software name"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Søk etter navn, utgiver eller sti"
+            "value" : "Søk etter programvarenavn"
           }
         }
       }
@@ -4153,6 +4819,24 @@
         }
       }
     },
+    "common.clear" : {
+      "comment" : "General clear action label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tøm"
+          }
+        }
+      }
+    },
     "common.close" : {
       "comment" : "Common Close button label",
       "extractionState" : "manual",
@@ -4167,6 +4851,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lukk"
+          }
+        }
+      }
+    },
+    "common.confirm" : {
+      "comment" : "General confirm action label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirm"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bekreft"
           }
         }
       }
@@ -4585,6 +5287,24 @@
         }
       }
     },
+    "common.update" : {
+      "comment" : "Update action button label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdater"
+          }
+        }
+      }
+    },
     "common.value" : {
       "comment" : "Common Value label",
       "extractionState" : "manual",
@@ -4603,6 +5323,60 @@
         }
       }
     },
+    "connection.endpoint.alert.help" : {
+      "comment" : "Button label to open the API endpoint documentation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "User Guide"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brukerhåndbok"
+          }
+        }
+      }
+    },
+    "connection.endpoint.alert.message" : {
+      "comment" : "Alert message when the /agents endpoint returns HTML.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server returned the Tactical RMM web app. Please use your API endpoint URL in Settings."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serveren returnerte Tactical RMM web-appen. Bruk API-endepunktet i Innstillinger."
+          }
+        }
+      }
+    },
+    "connection.endpoint.alert.title" : {
+      "comment" : "Alert title when user hits the web UI instead of the API endpoint.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the API Endpoint"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bruk API-endepunktet"
+          }
+        }
+      }
+    },
     "connection.subtitle.secure" : {
       "comment" : "Subtitle for connection section",
       "extractionState" : "manual",
@@ -4617,6 +5391,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Koble deg sikkert til Tactical RMM"
+          }
+        }
+      }
+    },
+    "connection.summary.instance.demo" : {
+      "comment" : "Displayed instance name when demo mode is active.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demo"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demo"
           }
         }
       }
@@ -5146,24 +5938,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Donasjonsvalg er ikke tilgjengelige nå. Prøv igjen senere."
-          }
-        }
-      }
-    },
-    "Done" : {
-      "comment" : "A button that dismisses the keyboard when pressed.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Done"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ferdig"
           }
         }
       }
@@ -5835,6 +6609,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Legg til nøkkel"
+          }
+        }
+      }
+    },
+    "keystore.editor.section" : {
+      "comment" : "Section title for adding or editing key store entries.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Key Details"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nøkkeldetaljer"
           }
         }
       }
@@ -6517,6 +7309,24 @@
         }
       }
     },
+    "Refreshing agents…" : {
+      "comment" : "A text indicating that the list of agents is being refreshed.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refreshing agents…"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppdaterer agenter…"
+          }
+        }
+      }
+    },
     "Reset" : {
       "localizations" : {
         "en" : {
@@ -6984,6 +7794,42 @@
         }
       }
     },
+    "scripts.detail.lastRefreshedFormat" : {
+      "comment" : "Format for the last refreshed timestamp in script detail.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last refreshed %@"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sist oppdatert %@"
+          }
+        }
+      }
+    },
+    "scripts.detail.test" : {
+      "comment" : "Button label to test a script from the detail view.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test"
+          }
+        }
+      }
+    },
     "scripts.detail.testingRequiresAgents" : {
       "comment" : "Notice that testing scripts requires available agents.",
       "extractionState" : "manual",
@@ -7002,6 +7848,42 @@
         }
       }
     },
+    "scripts.edit.filename" : {
+      "comment" : "Label for script filename in edit and detail views.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filename"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filnavn"
+          }
+        }
+      }
+    },
+    "scripts.edit.scriptBody" : {
+      "comment" : "Section header for script body in edit and detail views.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Script Body"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skriptinnhold"
+          }
+        }
+      }
+    },
     "scripts.loading" : {
       "comment" : "Loading label for scripts.",
       "extractionState" : "manual",
@@ -7016,6 +7898,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Laster skript…"
+          }
+        }
+      }
+    },
+    "scripts.meta.timeoutFormat" : {
+      "comment" : "Timeout label format for script metadata. Uses an integer seconds value.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d s"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d s"
           }
         }
       }
@@ -7052,6 +7952,240 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bla gjennom og administrer skript"
+          }
+        }
+      }
+    },
+    "scripts.test.agent" : {
+      "comment" : "Label for selecting an agent to run a script test.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent"
+          }
+        }
+      }
+    },
+    "scripts.test.args" : {
+      "comment" : "Section header for script arguments in test.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arguments"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Argumenter"
+          }
+        }
+      }
+    },
+    "scripts.test.argsHelp" : {
+      "comment" : "Help text for script arguments in test.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One argument per line."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ett argument per linje."
+          }
+        }
+      }
+    },
+    "scripts.test.code" : {
+      "comment" : "Section header for script body/code in test.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kode"
+          }
+        }
+      }
+    },
+    "scripts.test.envVars" : {
+      "comment" : "Section header for environment variables in test.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Environment Variables"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Miljovariabler"
+          }
+        }
+      }
+    },
+    "scripts.test.execution" : {
+      "comment" : "Section header for execution options in script test.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Execution"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kjoring"
+          }
+        }
+      }
+    },
+    "scripts.test.result" : {
+      "comment" : "Section header for test results.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Result"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resultat"
+          }
+        }
+      }
+    },
+    "scripts.test.returnCodeFormat" : {
+      "comment" : "Label for return code in test results. Uses an integer code.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Return code: %d"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Returkode: %d"
+          }
+        }
+      }
+    },
+    "scripts.test.runAsUser" : {
+      "comment" : "Toggle label for running the script as the logged-in user.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run as user"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kjor som bruker"
+          }
+        }
+      }
+    },
+    "scripts.test.shell" : {
+      "comment" : "Label for the shell picker in script test.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shell"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shell"
+          }
+        }
+      }
+    },
+    "scripts.test.stderr" : {
+      "comment" : "Section header for standard error in test results.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard Error"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard feilutdata"
+          }
+        }
+      }
+    },
+    "scripts.test.stdout" : {
+      "comment" : "Section header for standard output in test results.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard Output"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard utdata"
+          }
+        }
+      }
+    },
+    "scripts.test.title" : {
+      "comment" : "Title for the script test screen.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test Script"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test skript"
           }
         }
       }
@@ -8845,6 +9979,24 @@
         }
       }
     },
+    "settings.hideCommunityScripts" : {
+      "comment" : "Toggle label for hiding community scripts",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Community Scripts"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skjul fellesskapsskript"
+          }
+        }
+      }
+    },
     "settings.hideSensitive" : {
       "comment" : "Toggle label for hiding sensitive information",
       "extractionState" : "manual",
@@ -8985,6 +10137,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aktiv: %@"
+          }
+        }
+      }
+    },
+    "settings.instances.subtitle.demo" : {
+      "comment" : "Subtitle when demo mode is active",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demo mode active"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demomodus aktiv"
           }
         }
       }
@@ -9784,6 +10954,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "UID: %@"
+          }
+        }
+      }
+    },
+    "update.available.message" : {
+      "comment" : "Message shown when a newer app version is available. Argument is the version string.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A new update is available (%@)."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En ny oppdatering er tilgjengelig (%@)."
           }
         }
       }

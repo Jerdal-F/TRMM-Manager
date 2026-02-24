@@ -3,6 +3,7 @@ import SwiftUI
 struct ScriptManagerView: View {
     let settings: RMMSettings
     @Environment(\.appTheme) private var appTheme
+    @AppStorage("hideCommunityScripts") private var hideCommunityScripts: Bool = false
 
     @ObservedObject private var agentCache = AgentCache.shared
     @State private var scripts: [ScriptSummary] = []
@@ -50,7 +51,8 @@ struct ScriptManagerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadScripts(force: true) }
         .refreshable { await loadScripts(force: true) }
-        .sheet(item: $selectedScript) { summary in
+        .keyboardDismissToolbar()
+        .settingsPresentation(item: $selectedScript, fullScreen: ProcessInfo.processInfo.isiOSAppOnMac) { summary in
             ScriptDetailSheet(
                 summary: summary,
                 detail: scriptDetail,
@@ -61,6 +63,7 @@ struct ScriptManagerView: View {
                 isTesting: isTestingScript,
                 canTest: !agentCache.agents.isEmpty,
                 isSavingEdit: isSavingEdit,
+                onClose: { selectedScript = nil },
                 onRetry: {
                     Task { await loadScriptDetail(for: summary, force: true) }
                 },
@@ -82,13 +85,14 @@ struct ScriptManagerView: View {
                 await loadScriptDetail(for: summary, force: true)
             }
         }
-        .sheet(item: $testContext) { context in
+        .settingsPresentation(item: $testContext, fullScreen: ProcessInfo.processInfo.isiOSAppOnMac) { context in
             ScriptTestSheet(
                 context: context,
                 agents: agentCache.agents,
                 isTesting: $isTestingScript,
                 result: $testResult,
                 errorMessage: $testError,
+                onClose: { testContext = nil },
                 onRun: { draft in
                     await runScriptTest(context: context, draft: draft)
                 }
@@ -282,7 +286,7 @@ struct ScriptManagerView: View {
     private func loadScripts(force: Bool = false) async {
         guard !isLoading || force else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 scripts = ScriptSummary.demoScripts
                 loadError = nil
@@ -296,7 +300,8 @@ struct ScriptManagerView: View {
             return
         }
 
-        guard let request = makeRequest(path: "/scripts/", method: "GET", apiKey: apiKey) else {
+        let scriptsPath = hideCommunityScripts ? "/scripts/?showCommunityScripts=false" : "/scripts/"
+        guard let request = makeRequest(path: scriptsPath, method: "GET", apiKey: apiKey) else {
             await MainActor.run { loadError = L10n.key("scripts.error.invalidBaseUrl") }
             return
         }
@@ -345,7 +350,7 @@ struct ScriptManagerView: View {
         guard selectedScript?.id == summary.id else { return }
         guard !isLoadingDetail || force else { return }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 scriptDetail = ScriptDetail.demoScript(for: summary)
                 detailError = nil
@@ -453,7 +458,7 @@ struct ScriptManagerView: View {
             Task { @MainActor in isDeletingScript = false }
         }
 
-        if settings.baseURL.isDemoEntry {
+        if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
             await MainActor.run {
                 scripts.removeAll { $0.id == summary.id }
                 if selectedScript?.id == summary.id {
@@ -517,7 +522,7 @@ struct ScriptManagerView: View {
         do {
             let payload = try editDraft.makePayload(existing: detail)
 
-            if settings.baseURL.isDemoEntry {
+            if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
                 await MainActor.run {
                     scriptDetail = ScriptDetail(
                         id: payload.id,
@@ -616,7 +621,7 @@ struct ScriptManagerView: View {
         do {
             let (agentID, payload) = try draft.makePayload()
 
-            if settings.baseURL.isDemoEntry {
+            if DemoMode.isEnabled || settings.baseURL.isDemoEntry {
                 await MainActor.run {
                     testResult = ScriptTestResponse.demo
                     testError = nil
@@ -1123,6 +1128,7 @@ private struct ScriptTestSheet: View {
     @Binding var isTesting: Bool
     @Binding var result: ScriptTestResponse?
     @Binding var errorMessage: String?
+    let onClose: () -> Void
     let onRun: (ScriptTestDraft) async -> Void
 
     @State private var draft: ScriptTestDraft
@@ -1134,12 +1140,14 @@ private struct ScriptTestSheet: View {
          isTesting: Binding<Bool>,
          result: Binding<ScriptTestResponse?>,
          errorMessage: Binding<String?>,
+         onClose: @escaping () -> Void,
          onRun: @escaping (ScriptTestDraft) async -> Void) {
         self.context = context
         self.agents = agents
         _isTesting = isTesting
         _result = result
         _errorMessage = errorMessage
+        self.onClose = onClose
         self.onRun = onRun
 
         var initialDraft = ScriptTestDraft(detail: context.detail)
@@ -1296,7 +1304,10 @@ private struct ScriptTestSheet: View {
             .navigationTitle(L10n.key("scripts.test.title"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(L10n.key("common.close")) { dismiss() }
+                    Button(L10n.key("common.close")) {
+                        onClose()
+                        dismiss()
+                    }
                         .foregroundStyle(appTheme.accent)
                         .disabled(isTesting)
                 }
@@ -1313,6 +1324,7 @@ private struct ScriptTestSheet: View {
                     .disabled(isTesting || agents.isEmpty || draft.agentID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !shellIsValid)
                 }
             }
+            .keyboardDismissToolbar()
         }
         .presentationDetents([.large])
     }
@@ -1490,6 +1502,7 @@ private struct ScriptEditSheet: View {
                     .disabled(isSaving || !shellIsValid)
                 }
             }
+            .keyboardDismissToolbar()
         }
         .presentationDetents([.large])
     }
@@ -1565,6 +1578,7 @@ private struct ScriptDetailSheet: View {
     let isTesting: Bool
     let canTest: Bool
     let isSavingEdit: Bool
+    let onClose: () -> Void
     let onRetry: () -> Void
     let onTest: () -> Void
     let onEdit: () -> Void
@@ -1625,7 +1639,10 @@ private struct ScriptDetailSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(L10n.key("common.done")) { dismiss() }
+                    Button(L10n.key("common.done")) {
+                        onClose()
+                        dismiss()
+                    }
                         .foregroundStyle(appTheme.accent)
                 }
             }

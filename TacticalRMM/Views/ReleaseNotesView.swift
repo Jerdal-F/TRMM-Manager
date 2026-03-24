@@ -60,40 +60,44 @@ struct ReleaseNotesView: View {
     }
 
     private func releaseNoteCard(for note: ReleaseNote) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(note.version)
-                    .font(.headline)
-                    .foregroundStyle(Color.white)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Capsule(style: .continuous)
+                    .fill(note.isCurrentRelease ? appTheme.accent : Color.white.opacity(0.25))
+                    .frame(width: 4, height: 34)
 
-                if note.isCurrentRelease {
-                    Text("Current Release")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule(style: .continuous)
-                                .fill(appTheme.accent.opacity(0.2))
-                        )
-                        .foregroundStyle(appTheme.accent)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text(note.version)
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(Color.white)
+
+                        if note.isCurrentRelease {
+                            Text("Current release")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(appTheme.accent.opacity(0.2))
+                                )
+                                .foregroundStyle(appTheme.accent)
+                        }
+                    }
+
+                    Text(note.description)
+                        .font(.callout)
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
-            Text(note.description)
-                .font(.callout)
-                .foregroundStyle(Color.white.opacity(0.85))
-                .fixedSize(horizontal: false, vertical: true)
+            Divider()
+                .overlay(Color.white.opacity(0.14))
+                .padding(.leading, 16)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                )
-        )
+        .padding(.vertical, 4)
     }
 
     private func loadNotes() {
